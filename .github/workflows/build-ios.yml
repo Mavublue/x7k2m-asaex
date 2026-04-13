@@ -1,0 +1,54 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform ios --clean
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MEDIA_SERVICE_URL: ${{ secrets.EXPO_PUBLIC_MEDIA_SERVICE_URL }}
+          EXPO_PUBLIC_R2_PUBLIC_URL: ${{ secrets.EXPO_PUBLIC_R2_PUBLIC_URL }}
+
+      - name: Build Archive
+        run: |
+          cd ios
+          xcodebuild archive \
+            -workspace EstateFlow.xcworkspace \
+            -scheme EstateFlow \
+            -configuration Release \
+            -archivePath ../build/EstateFlow.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -quiet
+
+      - name: Create IPA
+        run: |
+          cd build/EstateFlow.xcarchive/Products/Applications
+          mkdir Payload
+          cp -r EstateFlow.app Payload/
+          zip -r ../../../../EstateFlow.ipa Payload/
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: EstateFlow-ipa
+          path: EstateFlow.ipa
+          retention-days: 7
