@@ -17,7 +17,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.asd1r31.EstateFlow",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "İlan fotoğrafı çekmek için kamera erişimi gerekiyor.",
+        "NSPhotoLibraryUsageDescription": "İlan fotoğrafı eklemek için galeri erişimi gerekiyor.",
+        "NSLocationWhenInUseUsageDescription": "İlan konumunu belirlemek için konum erişimi gerekiyor."
       }
     },
     "android": {
@@ -33,7 +36,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "İlan fotoğrafı eklemek için galeri erişimi gerekiyor.",
+          "cameraPermission": "İlan fotoğrafı çekmek için kamera erişimi gerekiyor."
+        }
+      ]
     ],
     "extra": {
       "router": {},
