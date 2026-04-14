@@ -56,6 +56,10 @@ export default function IlanDetayScreen() {
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkYukleniyor, setLinkYukleniyor] = useState(false);
   const [linkKopyalandi, setLinkKopyalandi] = useState(false);
+  const [linkMusteriler, setLinkMusteriler] = useState<any[]>([]);
+  const [linkMusteriAra, setLinkMusteriAra] = useState('');
+  const [linkEtiketAra, setLinkEtiketAra] = useState('');
+  const [linkSeciliMusteri, setLinkSeciliMusteri] = useState<string>('');
   const flatListRef = useRef<any>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
 
@@ -169,7 +173,19 @@ export default function IlanDetayScreen() {
     return true;
   }
 
+  async function linkModalAc() {
+    setLinkSeciliMusteri('');
+    setLinkMusteriAra('');
+    setLinkEtiketAra('');
+    setLinkUrl(null);
+    setLinkSaat('24');
+    const { data } = await supabase.from('musteriler').select('id, ad, soyad, etiketler').eq('durum', 'Aktif').order('ad');
+    if (data) setLinkMusteriler(data);
+    setLinkModal(true);
+  }
+
   async function linkOlustur() {
+    if (!linkSeciliMusteri) { Alert.alert('Hata', 'Lütfen bir müşteri seçin.'); return; }
     const saatSayisi = parseInt(linkSaat);
     if (!saatSayisi || saatSayisi < 1 || saatSayisi > 168) {
       Alert.alert('Hata', 'Geçerli bir saat girin (1-168).');
@@ -184,16 +200,33 @@ export default function IlanDetayScreen() {
       supabase.from('profiller').select('slug').eq('id', session.user.id).single(),
     ]);
 
-    const token = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
     const expiresAt = new Date(Date.now() + saatSayisi * 60 * 60 * 1000).toISOString();
+    let token: string;
 
-    const { error } = await supabase.from('ilan_linkleri').insert({
-      token,
-      ilan_id: id,
-      user_id: session.user.id,
-      expires_at: expiresAt,
-    });
-    if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    const { data: mevcutToken } = await supabase
+      .from('musteri_tokenler')
+      .select('token')
+      .eq('user_id', session.user.id)
+      .eq('musteri_id', linkSeciliMusteri)
+      .single();
+
+    if (mevcutToken) {
+      token = mevcutToken.token;
+      await supabase.from('musteri_tokenler')
+        .update({ expires_at: expiresAt })
+        .eq('user_id', session.user.id)
+        .eq('musteri_id', linkSeciliMusteri);
+    } else {
+      token = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
+      const { error } = await supabase.from('musteri_tokenler').insert({
+        token,
+        user_id: session.user.id,
+        musteri_id: linkSeciliMusteri,
+        expires_at: expiresAt,
+      });
+      if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    }
+
     setLinkUrl(`${process.env.EXPO_PUBLIC_WEB_URL}/${profilData?.slug}/${ilanData?.slug}?t=${token}`);
     setLinkYukleniyor(false);
   }
@@ -520,7 +553,7 @@ export default function IlanDetayScreen() {
                 <View style={styles.menuSep} />
               </>
             )}
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setLinkUrl(null); setLinkSaat('24'); setLinkModal(true); }}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); linkModalAc(); }}>
               <Text style={styles.menuItemText}>🔗  Link Paylaş</Text>
             </TouchableOpacity>
             <View style={styles.menuSep} />
@@ -560,45 +593,83 @@ export default function IlanDetayScreen() {
               </View>
 
               {!linkUrl ? (
-                <View style={{ padding: 16 }}>
-                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 16 }}>
-                    Oluşturulan link belirtilen süre sonra geçersiz olur.
-                  </Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 8 }}>
-                    Kaç saat aktif olsun?
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <ScrollView style={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+                  {/* Müşteri seç */}
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 6 }}>Müşteri Seç</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
                     <TextInput
-                      value={linkSaat}
-                      onChangeText={setLinkSaat}
-                      keyboardType="numeric"
-                      style={{ width: 80, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 14, color: Colors.onSurface }}
+                      value={linkMusteriAra}
+                      onChangeText={t => { setLinkMusteriAra(t); setLinkSeciliMusteri(''); }}
+                      placeholder="İsim ara..."
+                      placeholderTextColor={Colors.onSurfaceVariant}
+                      style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }}
                     />
-                    <Text style={{ alignSelf: 'center', fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
+                    <TextInput
+                      value={linkEtiketAra}
+                      onChangeText={t => { setLinkEtiketAra(t); setLinkSeciliMusteri(''); }}
+                      placeholder="Etiket ara..."
+                      placeholderTextColor={Colors.onSurfaceVariant}
+                      style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }}
+                    />
                   </View>
+                  {(linkMusteriAra || linkEtiketAra) && (
+                    <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 160, marginBottom: 8 }}>
+                      {linkMusteriler.filter(m => {
+                        const isimEsles = !linkMusteriAra || `${m.ad} ${m.soyad}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
+                        const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
+                        return isimEsles && etiketEsles;
+                      }).length === 0
+                        ? <Text style={{ padding: 12, fontSize: 13, color: Colors.onSurfaceVariant }}>Bulunamadı</Text>
+                        : linkMusteriler.filter(m => {
+                            const isimEsles = !linkMusteriAra || `${m.ad} ${m.soyad}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
+                            const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
+                            return isimEsles && etiketEsles;
+                          }).map(m => (
+                            <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra(`${m.ad} ${m.soyad}`); setLinkEtiketAra(''); }}
+                              style={{ padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.06)' : '#fff' }}>
+                              <Text style={{ fontSize: 13, fontWeight: linkSeciliMusteri === m.id ? '600' : '400', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>
+                                {m.ad} {m.soyad}
+                              </Text>
+                              {m.etiketler && (
+                                <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', flexShrink: 1, justifyContent: 'flex-end' }}>
+                                  {m.etiketler.split(',').map((e: string) => e.trim()).filter(Boolean).map((e: string) => (
+                                    <Text key={e} style={{ fontSize: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 9999, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary, fontWeight: '600' }}>{e}</Text>
+                                  ))}
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          ))
+                      }
+                    </View>
+                  )}
+                  {linkSeciliMusteri ? (
+                    <Text style={{ fontSize: 12, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
+                      ✓ {linkMusteriler.find(m => m.id === linkSeciliMusteri)?.ad} {linkMusteriler.find(m => m.id === linkSeciliMusteri)?.soyad} seçildi
+                    </Text>
+                  ) : <View style={{ marginBottom: 12 }} />}
+
+                  {/* Süre */}
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 8 }}>Ne kadar aktif olsun?</Text>
                   <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
                     {[{ s: 1, label: '1 saat' }, { s: 24, label: '1 gün' }, { s: 72, label: '3 gün' }, { s: 168, label: '7 gün' }].map(({ s, label }) => (
                       <TouchableOpacity key={s} onPress={() => setLinkSaat(String(s))} style={{
-                        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999,
-                        borderWidth: 1.5,
+                        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, borderWidth: 1.5,
                         borderColor: linkSaat === String(s) ? Colors.primary : '#e5e7eb',
                         backgroundColor: linkSaat === String(s) ? 'rgba(229,57,53,0.08)' : '#fff',
                       }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: linkSaat === String(s) ? Colors.primary : Colors.onSurfaceVariant }}>
-                          {label}
-                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: linkSaat === String(s) ? Colors.primary : Colors.onSurfaceVariant }}>{label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                   <TouchableOpacity onPress={linkOlustur} disabled={linkYukleniyor} style={{
                     backgroundColor: Colors.primary, borderRadius: 8, padding: 14, alignItems: 'center',
-                    opacity: linkYukleniyor ? 0.7 : 1,
+                    opacity: linkYukleniyor ? 0.7 : 1, marginBottom: 16,
                   }}>
                     <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
                       {linkYukleniyor ? 'Oluşturuluyor...' : 'Link Oluştur'}
                     </Text>
                   </TouchableOpacity>
-                </View>
+                </ScrollView>
               ) : (
                 <View style={{ padding: 16 }}>
                   <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
@@ -615,7 +686,7 @@ export default function IlanDetayScreen() {
                       {linkKopyalandi ? '✓ Kopyalandı!' : 'Kopyala'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); }} style={{
+                  <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); setLinkSeciliMusteri(''); setLinkMusteriAra(''); setLinkEtiketAra(''); }} style={{
                     borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, alignItems: 'center',
                   }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
