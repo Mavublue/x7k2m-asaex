@@ -18,6 +18,7 @@ export interface Ilan {
   lng: number | null;
   musteri_lat: number | null;
   musteri_lng: number | null;
+  portfoy_no: string | null;
   olusturma_tarihi: string;
 }
 

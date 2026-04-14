@@ -51,6 +51,7 @@ function formatFiyat(val: string) {
 }
 
 export default function IlanEkleScreen() {
+  const [portfoyNo, setPortfoyNo] = useState('');
   const [baslik, setBaslik] = useState('');
   const [fiyat, setFiyat] = useState('');
   const [il, setIl] = useState('');
@@ -168,6 +169,7 @@ export default function IlanEkleScreen() {
     setLoading(true);
     const { error } = await supabase.from('ilanlar').insert({
       id: ilanId,
+      portfoy_no: portfoyNo || null,
       baslik,
       fiyat: parseFloat(fiyat.replace(/\./g, '')),
       konum: il,
@@ -257,6 +259,17 @@ export default function IlanEkleScreen() {
                 }
               </TouchableOpacity>
             </View>
+          </FormGroup>
+
+          {/* Portföy No */}
+          <FormGroup label="Portföy No">
+            <TextInput
+              style={styles.input}
+              placeholder="Örn: 2024-001"
+              value={portfoyNo}
+              onChangeText={setPortfoyNo}
+              placeholderTextColor={Colors.outlineVariant}
+            />
           </FormGroup>
 
           {/* Başlık */}

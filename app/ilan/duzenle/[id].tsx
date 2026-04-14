@@ -65,6 +65,7 @@ export default function IlanDuzenleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [veriYuklendi, setVeriYuklendi] = useState(false);
 
+  const [portfoyNo, setPortfoyNo] = useState('');
   const [baslik, setBaslik] = useState('');
   const [fiyat, setFiyat] = useState('');
   const [il, setIl] = useState('');
@@ -118,6 +119,7 @@ export default function IlanDuzenleScreen() {
     supabase.from('ilanlar').select('*').eq('id', id).single().then(({ data }) => {
       if (data) {
         const ilan = data as Ilan;
+        setPortfoyNo(ilan.portfoy_no ?? '');
         setBaslik(ilan.baslik);
         setFiyat(ilan.fiyat.toLocaleString('tr-TR').replace(/,/g, '.'));
         setIl(ilan.konum ?? '');
@@ -198,6 +200,7 @@ export default function IlanDuzenleScreen() {
     setLoading(true);
 
     const { error } = await supabase.from('ilanlar').update({
+      portfoy_no: portfoyNo || null,
       baslik,
       fiyat: parseFloat(fiyat.replace(/\./g, '')),
       konum: il,
@@ -294,6 +297,10 @@ export default function IlanDuzenleScreen() {
                 </>}
               </TouchableOpacity>
             </View>
+          </FormGroup>
+
+          <FormGroup label="Portföy No">
+            <TextInput style={styles.input} placeholder="Örn: 2024-001" value={portfoyNo} onChangeText={setPortfoyNo} placeholderTextColor={Colors.outlineVariant} />
           </FormGroup>
 
           <FormGroup label="İlan Başlığı *">

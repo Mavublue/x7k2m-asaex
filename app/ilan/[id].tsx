@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Clipboard from 'expo-clipboard';
 import { deleteIlanPhotos } from '../../lib/r2';
 
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
@@ -50,6 +51,11 @@ export default function IlanDetayScreen() {
   const [eslesYukleniyor, setEslesYukleniyor] = useState(false);
   const [menuModal, setMenuModal] = useState(false);
   const [otomatikModal, setOtomatikModal] = useState(false);
+  const [linkModal, setLinkModal] = useState(false);
+  const [linkSaat, setLinkSaat] = useState('24');
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [linkYukleniyor, setLinkYukleniyor] = useState(false);
+  const [linkKopyalandi, setLinkKopyalandi] = useState(false);
   const flatListRef = useRef<any>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
 
@@ -163,6 +169,42 @@ export default function IlanDetayScreen() {
     return true;
   }
 
+  async function linkOlustur() {
+    const saatSayisi = parseInt(linkSaat);
+    if (!saatSayisi || saatSayisi < 1 || saatSayisi > 168) {
+      Alert.alert('Hata', 'Geçerli bir saat girin (1-168).');
+      return;
+    }
+    setLinkYukleniyor(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setLinkYukleniyor(false); return; }
+
+    const [{ data: ilanData }, { data: profilData }] = await Promise.all([
+      supabase.from('ilanlar').select('slug').eq('id', id).single(),
+      supabase.from('profiller').select('slug').eq('id', session.user.id).single(),
+    ]);
+
+    const token = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
+    const expiresAt = new Date(Date.now() + saatSayisi * 60 * 60 * 1000).toISOString();
+
+    const { error } = await supabase.from('ilan_linkleri').insert({
+      token,
+      ilan_id: id,
+      user_id: session.user.id,
+      expires_at: expiresAt,
+    });
+    if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    setLinkUrl(`${process.env.EXPO_PUBLIC_WEB_URL}/${profilData?.slug}/${ilanData?.slug}?t=${token}`);
+    setLinkYukleniyor(false);
+  }
+
+  async function linkKopyala() {
+    if (!linkUrl) return;
+    await Clipboard.setStringAsync(linkUrl);
+    setLinkKopyalandi(true);
+    setTimeout(() => setLinkKopyalandi(false), 2000);
+  }
+
   async function otomatikEslesAc() {
     setMenuModal(false);
     const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, butce_min, butce_max, tercih_tip, tercih_konum').order('ad');
@@ -196,6 +238,7 @@ export default function IlanDetayScreen() {
   const fotograflar = ilan.fotograflar ?? [];
 
   const detaylar = [
+    { label: 'Portföy No', deger: ilan.portfoy_no },
     { label: 'Tip', deger: ilan.tip },
     { label: 'Kategori', deger: ilan.kategori },
     { label: 'Oda Sayısı', deger: ilan.oda_sayisi },
@@ -477,6 +520,10 @@ export default function IlanDetayScreen() {
                 <View style={styles.menuSep} />
               </>
             )}
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setLinkUrl(null); setLinkSaat('24'); setLinkModal(true); }}>
+              <Text style={styles.menuItemText}>🔗  Link Paylaş</Text>
+            </TouchableOpacity>
+            <View style={styles.menuSep} />
             <TouchableOpacity style={styles.menuItem} onPress={otomatikEslesAc}>
               <Text style={styles.menuItemText}>🎯  Otomatik Eşleşen Müşteriler</Text>
             </TouchableOpacity>
@@ -496,6 +543,88 @@ export default function IlanDetayScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Link Paylaş Modalı */}
+      <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => setLinkModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity style={styles.modalDimmer} onPress={() => setLinkModal(false)} />
+            <View style={styles.modalPanel}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setLinkModal(false)}>
+                  <Text style={styles.modalKapat}>✕</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalBaslik}>🔗 Link Paylaş</Text>
+                <View style={{ width: 32 }} />
+              </View>
+
+              {!linkUrl ? (
+                <View style={{ padding: 16 }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 16 }}>
+                    Oluşturulan link belirtilen süre sonra geçersiz olur.
+                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 8 }}>
+                    Kaç saat aktif olsun?
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                    <TextInput
+                      value={linkSaat}
+                      onChangeText={setLinkSaat}
+                      keyboardType="numeric"
+                      style={{ width: 80, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 14, color: Colors.onSurface }}
+                    />
+                    <Text style={{ alignSelf: 'center', fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+                    {[{ s: 1, label: '1 saat' }, { s: 24, label: '1 gün' }, { s: 72, label: '3 gün' }, { s: 168, label: '7 gün' }].map(({ s, label }) => (
+                      <TouchableOpacity key={s} onPress={() => setLinkSaat(String(s))} style={{
+                        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999,
+                        borderWidth: 1.5,
+                        borderColor: linkSaat === String(s) ? Colors.primary : '#e5e7eb',
+                        backgroundColor: linkSaat === String(s) ? 'rgba(229,57,53,0.08)' : '#fff',
+                      }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: linkSaat === String(s) ? Colors.primary : Colors.onSurfaceVariant }}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity onPress={linkOlustur} disabled={linkYukleniyor} style={{
+                    backgroundColor: Colors.primary, borderRadius: 8, padding: 14, alignItems: 'center',
+                    opacity: linkYukleniyor ? 0.7 : 1,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
+                      {linkYukleniyor ? 'Oluşturuluyor...' : 'Link Oluştur'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ padding: 16 }}>
+                  <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
+                    ✓ Link oluşturuldu — {Number(linkSaat) >= 24 ? `${Number(linkSaat) / 24} gün` : `${linkSaat} saat`} geçerli
+                  </Text>
+                  <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, color: '#374151' }} selectable>{linkUrl}</Text>
+                  </View>
+                  <TouchableOpacity onPress={linkKopyala} style={{
+                    backgroundColor: linkKopyalandi ? '#3aaa6e' : Colors.primary,
+                    borderRadius: 8, padding: 14, alignItems: 'center', marginBottom: 8,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
+                      {linkKopyalandi ? '✓ Kopyalandı!' : 'Kopyala'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); }} style={{
+                    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, alignItems: 'center',
+                  }}>
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Otomatik Eşleşen Müşteriler Modalı */}

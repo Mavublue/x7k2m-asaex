@@ -8,8 +8,7 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
-
-const ILLER_LISTESI = ['İstanbul','Ankara','İzmir','Bursa','Antalya','Muğla','Trabzon','Adana','Gaziantep','Konya','Kayseri','Eskişehir','Mersin','Diyarbakır','Samsun','Denizli','Şanlıurfa','Malatya','Erzurum','Van'];
+import { IL_LISTESI as ILLER_LISTESI } from '../../constants/turkiye';
 
 export default function ProfilDuzenleScreen() {
   const [ad, setAd] = useState('');
