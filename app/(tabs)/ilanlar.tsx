@@ -123,6 +123,8 @@ export default function IlanlarScreen() {
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [siralama, setSiralama] = useState<'tarih_yeni' | 'tarih_eski' | 'fiyat_artan' | 'fiyat_azalan'>('tarih_yeni');
   const [siralamaAcik, setSiralamaAcik] = useState(false);
+  const siralamaBtnRef = useRef<View>(null);
+  const [siralamaBtnPos, setSiralamaBtnPos] = useState({ top: 0, right: 0 });
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -260,31 +262,19 @@ export default function IlanlarScreen() {
     <>
       <View style={styles.sonucRow}>
         <Text style={styles.sonucSayisi}>{filtered.length} ilan</Text>
-        <View style={{ position: 'relative' }}>
-          <TouchableOpacity style={styles.siralamaBtn} onPress={() => setSiralamaAcik(a => !a)}>
+        <View ref={siralamaBtnRef} collapsable={false}>
+          <TouchableOpacity style={styles.siralamaBtn} onPress={() => {
+            if (siralamaAcik) { setSiralamaAcik(false); return; }
+            siralamaBtnRef.current?.measure((_x, _y, width, height, pageX, pageY) => {
+              setSiralamaBtnPos({ top: pageY + height + 4, right: Dimensions.get('window').width - pageX - width });
+              setSiralamaAcik(true);
+            });
+          }}>
             <Text style={styles.siralamaBtnText}>
               {siralama === 'tarih_yeni' ? 'En Yeni' : siralama === 'tarih_eski' ? 'En Eski' : siralama === 'fiyat_artan' ? '₺ Artan' : '₺ Azalan'}
             </Text>
             <Text style={styles.siralamaChevron}>{siralamaAcik ? '▲' : '▼'}</Text>
           </TouchableOpacity>
-          {siralamaAcik && (
-            <View style={styles.siralamaDropdown}>
-              {([
-                { key: 'tarih_yeni', label: 'En Yeni' },
-                { key: 'tarih_eski', label: 'En Eski' },
-                { key: 'fiyat_artan', label: '₺ Artan' },
-                { key: 'fiyat_azalan', label: '₺ Azalan' },
-              ] as const).map(s => (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.siralamaItem, siralama === s.key && styles.siralamaItemActive]}
-                  onPress={() => { setSiralama(s.key); setSiralamaAcik(false); }}
-                >
-                  <Text style={[styles.siralamaItemText, siralama === s.key && styles.siralamaItemTextActive]}>{s.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
       </View>
 
@@ -345,9 +335,6 @@ export default function IlanlarScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {siralamaAcik && (
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setSiralamaAcik(false)} activeOpacity={1} />
-      )}
 
       {gorunum === 'liste' && (
         <>
@@ -718,6 +705,28 @@ export default function IlanlarScreen() {
         </View>
       </Modal>
 
+      {siralamaAcik && (
+        <>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setSiralamaAcik(false)} activeOpacity={1} />
+          <View style={[styles.siralamaDropdown, { position: 'absolute', top: siralamaBtnPos.top, right: siralamaBtnPos.right, zIndex: 9999 }]}>
+            {([
+              { key: 'tarih_yeni', label: 'En Yeni' },
+              { key: 'tarih_eski', label: 'En Eski' },
+              { key: 'fiyat_artan', label: '₺ Artan' },
+              { key: 'fiyat_azalan', label: '₺ Azalan' },
+            ] as const).map(s => (
+              <TouchableOpacity
+                key={s.key}
+                style={[styles.siralamaItem, siralama === s.key && styles.siralamaItemActive]}
+                onPress={() => { setSiralama(s.key); setSiralamaAcik(false); }}
+              >
+                <Text style={[styles.siralamaItemText, siralama === s.key && styles.siralamaItemTextActive]}>{s.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -874,7 +883,7 @@ const styles = StyleSheet.create({
   siralamaBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surface },
   siralamaBtnText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   siralamaChevron: { fontSize: 9, color: Colors.onSurfaceVariant },
-  siralamaDropdown: { position: 'absolute', top: 32, right: 0, backgroundColor: Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, zIndex: 999, minWidth: 110, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 8 },
+  siralamaDropdown: { backgroundColor: Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, minWidth: 110, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 8 },
   siralamaItem: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   siralamaItemActive: { backgroundColor: Colors.primaryFixed },
   siralamaItemText: { fontSize: 13, color: Colors.onSurface },

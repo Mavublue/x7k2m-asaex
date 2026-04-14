@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#5c2400",
+                    "primary-fixed": "#dce1ff",
+                    "on-surface": "#1a1b21",
+                    "on-secondary": "#ffffff",
+                    "surface-container": "#eeedf4",
+                    "inverse-primary": "#b6c4ff",
+                    "surface-container-highest": "#e3e1e9",
+                    "primary-container": "#1e3a8a",
+                    "error": "#ba1a1a",
+                    "background": "#faf8ff",
+                    "on-secondary-fixed-variant": "#783200",
+                    "surface-container-high": "#e9e7ef",
+                    "tertiary-fixed": "#ffdbcb",
+                    "tertiary-container": "#6e2c00",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-surface": "#2f3036",
+                    "secondary-fixed-dim": "#ffb690",
+                    "inverse-on-surface": "#f1f0f7",
+                    "outline": "#757682",
+                    "on-tertiary-fixed": "#341100",
+                    "surface-dim": "#dad9e1",
+                    "on-primary-fixed": "#00164e",
+                    "secondary-fixed": "#ffdbca",
+                    "on-tertiary-container": "#f39461",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#4b1c00",
+                    "on-tertiary": "#ffffff",
+                    "secondary-container": "#fd761a",
+                    "on-tertiary-fixed-variant": "#773205",
+                    "surface-tint": "#4059aa",
+                    "surface-variant": "#e3e1e9",
+                    "surface-container-low": "#f4f3fa",
+                    "on-primary-container": "#90a8ff",
+                    "on-secondary-fixed": "#341100",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "on-primary-fixed-variant": "#264191",
+                    "surface-bright": "#faf8ff",
+                    "outline-variant": "#c5c5d3",
+                    "on-primary": "#ffffff",
+                    "surface": "#faf8ff",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#ffb691",
+                    "secondary": "#9d4300",
+                    "primary": "#00236f",
+                    "on-background": "#1a1b21",
+                    "on-surface-variant": "#444651"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .scale-98-on-click:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface">
+<header class="w-full px-4 md:px-8 py-6 max-w-[1920px] mx-auto flex justify-between items-center">
+<div class="text-3xl font-bold tracking-tighter text-primary">Architectural Concierge</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-on-surface-variant tracking-widest uppercase mb-0.5">Gayrimenkul Danışmanı</p>
+<p class="text-primary font-bold">+90 (212) 555 0123</p>
+<p class="text-[10px] text-outline uppercase font-semibold">İstanbul Merkez Ofisi</p>
+</div>
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-primary-fixed shadow-sm">
+<img class="w-full h-full object-cover" data-alt="professional portrait of a real estate agent in a formal suit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHX-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X"/>
+</div>
+</div>
+</header>
+<main class="pt-12 pb-24 px-4 md:px-8 max-w-[1920px] mx-auto">
+<!-- Editorial Header Section -->
+<header class="mb-16">
+<div class="max-w-4xl">
+<span class="text-on-surface-variant tracking-[0.2em] uppercase text-xs font-semibold mb-4 block">Seçkin Koleksiyon</span>
+<h1 class="text-6xl md:text-7xl font-extrabold tracking-tighter text-primary leading-none mb-6">Gayrimenkul Portföyü</h1>
+<p class="text-lg md:text-xl text-on-surface-variant leading-relaxed max-w-2xl">
+                İstanbul'un en prestijli noktalarında, mimari kusursuzlukla şekillenmiş özel yaşam alanlarını keşfedin. Her ilan, benzersiz bir hikaye ve üstün konfor vaat ediyor.
+            </p>
+</div>
+</header>
+<!-- Advanced Filter Bar -->
+<section class="bg-surface-container-low rounded-xl p-6 mb-12 flex flex-wrap items-end gap-6">
+<div class="flex-1 min-w-[200px]">
+<label class="block text-[10px] tracking-widest text-on-surface-variant font-bold mb-2 uppercase">KONUT TİPİ</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-on-surface focus:ring-2 focus:ring-primary appearance-none">
+<option>Tüm Tipler</option>
+<option>Modern Loft</option>
+<option>Villa</option>
+<option>Rezidans</option>
+<option>Yalı</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-outline">expand_more</span>
+</div>
+</div>
+<div class="flex-1 min-w-[200px]">
+<label class="block text-[10px] tracking-widest text-on-surface-variant font-bold mb-2 uppercase">FİYAT ARALIĞI</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-on-surface focus:ring-2 focus:ring-primary appearance-none">
+<option>Tüm Fiyatlar</option>
+<option>10M - 25M TL</option>
+<option>25M - 50M TL</option>
+<option>50M+ TL</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-outline">expand_more</span>
+</div>
+</div>
+<div class="flex-1 min-w-[200px]">
+<label class="block text-[10px] tracking-widest text-on-surface-variant font-bold mb-2 uppercase">LOKASYON</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-on-surface focus:ring-2 focus:ring-primary appearance-none">
+<option>İstanbul (Tümü)</option>
+<option>Beşiktaş</option>
+<option>Levent</option>
+<option>Nişantaşı</option>
+<option>Bebek</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-outline">location_on</span>
+</div>
+</div>
+<button class="bg-primary text-white h-[48px] px-8 rounded-lg font-semibold flex items-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'wght' 300;">tune</span>
+            Filtrele
+        </button>
+</section>
+<!-- Portfolio Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-16">
+<!-- Card 1 -->
+<article class="group">
+<div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-xl">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="interior of a high-end modern industrial loft with tall windows exposing urban city view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhK1e7BjT-h_n_be65Xc7-VcuDX7Iea2WP_217_6xJNVEIJyuQl6FyJ1n41fjtMQnsyxsMfeU8x1tt7P9ModAnaU-uw_7AJqpJ23jQ9tOWZIIaM4mDKmtmmTat_mQXb_ZcZOVQKh_qQ1-lyCpYORFZuWS_lLY0E5Fcj7wQEqUCuebsQ344PFyQqqMksy9Otjv3ZtGiPK74DsBdcxvZ-ZWxkWXDyhqB_7m8aRlb2wlfWN1fvGYfp8wxMtaVTsN9adtJpEBmnFP8J3bd"/>
+<div class="absolute top-4 left-4 flex gap-2">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">LOFT</span>
+<span class="bg-white/80 backdrop-blur-sm text-primary px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">YENİ</span>
+</div>
+<button class="absolute bottom-4 right-4 bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white hover:text-primary transition-all">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div>
+<h3 class="text-2xl font-bold tracking-tight text-on-surface mb-2">Beşiktaş Modern Loft</h3>
+<p class="text-on-surface-variant text-sm mb-4 line-clamp-2">Endüstriyel estetiğin modern konforla buluştuğu, 4.5 metre tavan yüksekliğine sahip benzersiz yaşam alanı.</p>
+<div class="flex items-center gap-4 text-outline text-xs font-medium mb-6">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">bed</span> 3+1</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">straighten</span> 185m²</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">floor</span> 4. Kat</div>
+</div>
+<div class="flex justify-between items-end">
+<span class="text-2xl font-extrabold tracking-tighter text-primary">12.500.000 TL</span>
+<button class="text-secondary font-bold text-sm border-b-2 border-transparent hover:border-secondary transition-all">İncele</button>
+</div>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="group">
+<div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-xl">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="ultra-modern luxury villa exterior" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA76zJSFmkVVypcDpT2Y320-chY7NxoEmPnxAZrYUEDYOsd1PJ2vf_IJGMYmztSrzxIONpJWuTXsoasUAKIu-YQ2G1WHvcr1fLM629Y8moXjOuxvv2MnoJyeBOom0yHN859mEb91dmC2MJ-if-UedpARVKHZxVUiUsNF2akUMec9l96JTQasj2jhkI3hRKWhf2DcR76IF2td9TUUGdys5fjiiBVQD8p1GNlGO7BI3iQDuSABQXPvSQ3CqA6F5pJ39UYoQWChiMq4pTI"/>
+<div class="absolute top-4 left-4">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">VİLLA</span>
+</div>
+</div>
+<div>
+<h3 class="text-2xl font-bold tracking-tight text-on-surface mb-2">Levent Sakin Villa</h3>
+<p class="text-on-surface-variant text-sm mb-4 line-clamp-2">Şehrin kalbinde, müstakil bahçesi ve özel havuzu ile doğayla iç içe bir yaşam sunan modern mimari.</p>
+<div class="flex items-center gap-4 text-outline text-xs font-medium mb-6">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">bed</span> 5+2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">straighten</span> 420m²</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">pool</span> Özel Havuz</div>
+</div>
+<div class="flex justify-between items-end">
+<span class="text-2xl font-extrabold tracking-tighter text-primary">45.000.000 TL</span>
+<button class="text-secondary font-bold text-sm border-b-2 border-transparent hover:border-secondary transition-all">İncele</button>
+</div>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="group">
+<div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-xl">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="opulent penthouse living room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVsgg0nyvssCJ6Cfj6AOuyD3vBIIaCgU_GM9KgQ9n3J4h4NA5B96lFNF3Wym8znDKZSYGiaMYmu5psnaTNN2BCW5xMg4SR4Z_7ydtt6fM0LipPyV7W2j-zR97-GQNwk2FkD65zo5ODb-iQ6051x-HofhMTVYXRAA2Gc2K5wLT0-7LGiEzHz3PkcON8tuJDeoxcn6cXst4Fss9vp8umJ4l9qhGmttA-8audwlfBab-9-hLo6khcO0t1Uh6181gHEb7U21Jc7lL78UP5"/>
+<div class="absolute top-4 left-4">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">REZİDANS</span>
+</div>
+</div>
+<div>
+<h3 class="text-2xl font-bold tracking-tight text-on-surface mb-2">Nişantaşı Sky Residence</h3>
+<p class="text-on-surface-variant text-sm mb-4 line-clamp-2">Boğaz manzarasına hakim, akıllı ev teknolojileri ve 7/24 concierge hizmeti ile elit bir yaşam.</p>
+<div class="flex items-center gap-4 text-outline text-xs font-medium mb-6">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">bed</span> 4+1</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">straighten</span> 260m²</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">verified_user</span> Güvenlik</div>
+</div>
+<div class="flex justify-between items-end">
+<span class="text-2xl font-extrabold tracking-tighter text-primary">32.750.000 TL</span>
+<button class="text-secondary font-bold text-sm border-b-2 border-transparent hover:border-secondary transition-all">İncele</button>
+</div>
+</div>
+</article>
+<!-- Card 4 -->
+<article class="group">
+<div class="relative aspect-[4/5] mb-6 overflow-hidden rounded-xl">
+<img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="classic bosphorus front apartment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-k-H8yNL4BWNUGR7Thha1zWrXibR7RWPDtUhOdazoBMqRHZOiyrsMPZeQLtrJYARrX2g_m_FdJwYtGT4Aj6YQmOmdl_pbKvK-0qJ026LjeiDJVayxzoaMqLzfY2cHKD3CXZFIm7JzybIEJxxs_37yA37PBEoOwwCryUR0v1OYLH1G6WQ9Hk1zDOfzwqf7_iYPSJoyAZJnbLPxVsin0RtDH6bPhzWCF0iXvMuLG8WHOXBiF__bvcakaK3Cf2vLqRZEhZsqVftPl8HM"/>
+<div class="absolute top-4 left-4">
+<span class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">DAİRE</span>
+</div>
+</div>
+<div>
+<h3 class="text-2xl font-bold tracking-tight text-on-surface mb-2">Bebek Sahil Dairesi</h3>
+<p class="text-on-surface-variant text-sm mb-4 line-clamp-2">Tarihi dokunun modern yenileme ile korunduğu, tam cephe deniz manzaralı prestij dairesi.</p>
+<div class="flex items-center gap-4 text-outline text-xs font-medium mb-6">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">bed</span> 2+1</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">straighten</span> 145m²</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">waves</span> Denize Sıfır</div>
+</div>
+<div class="flex justify-between items-end">
+<span class="text-2xl font-extrabold tracking-tighter text-primary">18.200.000 TL</span>
+<button class="text-secondary font-bold text-sm border-b-2 border-transparent hover:border-secondary transition-all">İncele</button>
+</div>
+</div>
+</article>
+</div>
+<!-- Pagination -->
+<div class="mt-24 flex items-center justify-between border-t border-outline-variant/20 pt-12">
+<div class="text-on-surface-variant text-sm font-medium">12 sonuçtan 1 - 4 arası gösteriliyor</div>
+<div class="flex gap-2">
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-highest text-primary">1</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-all">2</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-all">3</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low text-primary font-body text-sm leading-relaxed w-full py-12">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8 px-4 md:px-8 max-w-[1920px] mx-auto">
+<div>
+<div class="text-lg font-bold tracking-tighter text-primary mb-4">Architectural Concierge</div>
+<p class="text-on-surface-variant max-w-xs">Gayrimenkulde küratörlük yaklaşımıyla, en seçkin portföyü profesyonel danışmanlık ile sunuyoruz.</p>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-4">Navigasyon</h4>
+<ul class="space-y-2 text-on-surface-variant">
+<li><a class="hover:text-secondary transition-colors" href="#">Portföy</a></li>
+<li><a class="hover:text-secondary transition-colors" href="#">Pazar Analizleri</a></li>
+<li><a class="hover:text-secondary transition-colors" href="#">İlanlar</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-4">Şirket</h4>
+<ul class="space-y-2 text-on-surface-variant">
+<li><a class="hover:text-secondary transition-colors" href="#">Gizlilik Politikası</a></li>
+<li><a class="hover:text-secondary transition-colors" href="#">Kullanım Şartları</a></li>
+<li><a class="hover:text-secondary transition-colors" href="#">Kariyer</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-4">Bülten</h4>
+<div class="flex flex-col gap-3">
+<p class="text-xs text-on-surface-variant">Yeni ilanlardan ilk siz haberdar olun.</p>
+<div class="flex">
+<input class="bg-white border-none rounded-l-lg py-2 px-4 text-sm w-full focus:ring-1 focus:ring-primary" placeholder="E-posta adresi" type="email"/>
+<button class="bg-primary text-white px-4 rounded-r-lg">
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="max-w-[1920px] mx-auto px-4 md:px-8 mt-12 pt-8 border-t border-outline-variant/20 text-center text-on-surface-variant">
+        © 2024 Architectural Concierge. Tüm hakları saklıdır.
+    </div>
+</footer>
+</body></html>

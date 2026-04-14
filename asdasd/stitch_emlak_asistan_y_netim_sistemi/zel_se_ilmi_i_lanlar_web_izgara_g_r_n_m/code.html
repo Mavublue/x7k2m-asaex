@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "primary": "#1E3A8A",
+                "on-primary": "#ffffff",
+                "secondary": "#9d4300",
+                "on-secondary": "#ffffff",
+                "background": "#f8f9fa",
+                "surface": "#ffffff",
+                "on-surface": "#1a1b21",
+                "on-surface-variant": "#444651",
+                "outline-variant": "#E5E7EB",
+                "primary-container": "#F1F5F9",
+                "secondary-container": "#FFF7ED",
+            },
+            "borderRadius": {
+                "DEFAULT": "0.5rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "2xl": "1rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "headline": ["Inter"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        }
+        .listing-card:hover .hover-overlay {
+            opacity: 1;
+        }
+        .featured-badge {
+            background-color: #72b01d;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary/10 selection:text-primary">
+<main class="max-w-[1400px] mx-auto px-6 py-8">
+<!-- Header Section -->
+<header class="flex items-center justify-between gap-4 mb-12">
+<!-- Agent Name -->
+<div class="flex flex-col">
+<h1 class="text-2xl font-bold tracking-tight text-primary">Selin Demirci</h1>
+<p class="text-secondary font-bold tracking-[0.05em] text-[10px] uppercase">Lüks Gayrimenkul Danışmanı</p>
+</div>
+<!-- Agent Info & Photo -->
+<div class="flex items-center gap-6">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-bold text-primary tracking-tight">+90 (532) 123 45 67</p>
+<p class="text-xs text-on-surface-variant font-medium">Lux Global Real Estate</p>
+</div>
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Selin Demirci" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9xI_mQzm1MYBlT3QxtdYoMM94TesKBtKVQmOlmtE2QZ_0pNbdsVQhm6IuAotbwpDaKiODE5t5pxkOBByU3ahlZiSVXGwD6ULnsrP_1PTTD5wsV5u4X57yzS6pHfCauiwDs0hqwWcIhbVowXolFjgWsHsHO6fpVQCbezkq3OrWRWm_T7LpUYEHHvQo879ZBqgUAsOaQGh61ZGadNp_lk9XCjqJf7vdVFemVik1lSLFMiooNPpJ7pgmkOtFZwxMw9pJzoWvXbl9a6wh"/>
+</div>
+</div>
+</header>
+<!-- Filter/Sort Bar -->
+<div class="flex justify-between items-center mb-8">
+<span class="text-sm font-medium text-on-surface-variant">43 Mülk Bulundu</span>
+<div class="flex items-center gap-2 text-sm text-on-surface-variant">
+<span>Sırala:</span>
+<select class="bg-transparent border-none font-semibold text-on-surface focus:ring-0 cursor-pointer">
+<option>Varsayılan Sıralama</option>
+<option>Fiyat (Artan)</option>
+<option>Fiyat (Azalan)</option>
+</select>
+</div>
+</div>
+<!-- Property Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+<!-- Listing Card 1 -->
+<div class="listing-card bg-white rounded-lg overflow-hidden card-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="The Zenith Pavilion" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUnmlBEI6esfJF-j1bK7-IowAw7skz5l0a6yhmr8SZkPaIYy49HaIMA5p1JQau_TdnhtL5wp9UNlncPVo2vjbVV_fXdOVAMl0Aeix1tYHEEhaXVFRoYtexDYV2vQCM6ILLI33B1zPgGYnZo8mDSjPb0z70toAklgy5VO1VDUydK9maQ41l8573pmAwQkRQcI42dxt51OvcPRACnXiVSiqEaXUHhPvGQRzDdLbphi8FQX7SJQnHG-S6WYOWxu45AyTxwQORz5-cHf8M"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<span class="featured-badge text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">ÖNE ÇIKAN</span>
+</div>
+<div class="absolute top-4 right-4 flex gap-2">
+<span class="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase">SATILIK</span>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">open_in_full</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">info</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-bold text-primary mb-2">The Zenith Pavilion</h3>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm mb-4">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bed</span> 6</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bathtub</span> 2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">square_foot</span> 480 m²</div>
+</div>
+<div class="mt-4">
+<div class="text-xl font-bold text-on-surface">₺42.500.000</div>
+<div class="text-xs text-on-surface-variant mt-0.5">₺88.541/m²</div>
+</div>
+</div>
+</div>
+<!-- Listing Card 2 -->
+<div class="listing-card bg-white rounded-lg overflow-hidden card-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Skyline Loft" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBv6yEXC2gWpY7so25YUnkvcRowrSwqacHSMwou39W0xBZzUb4SNknk4tVvwbbDjjylU1sg5aiM4XR7JpQfBWmEZbYAX8jyPJrs2g5mRdAAp_rOT7W5Qn9Z0Ihw1OTsj8uYNRd-BOebLaNRiHIGfEsWVQrmz3h7Oy1D3HIzs-IOBkqNJeIzbL9NkoIVZBiXpWpzcxYoLouBNsI36uKGl-CEp9CKJiPRO3yTgwZr4-xJCDPLLrr0i3mPvJGTM9EiLo6g0yGkDsOl9ecT"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<span class="featured-badge text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">ÖNE ÇIKAN</span>
+</div>
+<div class="absolute top-4 right-4 flex gap-2">
+<span class="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase">KİRALIK</span>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">open_in_full</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">info</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-bold text-primary mb-2">Skyline Loft</h3>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm mb-4">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bed</span> 3</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bathtub</span> 1</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">square_foot</span> 220 m²</div>
+</div>
+<div class="mt-4">
+<div class="text-xl font-bold text-on-surface">₺125.000/ay</div>
+<div class="text-xs text-on-surface-variant mt-0.5">₺568/m²</div>
+</div>
+</div>
+</div>
+<!-- Listing Card 3 -->
+<div class="listing-card bg-white rounded-lg overflow-hidden card-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Botanica Retreat" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDguOHdTtOGHv8qRPdzcFb6ann-ZGuo6Y1zBT0vXSGn_J0Y9EXIvH2JIbpqv86B8fqhO-mIjgvHHKlKPS6BBE3qOyxJS_gVEwLzVBhfSQ3AZCKIUD-GMUVCcpJeVbGnaYZtvb0NlY7dcv6RipM1zWPcDBInldljX5oX_9BGBkDIbYktY5PVpLbuffCKye-OBuRxxFNaejZCirYFeUigIwm5PWNWfzs0RXciFUDPjc5sdXL9piA0geU2ALUxjR6dB3WAXnAu5cx3rvnw"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<span class="featured-badge text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">ÖNE ÇIKAN</span>
+</div>
+<div class="absolute top-4 right-4 flex gap-2">
+<span class="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase">SATILIK</span>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">open_in_full</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">info</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-bold text-primary mb-2">Botanica Retreat</h3>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm mb-4">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bed</span> 5</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bathtub</span> 2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">square_foot</span> 650 m²</div>
+</div>
+<div class="mt-4">
+<div class="text-xl font-bold text-on-surface">₺29.000.000</div>
+<div class="text-xs text-on-surface-variant mt-0.5">₺44.615/m²</div>
+</div>
+</div>
+</div>
+<!-- Listing Card 4 (New) -->
+<div class="listing-card bg-white rounded-lg overflow-hidden card-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Seaside Condo" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBv6yEXC2gWpY7so25YUnkvcRowrSwqacHSMwou39W0xBZzUb4SNknk4tVvwbbDjjylU1sg5aiM4XR7JpQfBWmEZbYAX8jyPJrs2g5mRdAAp_rOT7W5Qn9Z0Ihw1OTsj8uYNRd-BOebLaNRiHIGfEsWVQrmz3h7Oy1D3HIzs-IOBkqNJeIzbL9NkoIVZBiXpWpzcxYoLouBNsI36uKGl-CEp9CKJiPRO3yTgwZr4-xJCDPLLrr0i3mPvJGTM9EiLo6g0yGkDsOl9ecT"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<span class="featured-badge text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">ÖNE ÇIKAN</span>
+</div>
+<div class="absolute top-4 right-4 flex gap-2">
+<span class="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase">KİRALIK</span>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">open_in_full</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">info</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-bold text-primary mb-2">Seaside Condo</h3>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm mb-4">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bed</span> 2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bathtub</span> 2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">square_foot</span> 980 sqft</div>
+</div>
+<div class="mt-4">
+<div class="text-xl font-bold text-on-surface">₺2.800/ay</div>
+<div class="text-xs text-on-surface-variant mt-0.5">₺2.85/sqft</div>
+</div>
+</div>
+</div>
+<!-- Listing Card 5 (New) -->
+<div class="listing-card bg-white rounded-lg overflow-hidden card-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Biscayne Single Family" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUnmlBEI6esfJF-j1bK7-IowAw7skz5l0a6yhmr8SZkPaIYy49HaIMA5p1JQau_TdnhtL5wp9UNlncPVo2vjbVV_fXdOVAMl0Aeix1tYHEEhaXVFRoYtexDYV2vQCM6ILLI33B1zPgGYnZo8mDSjPb0z70toAklgy5VO1VDUydK9maQ41l8573pmAwQkRQcI42dxt51OvcPRACnXiVSiqEaXUHhPvGQRzDdLbphi8FQX7SJQnHG-S6WYOWxu45AyTxwQORz5-cHf8M"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<span class="featured-badge text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">ÖNE ÇIKAN</span>
+</div>
+<div class="absolute top-4 right-4 flex gap-2">
+<span class="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase">SATILIK</span>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">open_in_full</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">info</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-bold text-primary mb-2">Biscayne Single Family</h3>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm mb-4">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bed</span> 3</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bathtub</span> 2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">square_foot</span> 2150 sqft</div>
+</div>
+<div class="mt-4">
+<div class="text-xl font-bold text-on-surface">₺370.000</div>
+<div class="text-xs text-on-surface-variant mt-0.5">₺172/sqft</div>
+</div>
+</div>
+</div>
+<!-- Listing Card 6 (New) -->
+<div class="listing-card bg-white rounded-lg overflow-hidden card-shadow group">
+<div class="relative h-64 overflow-hidden">
+<img alt="Cityscape Apartment" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaF04E_MiV6x3N_NxtOJCr_eiJUj3bAKZVoblePjqPvIUmfD6vIBvCpj8dqIs9uaGnxnFB78T88-AjW6KJSlKqUtx1LbF-3U85mnR_J8spVcGZouDFW_BF1R72wziwch72Ur52h5F7FYj__pz2DLr4wrOM11Vajmk4Hxz2nKtDr-WIqoPwyQQYYu2W5wHNSDPWPSKy0AXSN7eWnO7ZkR70Es_v7-qWWlFw46Q6e5xs-khDx7TyXqZz9DvGeEpeJoLAduOo6F6RQiz6"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<span class="featured-badge text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">ÖNE ÇIKAN</span>
+</div>
+<div class="absolute top-4 right-4 flex gap-2">
+<span class="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase">SATILIK</span>
+</div>
+<div class="absolute bottom-4 right-4 flex gap-2">
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">open_in_full</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">favorite</span>
+</button>
+<button class="bg-white/90 hover:bg-white p-2 rounded-full text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">info</span>
+</button>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-bold text-primary mb-2">Cityscape Apartment</h3>
+<div class="flex items-center gap-4 text-on-surface-variant text-sm mb-4">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bed</span> 3</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">bathtub</span> 2</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-lg">square_foot</span> 1900 sqft</div>
+</div>
+<div class="mt-4">
+<div class="text-xl font-bold text-on-surface">₺390.000</div>
+<div class="text-xs text-on-surface-variant mt-0.5">₺160/sqft</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex justify-center items-center gap-2 mb-20">
+<button class="w-10 h-10 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-md bg-primary text-white font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-white transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-white transition-colors">3</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<!-- CTA Section -->
+<section class="">
+<div class="bg-white rounded-2xl p-10 md:p-14 border border-outline-variant flex flex-col md:flex-row items-center gap-12 card-shadow">
+<div class="md:w-3/5">
+<span class="text-[10px] font-bold tracking-[0.2em] text-secondary mb-3 block uppercase">Özel Teklif</span>
+<h2 class="text-3xl font-bold tracking-tight text-primary mb-6 leading-tight">Aradığınızı Bulamadınız mı?</h2>
+<p class="text-base text-on-surface-variant mb-8 leading-relaxed font-light">
+                    Yapay zeka destekli algoritmamız sizin için pazar dışı fırsatları tarıyor. Size özel kriterlere göre filtrelenmiş gizli portföylerimize erişin.
+                </p>
+<button class="bg-primary text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95">
+                    Danışmanla Görüş
+                </button>
+</div>
+<div class="md:w-2/5 w-full">
+<div class="aspect-[4/3] rounded-xl overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
+<img alt="Office" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaF04E_MiV6x3N_NxtOJCr_eiJUj3bAKZVoblePjqPvIUmfD6vIBvCpj8dqIs9uaGnxnFB78T88-AjW6KJSlKqUtx1LbF-3U85mnR_J8spVcGZouDFW_BF1R72wziwch72Ur52h5F7FYj__pz2DLr4wrOM11Vajmk4Hxz2nKtDr-WIqoPwyQQYYu2W5wHNSDPWPSKy0AXSN7eWnO7ZkR70Es_v7-qWWlFw46Q6e5xs-khDx7TyXqZz9DvGeEpeJoLAduOo6F6RQiz6"/>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-white mt-24 py-16 border-t border-outline-variant">
+<div class="max-w-[1400px] mx-auto px-6">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-12 mb-12">
+<div class="col-span-2 md:col-span-1">
+<div class="text-lg font-bold tracking-tight text-primary mb-4">Architectural Concierge</div>
+<p class="text-on-surface-variant text-sm font-light leading-relaxed">Gayrimenkulde kürasyonun yeni standartı. Sadece mülk değil, bir yaşam stili sunuyoruz.</p>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-5 uppercase tracking-widest text-[10px]">Keşfet</h4>
+<ul class="space-y-3">
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">Tüm Portföy</a></li>
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">Yeni İlanlar</a></li>
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">Yatırım Rehberi</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-5 uppercase tracking-widest text-[10px]">Kurumsal</h4>
+<ul class="space-y-3">
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">Hakkımızda</a></li>
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">İletişim</a></li>
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">Kariyer</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-primary mb-5 uppercase tracking-widest text-[10px]">Sosyal</h4>
+<ul class="space-y-3">
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">Instagram</a></li>
+<li><a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">LinkedIn</a></li>
+</ul>
+</div>
+</div>
+<div class="pt-8 border-t border-outline-variant flex flex-col md:flex-row justify-between gap-4">
+<p class="text-on-surface-variant/50 text-[11px]">© 2024 Architectural Concierge. Tüm hakları saklıdır.</p>
+<div class="flex gap-6">
+<a class="text-on-surface-variant/50 text-[11px] hover:text-primary transition-colors" href="#">Gizlilik Politikası</a>
+<a class="text-on-surface-variant/50 text-[11px] hover:text-primary transition-colors" href="#">KVKK</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
