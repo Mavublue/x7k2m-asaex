@@ -11,6 +11,15 @@ function genToken() {
   for (let i = 0; i < 16; i++) result += chars[Math.floor(Math.random() * chars.length)];
   return result;
 }
+
+function genPaketToken(ad: string) {
+  const trMap: Record<string, string> = { ğ:'g', ü:'u', ş:'s', ı:'i', ö:'o', ç:'c', İ:'i', Ğ:'g', Ü:'u', Ş:'s', Ö:'o', Ç:'c' };
+  const normalized = ad.toLowerCase().replace(/[ğüşıöçİĞÜŞÖÇ]/g, c => trMap[c] ?? c).replace(/[^a-z0-9]/g, '').slice(0, 10);
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let suffix = '';
+  for (let i = 0; i < 4; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+  return `${normalized || 'ilan'}-${suffix}`;
+}
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
@@ -257,7 +266,7 @@ export default function MusteriDetayScreen() {
     }
 
     // Her liste için benzersiz paket token
-    const paketToken = genToken();
+    const paketToken = genPaketToken(ad);
     const { error } = await supabase.from('paylasim_paketleri').insert({
       token: paketToken,
       ilan_ids: linkSecimIlanlar,
