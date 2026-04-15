@@ -85,7 +85,7 @@ export default function MusteriDetayScreen() {
   const [linkSaat, setLinkSaat] = useState('24');
   const [linkTumIlanlar, setLinkTumIlanlar] = useState<Ilan[]>([]);
   const [linkSecimIlanlar, setLinkSecimIlanlar] = useState<string[]>([]);
-  const [linkLinks, setLinkLinks] = useState<{ baslik: string; url: string }[] | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkYukleniyor, setLinkYukleniyor] = useState(false);
   const [linkIlanSearch, setLinkIlanSearch] = useState('');
 
@@ -217,7 +217,7 @@ export default function MusteriDetayScreen() {
     const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').order('olusturma_tarihi', { ascending: false });
     setLinkTumIlanlar(data ?? []);
     setLinkSecimIlanlar([]);
-    setLinkLinks(null);
+    setLinkUrl(null);
     setLinkSaat('24');
     setLinkIlanSearch('');
     setLinkModal(true);
@@ -235,34 +235,39 @@ export default function MusteriDetayScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLinkYukleniyor(false); return; }
 
-    const { data: profil } = await supabase.from('profiller').select('slug').eq('id', session.user.id).single();
-
     const saatSayisi = parseInt(linkSaat);
     const expiresAt = new Date(Date.now() + saatSayisi * 60 * 60 * 1000).toISOString();
-    let token = '';
 
+    // Müşteri token — varsa güncelle, yoksa oluştur
     const { data: mevcutToken } = await supabase
       .from('musteri_tokenler').select('token')
       .eq('user_id', session.user.id).eq('musteri_id', id).single();
 
+    let musteriToken: string;
     if (mevcutToken) {
-      token = mevcutToken.token;
+      musteriToken = mevcutToken.token;
       await supabase.from('musteri_tokenler')
         .update({ expires_at: expiresAt })
         .eq('user_id', session.user.id).eq('musteri_id', id);
     } else {
-      token = genToken();
+      musteriToken = genToken();
       await supabase.from('musteri_tokenler').insert({
-        token, user_id: session.user.id, musteri_id: id, expires_at: expiresAt,
+        token: musteriToken, user_id: session.user.id, musteri_id: id, expires_at: expiresAt,
       });
     }
 
+    // Her liste için benzersiz paket token
+    const paketToken = genToken();
+    const { error } = await supabase.from('paylasim_paketleri').insert({
+      token: paketToken,
+      ilan_ids: linkSecimIlanlar,
+      emlakci_id: session.user.id,
+      musteri_token: musteriToken,
+    });
+    if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+
     const webUrl = process.env.EXPO_PUBLIC_WEB_URL ?? '';
-    const secilenler = linkTumIlanlar.filter(i => linkSecimIlanlar.includes(i.id));
-    setLinkLinks(secilenler.map(ilan => ({
-      baslik: ilan.baslik,
-      url: `${webUrl}/${profil?.slug}/${(ilan as any).slug}?t=${token}`,
-    })));
+    setLinkUrl(`${webUrl}/ozel-ilanlar/${paketToken}/${musteriToken}`);
     setLinkYukleniyor(false);
   }
 
@@ -737,19 +742,19 @@ export default function MusteriDetayScreen() {
       </Modal>
 
       {/* Link Paylaşma Modali */}
-      <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => { setLinkModal(false); setLinkLinks(null); }}>
+      <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => { setLinkModal(false); setLinkUrl(null); }}>
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalDimmer} onPress={() => { setLinkModal(false); setLinkLinks(null); }} />
+          <TouchableOpacity style={styles.modalDimmer} onPress={() => { setLinkModal(false); setLinkUrl(null); }} />
           <View style={[styles.modalPanel, { maxHeight: '88%' }]}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => { setLinkModal(false); setLinkLinks(null); }}>
+              <TouchableOpacity onPress={() => { setLinkModal(false); setLinkUrl(null); }}>
                 <Text style={styles.modalKapat}>✕</Text>
               </TouchableOpacity>
               <Text style={styles.modalBaslik}>🔗 İlan Link Paylaş</Text>
               <View style={{ width: 32 }} />
             </View>
 
-            {!linkLinks ? (
+            {!linkUrl ? (
               <>
                 <TextInput
                   style={styles.modalSearch}
@@ -827,25 +832,16 @@ export default function MusteriDetayScreen() {
             ) : (
               <ScrollView contentContainerStyle={{ padding: Spacing.xl, paddingBottom: 32 }}>
                 <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '700', marginBottom: 16 }}>
-                  ✓ {linkLinks.length} link oluşturuldu
+                  ✓ Link oluşturuldu — {linkSecimIlanlar.length} ilan
                 </Text>
-                {linkLinks.map((item, i) => (
-                  <View key={i} style={styles.linkKart}>
-                    <Text style={styles.linkKartBaslik} numberOfLines={1}>{item.baslik}</Text>
-                    <Text style={styles.linkKartUrl} numberOfLines={2}>{item.url}</Text>
-                    <TouchableOpacity style={styles.linkKopyalaBtn} onPress={() => Share.share({ message: item.url, title: item.baslik })}>
-                      <Text style={styles.linkKopyalaBtnText}>Paylaş / Kopyala</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                {linkLinks.length > 1 && (
-                  <TouchableOpacity style={[styles.eslesBulkBtn, { marginTop: 8, borderRadius: Radius.lg }]}
-                    onPress={() => Share.share({ message: linkLinks.map(l => `${l.baslik}\n${l.url}`).join('\n\n') })}>
-                    <Text style={styles.eslesBulkBtnText}>Tüm Linkleri Paylaş</Text>
+                <View style={styles.linkKart}>
+                  <Text style={styles.linkKartUrl} numberOfLines={3}>{linkUrl}</Text>
+                  <TouchableOpacity style={styles.linkKopyalaBtn} onPress={() => Share.share({ message: linkUrl! })}>
+                    <Text style={styles.linkKopyalaBtnText}>Paylaş / Kopyala</Text>
                   </TouchableOpacity>
-                )}
+                </View>
                 <TouchableOpacity style={[styles.temizleBtn, { marginTop: 12, alignSelf: 'stretch', alignItems: 'center' }]}
-                  onPress={() => { setLinkLinks(null); setLinkSecimIlanlar([]); }}>
+                  onPress={() => { setLinkUrl(null); setLinkSecimIlanlar([]); setLinkSaat('24'); }}>
                   <Text style={styles.temizleBtnText}>Yeni Link Oluştur</Text>
                 </TouchableOpacity>
               </ScrollView>
