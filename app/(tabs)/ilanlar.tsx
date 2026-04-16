@@ -787,7 +787,7 @@ export default function IlanlarScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => { setPaylasModal(false); setPaylasLink(''); }} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: '85%' }}>
+            <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: '92%' }}>
               {/* Header */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface }}>🔗 Liste Paylaş</Text>
