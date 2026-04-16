@@ -11,6 +11,7 @@ const POPUP_W = 290;
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
+import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
@@ -125,6 +126,8 @@ export default function IlanlarScreen() {
   const [siralamaAcik, setSiralamaAcik] = useState(false);
   const siralamaBtnRef = useRef<View>(null);
   const [siralamaBtnPos, setSiralamaBtnPos] = useState({ top: 0, right: 0 });
+  const [profilSlug, setProfilSlug] = useState('');
+  const [linkKopyalandi, setLinkKopyalandi] = useState(false);
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -161,6 +164,13 @@ export default function IlanlarScreen() {
   useEffect(() => {
     supabase.from('ozellikler').select('*').order('olusturma_tarihi').then(({ data }) => {
       if (data) setTumOzellikler(data);
+    });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('profiller').select('slug').eq('id', user.id).single().then(({ data }) => {
+          if (data?.slug) setProfilSlug(data.slug);
+        });
+      }
     });
   }, []);
 
@@ -245,6 +255,23 @@ export default function IlanlarScreen() {
   function filtreUygula() { setFiltre(gecici); setFiltrePaneli(false); }
   function filtreSifirla() { setGecici(BOS_FILTRE); }
 
+  async function filtreLinkKopyala() {
+    if (!profilSlug) { Alert.alert('Hata', 'Profil slug bulunamadı.'); return; }
+    const base = `${process.env.EXPO_PUBLIC_WEB_URL}/${profilSlug}/liste`;
+    const params = new URLSearchParams();
+    if (filtre.tip !== 'Tümü') params.set('tip', filtre.tip);
+    if (filtre.kategoriler.length) params.set('kategori', filtre.kategoriler.join(','));
+    if (filtre.filterIl.length) params.set('il', filtre.filterIl[0]);
+    if (filtre.filterIlce.length) params.set('ilce', filtre.filterIlce[0]);
+    if (filtre.fiyatMin) params.set('fiyat_min', filtre.fiyatMin.replace(/\./g, ''));
+    if (filtre.fiyatMax) params.set('fiyat_max', filtre.fiyatMax.replace(/\./g, ''));
+    if (filtre.odalar.length) params.set('oda', filtre.odalar.join(','));
+    const url = params.toString() ? `${base}?${params.toString()}` : base;
+    await Clipboard.setStringAsync(url);
+    setLinkKopyalandi(true);
+    setTimeout(() => setLinkKopyalandi(false), 2500);
+  }
+
   const badge = aktifFiltreSayisi(filtre);
   const [aramaModalAcik, setAramaModalAcik] = useState(false);
 
@@ -262,6 +289,12 @@ export default function IlanlarScreen() {
     <>
       <View style={styles.sonucRow}>
         <Text style={styles.sonucSayisi}>{filtered.length} ilan</Text>
+        <TouchableOpacity
+          style={[styles.paylasBtn, linkKopyalandi && styles.paylasBtnAktif]}
+          onPress={filtreLinkKopyala}
+        >
+          <Text style={styles.paylasBtnText}>{linkKopyalandi ? '✓ Kopyalandı' : '🔗 Paylaş'}</Text>
+        </TouchableOpacity>
         <View ref={siralamaBtnRef} collapsable={false}>
           <TouchableOpacity style={styles.siralamaBtn} onPress={() => {
             if (siralamaAcik) { setSiralamaAcik(false); return; }
@@ -878,8 +911,11 @@ const styles = StyleSheet.create({
   popupKategoriText: { fontSize: 10, color: Colors.primary, fontWeight: '600' },
   popupKapat: { padding: Spacing.md },
   popupKapatText: { fontSize: 16, color: Colors.onSurfaceVariant },
-  sonucRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, marginBottom: 2, marginTop: -2 },
-  sonucSayisi: { fontSize: 12, color: Colors.onSurfaceVariant },
+  sonucRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.xl, marginBottom: 2, marginTop: -2 },
+  sonucSayisi: { fontSize: 12, color: Colors.onSurfaceVariant, flex: 1 },
+  paylasBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surface },
+  paylasBtnAktif: { backgroundColor: Colors.primaryFixed, borderColor: Colors.primary },
+  paylasBtnText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   siralamaBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surface },
   siralamaBtnText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   siralamaChevron: { fontSize: 9, color: Colors.onSurfaceVariant },

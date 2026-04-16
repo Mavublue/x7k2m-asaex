@@ -13,6 +13,8 @@ export interface Ilan {
   aciklama: string | null;
   musteri_aciklamasi: string | null;
   bina_yasi: string | null;
+  brut_metrekare: number | null;
+  banyo_sayisi: number | null;
   fotograflar: string[] | null;
   lat: number | null;
   lng: number | null;

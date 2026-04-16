@@ -99,6 +99,7 @@ export default function IlanDuzenleScreen() {
   const [mahalleSearch, setMahalleSearch] = useState('');
   const [secilenOzellikler, setSecilenOzellikler] = useState<string[]>([]);
   const [binaYasi, setBinaYasi] = useState('');
+  const [banyoSayisi, setBanyoSayisi] = useState('');
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
 
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
@@ -133,6 +134,7 @@ export default function IlanDuzenleScreen() {
         setMusteriAciklamasi(ilan.musteri_aciklamasi ?? '');
         setSecilenOzellikler((ilan as any).ozellikler ? (ilan as any).ozellikler.split(',') : []);
         setBinaYasi(ilan.bina_yasi ?? '');
+        setBanyoSayisi((ilan as any).banyo_sayisi?.toString() ?? '');
         setLat(ilan.lat?.toString() ?? '');
         setLng(ilan.lng?.toString() ?? '');
         if (ilan.musteri_lat && ilan.musteri_lng) {
@@ -212,6 +214,7 @@ export default function IlanDuzenleScreen() {
       aciklama: aciklama || null,
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
+      banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
@@ -364,6 +367,16 @@ export default function IlanDuzenleScreen() {
                 <TextInput style={[styles.input, { flex: 1 }]} placeholder="0" value={brutM2} onChangeText={setBrutM2} keyboardType="numeric" placeholderTextColor={Colors.outlineVariant} />
                 <View style={styles.m2Etiket}><Text style={styles.m2EtiketText}>BRÜT m²</Text></View>
               </View>
+            </View>
+          </FormGroup>
+
+          <FormGroup label="Banyo Sayısı">
+            <View style={styles.chipRow}>
+              {['1', '2', '3', '4', '5+'].map(b => (
+                <TouchableOpacity key={b} style={[styles.chip, banyoSayisi === b && styles.chipActive]} onPress={() => setBanyoSayisi(b)}>
+                  <Text style={[styles.chipText, banyoSayisi === b && styles.chipTextActive]}>{b}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </FormGroup>
 

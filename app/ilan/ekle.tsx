@@ -74,6 +74,7 @@ export default function IlanEkleScreen() {
   const [musteriMapPickerVisible, setMusteriMapPickerVisible] = useState(false);
   const [secilenOzellikler, setSecilenOzellikler] = useState<string[]>([]);
   const [binaYasi, setBinaYasi] = useState('');
+  const [banyoSayisi, setBanyoSayisi] = useState('');
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
@@ -185,6 +186,7 @@ export default function IlanEkleScreen() {
       aciklama: aciklama || null,
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
+      banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
       fotograflar: fotograflar.length > 0 ? fotograflar : null,
     });
@@ -369,6 +371,17 @@ export default function IlanEkleScreen() {
                 />
                 <View style={styles.m2Etiket}><Text style={styles.m2EtiketText}>BRÜT m²</Text></View>
               </View>
+            </View>
+          </FormGroup>
+
+          {/* Banyo Sayısı */}
+          <FormGroup label="Banyo Sayısı">
+            <View style={styles.chipRow}>
+              {['1', '2', '3', '4', '5+'].map(b => (
+                <TouchableOpacity key={b} style={[styles.chip, banyoSayisi === b && styles.chipActive]} onPress={() => setBanyoSayisi(b)}>
+                  <Text style={[styles.chipText, banyoSayisi === b && styles.chipTextActive]}>{b}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </FormGroup>
 
