@@ -132,9 +132,10 @@ export default function IlanlarScreen() {
   const [paylasMusteriler, setPaylasMusteriler] = useState<{id:string;ad:string;soyad:string;etiketler:string|null}[]>([]);
   const [paylasMusteri, setPaylasMusteri] = useState('');
   const [paylasMusteriAra, setPaylasMusteriAra] = useState('');
-  const [paylasSure, setPaylasSure] = useState(7);
+  const [paylasSure, setPaylasSure] = useState('24');
   const [paylasYukleniyor, setPaylasYukleniyor] = useState(false);
   const [paylasLink, setPaylasLink] = useState('');
+  const [paylasEtiketAra, setPaylasEtiketAra] = useState('');
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -267,6 +268,8 @@ export default function IlanlarScreen() {
     setPaylasLink('');
     setPaylasMusteri('');
     setPaylasMusteriAra('');
+    setPaylasEtiketAra('');
+    setPaylasSure('24');
     setLinkKopyalandi(false);
     supabase.from('musteriler').select('id,ad,soyad,etiketler').eq('durum','Aktif').order('ad')
       .then(({ data }) => { if (data) setPaylasMusteriler(data); });
@@ -289,7 +292,7 @@ export default function IlanlarScreen() {
     if (filtre.odalar.length) filtreler.push(filtre.odalar.join(', '));
     const baslik = filtreler.length ? filtreler.join(' · ') : 'Tüm Aktif İlanlar';
 
-    const expiresAt = new Date(Date.now() + paylasSure * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + parseInt(paylasSure) * 60 * 60 * 1000).toISOString();
     const { data: mevcutMt } = await supabase.from('musteri_tokenler')
       .select('token').eq('user_id', user.id).eq('musteri_id', paylasMusteri).single();
     let musteriToken = mevcutMt?.token ?? null;
@@ -803,42 +806,64 @@ export default function IlanlarScreen() {
 
                     {/* Müşteri ara */}
                     <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Müşteri *</Text>
-                    <TextInput
-                      style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.onSurface, marginBottom: 4 }}
-                      placeholder="İsim ara..."
-                      placeholderTextColor={Colors.outlineVariant}
-                      value={paylasMusteriAra}
-                      onChangeText={v => { setPaylasMusteriAra(v); setPaylasMusteri(''); }}
-                    />
-                    {paylasMusteriAra.length > 0 && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
+                      <TextInput
+                        style={{ flex: 1, backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.onSurface }}
+                        placeholder="İsim ara..."
+                        placeholderTextColor={Colors.outlineVariant}
+                        value={paylasMusteriAra}
+                        onChangeText={v => { setPaylasMusteriAra(v); setPaylasMusteri(''); }}
+                      />
+                      <TextInput
+                        style={{ flex: 1, backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.onSurface }}
+                        placeholder="Etiket ara..."
+                        placeholderTextColor={Colors.outlineVariant}
+                        value={paylasEtiketAra}
+                        onChangeText={v => { setPaylasEtiketAra(v); setPaylasMusteri(''); }}
+                      />
+                    </View>
+                    {(paylasMusteriAra.length > 0 || paylasEtiketAra.length > 0) && (
                       <View style={{ backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.surfaceContainerLow, borderRadius: 10, maxHeight: 180, marginBottom: 8, overflow: 'hidden' }}>
                         {paylasMusteriler
-                          .filter(m => `${m.ad} ${m.soyad}`.toLowerCase().includes(paylasMusteriAra.toLowerCase()))
+                          .filter(m => {
+                            const isimOk = paylasMusteriAra === '' || `${m.ad} ${m.soyad}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
+                            const etiketOk = paylasEtiketAra === '' || (m.etiketler ?? '').toLowerCase().includes(paylasEtiketAra.toLowerCase());
+                            return isimOk && etiketOk;
+                          })
                           .map(m => (
                             <TouchableOpacity key={m.id}
-                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad} ${m.soyad}`); }}
-                              style={{ paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow, backgroundColor: paylasMusteri === m.id ? Colors.primaryFixed : Colors.surface }}
+                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad} ${m.soyad}`); setPaylasEtiketAra(''); }}
+                              style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow, backgroundColor: paylasMusteri === m.id ? Colors.primaryFixed : Colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
                             >
                               <Text style={{ fontSize: 14, color: paylasMusteri === m.id ? Colors.primary : Colors.onSurface, fontWeight: paylasMusteri === m.id ? '700' : '400' }}>{m.ad} {m.soyad}</Text>
+                              {m.etiketler ? (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end', flex: 1 }}>
+                                  {m.etiketler.split(',').map(e => e.trim()).filter(Boolean).map(e => (
+                                    <View key={e} style={{ backgroundColor: Colors.primaryFixed, borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2 }}>
+                                      <Text style={{ fontSize: 10, color: Colors.primary, fontWeight: '600' }}>{e}</Text>
+                                    </View>
+                                  ))}
+                                </View>
+                              ) : null}
                             </TouchableOpacity>
                           ))}
                       </View>
                     )}
                     {paylasMusteri && (
-                      <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600', marginBottom: 16 }}>
+                      <Text style={{ fontSize: 12, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
                         ✓ {paylasMusteriler.find(m=>m.id===paylasMusteri)?.ad} {paylasMusteriler.find(m=>m.id===paylasMusteri)?.soyad} seçildi
                       </Text>
                     )}
 
                     {/* Süre */}
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Geçerlilik Süresi</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
-                      {[7, 14, 30].map(g => (
-                        <TouchableOpacity key={g} onPress={() => setPaylasSure(g)}
-                          style={{ flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, alignItems: 'center',
-                            borderColor: paylasSure === g ? Colors.primary : Colors.outline,
-                            backgroundColor: paylasSure === g ? Colors.primaryFixed : Colors.surface }}>
-                          <Text style={{ fontSize: 13, fontWeight: '700', color: paylasSure === g ? Colors.primary : Colors.onSurface }}>{g} gün</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ne kadar aktif olsun?</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                      {([['1','1 saat'],['24','1 gün'],['72','3 gün'],['168','7 gün']] as const).map(([val, label]) => (
+                        <TouchableOpacity key={val} onPress={() => setPaylasSure(val)}
+                          style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5,
+                            borderColor: paylasSure === val ? Colors.primary : Colors.outline,
+                            backgroundColor: paylasSure === val ? Colors.primaryFixed : Colors.surface }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: paylasSure === val ? Colors.primary : Colors.onSurfaceVariant }}>{label}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
