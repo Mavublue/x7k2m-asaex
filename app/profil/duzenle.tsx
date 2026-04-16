@@ -31,7 +31,8 @@ export default function ProfilDuzenleScreen() {
         if (data) {
           setAd(data.ad ?? '');
           setSoyad(data.soyad ?? '');
-          setTelefon(data.telefon ?? '');
+          const tel = (data.telefon ?? '').replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
+          setTelefon(tel);
           setOfisAdi(data.ofis_adi ?? '');
           setCalismaBolgesi(data.calisma_bolgesi ?? '');
         }
@@ -47,8 +48,9 @@ export default function ProfilDuzenleScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
+    const telKayit = telefon ? '+90' + telefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '') : null;
     const { error } = await supabase.from('profiller').upsert({
-      id: user.id, ad, soyad, telefon,
+      id: user.id, ad, soyad, telefon: telKayit,
       ofis_adi: ofisAdi || null,
       calisma_bolgesi: calismaBolgesi || null,
     });
@@ -99,7 +101,23 @@ export default function ProfilDuzenleScreen() {
             </View>
           </View>
 
-          <Field label="Telefon" value={telefon} onChangeText={setTelefon} placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Telefon</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, overflow: 'hidden' }}>
+              <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRightWidth: 1, borderRightColor: Colors.outline }}>
+                <Text style={{ fontSize: 15, color: Colors.onSurface, fontWeight: '600' }}>+90</Text>
+              </View>
+              <TextInput
+                style={{ flex: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: Colors.onSurface }}
+                placeholder="5xx xxx xx xx"
+                placeholderTextColor={Colors.outlineVariant}
+                value={telefon}
+                onChangeText={v => setTelefon(v.replace(/\D/g, ''))}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+            </View>
+          </View>
           <Field label="Emlak Ofisi Adı (opsiyonel)" value={ofisAdi} onChangeText={setOfisAdi} placeholder="Yılmaz Gayrimenkul" />
 
           <View style={styles.inputContainer}>
