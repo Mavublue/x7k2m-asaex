@@ -138,7 +138,7 @@ export default function IlanlarScreen() {
   const [paylasMusteri, setPaylasMusteri] = useState('');
   const [paylasMusteriAra, setPaylasMusteriAra] = useState('');
   const [paylasSaat, setPaylasSaat] = useState('168');
-  const [paylasEtiket, setPaylasEtiket] = useState('');
+  const [paylasEtiketAra, setPaylasEtiketAra] = useState('');
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -276,7 +276,7 @@ export default function IlanlarScreen() {
   function filtreSifirla() { setGecici(BOS_FILTRE); }
 
   function handleListePaylas() {
-    setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); setKopyalandi(false); setPaylasEtiket('');
+    setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); setKopyalandi(false); setPaylasEtiketAra('');
     supabase.from('musteriler').select('id, ad, soyad, etiketler').eq('durum', 'Aktif').order('ad')
       .then(({ data }) => { if (data) setPaylasMusteriler(data); });
     setPaylasModal(true);
@@ -830,32 +830,27 @@ export default function IlanlarScreen() {
                           value={paylasMusteriAra}
                           onChangeText={t => { setPaylasMusteriAra(t); setPaylasMusteri(''); }}
                         />
+                        <TextInput
+                          style={[styles.modalSearchInput, { width: 100 }]}
+                          placeholder="Etiket..."
+                          placeholderTextColor={Colors.outlineVariant}
+                          value={paylasEtiketAra}
+                          onChangeText={t => { setPaylasEtiketAra(t); setPaylasMusteri(''); }}
+                        />
                       </View>
-                      {(() => {
-                        const tumEtiketler = Array.from(new Set(
-                          paylasMusteriler.flatMap(m => (m.etiketler ?? '').split(',').map(e => e.trim()).filter(Boolean))
-                        ));
-                        return tumEtiketler.length > 0 ? (
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
-                            {tumEtiketler.map(e => (
-                              <TouchableOpacity key={e} style={[styles.chip, paylasEtiket === e && styles.chipActive]} onPress={() => { setPaylasEtiket(paylasEtiket === e ? '' : e); setPaylasMusteri(''); }}>
-                                <Text style={[styles.chipText, paylasEtiket === e && styles.chipTextActive]}>🏷 {e}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        ) : null;
-                      })()}
-                      {(paylasMusteriAra.length > 0 || paylasEtiket.length > 0) && (
+                      {(paylasMusteriAra.length > 0 || paylasEtiketAra.length > 0) && (
                         <View style={{ borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.surfaceContainerLow }}>
                           {paylasMusteriler.filter(m => {
-                            const isimUygun = paylasMusteriAra.length === 0 || `${m.ad} ${m.soyad}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
-                            const etiketUygun = paylasEtiket.length === 0 || (m.etiketler ?? '').split(',').map(e => e.trim()).includes(paylasEtiket);
+                            const isimUygun = !paylasMusteriAra || `${m.ad} ${m.soyad}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
+                            const etiketUygun = !paylasEtiketAra || (m.etiketler ?? '').toLowerCase().includes(paylasEtiketAra.toLowerCase());
                             return isimUygun && etiketUygun;
                           }).map(m => (
                             <TouchableOpacity key={m.id} style={{ padding: Spacing.md, backgroundColor: paylasMusteri === m.id ? Colors.primaryFixed : Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}
-                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad} ${m.soyad}`); }}>
-                              <Text style={{ fontSize: 14, color: paylasMusteri === m.id ? Colors.primary : Colors.onSurface, fontWeight: paylasMusteri === m.id ? '700' : '400' }}>{m.ad} {m.soyad}</Text>
-                              {m.etiketler ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 }}>{m.etiketler}</Text> : null}
+                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad} ${m.soyad}`); setPaylasEtiketAra(''); }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <Text style={{ fontSize: 14, color: paylasMusteri === m.id ? Colors.primary : Colors.onSurface, fontWeight: paylasMusteri === m.id ? '700' : '400' }}>{m.ad} {m.soyad}</Text>
+                                {m.etiketler ? <Text style={{ fontSize: 10, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.primaryFixed, color: Colors.primary, fontWeight: '600' }}>{m.etiketler.split(',')[0].trim()}</Text> : null}
+                              </View>
                             </TouchableOpacity>
                           ))}
                         </View>
