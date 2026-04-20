@@ -65,9 +65,9 @@ function buildPickerHtml(initLat?: number, initLng?: number) {
     });
 
     var map = L.map('map', { zoomControl: true }).setView(${center}, ${zoom});
-    L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg', {
-      attribution: '&copy; Stadia Maps &copy; CNES/Airbus &copy; OpenStreetMap',
-      maxZoom: 20
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
     }).addTo(map);
 
     ${initMarker}

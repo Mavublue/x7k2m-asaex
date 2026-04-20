@@ -89,6 +89,7 @@ export default function IlanDuzenleScreen() {
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
   const [orijinalFotograflar, setOrijinalFotograflar] = useState<string[]>([]);
   const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ilModal, setIlModal] = useState(false);
   const [ilceModal, setIlceModal] = useState(false);
@@ -102,6 +103,7 @@ export default function IlanDuzenleScreen() {
   const [banyoSayisi, setBanyoSayisi] = useState('');
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
 
+  const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
   const mahalleListesi = ((MAHALLELER as any)[il]?.[ilce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(mahalleSearch.toLowerCase()));
@@ -192,8 +194,11 @@ export default function IlanDuzenleScreen() {
       Alert.alert('Bekleyin', 'Fotoğraflar henüz yükleniyor, lütfen bekleyin.');
       return;
     }
-    if (!baslik || !fiyat || !il) {
-      Alert.alert('Eksik Bilgi', 'Başlık, fiyat ve il zorunludur.');
+    setSubmitted(true);
+    const eksik = !baslik || !fiyat || !il || !musteriAciklamasi || !banyoSayisi ||
+      (!arsaTarla && (!netM2 || !brutM2 || !odaSayisi || !binaYasi));
+    if (eksik) {
+      Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
     }
 
@@ -307,7 +312,7 @@ export default function IlanDuzenleScreen() {
           </FormGroup>
 
           <FormGroup label="İlan Başlığı *">
-            <TextInput style={styles.input} value={baslik} onChangeText={setBaslik} placeholderTextColor={Colors.outlineVariant} />
+            <TextInput style={[styles.input, submitted && !baslik && styles.inputErr]} value={baslik} onChangeText={setBaslik} placeholderTextColor={Colors.outlineVariant} />
           </FormGroup>
 
           <FormGroup label="İlan Tipi *">
@@ -331,7 +336,7 @@ export default function IlanDuzenleScreen() {
           </FormGroup>
 
           <FormGroup label="Fiyat (₺) *">
-            <View style={styles.inputRow}>
+            <View style={[styles.inputRow, submitted && !fiyat && styles.inputErr, { borderRadius: 12 }]}>
               <Text style={styles.inputPrefix}>₺</Text>
               <TextInput style={[styles.input, { flex: 1 }]} value={fiyat} onChangeText={v => setFiyat(formatFiyat(v))} keyboardType="numeric" placeholderTextColor={Colors.outlineVariant} />
             </View>
@@ -357,21 +362,21 @@ export default function IlanDuzenleScreen() {
             </TouchableOpacity>
           </FormGroup>
 
-          <FormGroup label="Metrekare">
+          <FormGroup label={arsaTarla ? 'Metrekare' : 'Metrekare *'}>
             <View style={styles.satir}>
               <View style={[styles.m2Kutu, { flex: 1 }]}>
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="0" value={netM2} onChangeText={setNetM2} keyboardType="numeric" placeholderTextColor={Colors.outlineVariant} />
+                <TextInput style={[styles.input, { flex: 1 }, submitted && !arsaTarla && !netM2 && styles.inputErr]} placeholder="0" value={netM2} onChangeText={setNetM2} keyboardType="numeric" placeholderTextColor={Colors.outlineVariant} />
                 <View style={styles.m2Etiket}><Text style={styles.m2EtiketText}>NET m²</Text></View>
               </View>
               <View style={[styles.m2Kutu, { flex: 1 }]}>
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="0" value={brutM2} onChangeText={setBrutM2} keyboardType="numeric" placeholderTextColor={Colors.outlineVariant} />
+                <TextInput style={[styles.input, { flex: 1 }, submitted && !arsaTarla && !brutM2 && styles.inputErr]} placeholder="0" value={brutM2} onChangeText={setBrutM2} keyboardType="numeric" placeholderTextColor={Colors.outlineVariant} />
                 <View style={styles.m2Etiket}><Text style={styles.m2EtiketText}>BRÜT m²</Text></View>
               </View>
             </View>
           </FormGroup>
 
-          <FormGroup label="Banyo Sayısı">
-            <View style={styles.chipRow}>
+          <FormGroup label="Banyo Sayısı *">
+            <View style={[styles.chipRow, submitted && !banyoSayisi && styles.chipRowErr]}>
               {['1', '2', '3', '4', '5+'].map(b => (
                 <TouchableOpacity key={b} style={[styles.chip, banyoSayisi === b && styles.chipActive]} onPress={() => setBanyoSayisi(b)}>
                   <Text style={[styles.chipText, banyoSayisi === b && styles.chipTextActive]}>{b}</Text>
@@ -380,8 +385,8 @@ export default function IlanDuzenleScreen() {
             </View>
           </FormGroup>
 
-          <FormGroup label="Oda Sayısı">
-            <View style={styles.chipRow}>
+          <FormGroup label={arsaTarla ? 'Oda Sayısı' : 'Oda Sayısı *'}>
+            <View style={[styles.chipRow, submitted && !arsaTarla && !odaSayisi && styles.chipRowErr]}>
               {ODALAR_KUCUK.map(o => (
                 <TouchableOpacity key={o} style={[styles.chip, odaSayisi === o && styles.chipActive]} onPress={() => setOdaSayisi(o)}>
                   <Text style={[styles.chipText, odaSayisi === o && styles.chipTextActive]}>{o}</Text>
@@ -401,18 +406,23 @@ export default function IlanDuzenleScreen() {
                 <Text style={[styles.aciklamaTabText, aciklamaTab === 'not' && styles.aciklamaTabTextAktif]}>Notlarım</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.aciklamaTab, aciklamaTab === 'musteri' && styles.aciklamaTabAktif]} onPress={() => setAciklamaTab('musteri')}>
-                <Text style={[styles.aciklamaTabText, aciklamaTab === 'musteri' && styles.aciklamaTabTextAktif]}>Müşteriye</Text>
+                <Text style={[styles.aciklamaTabText, aciklamaTab === 'musteri' && styles.aciklamaTabTextAktif]}>Müşteriye *</Text>
               </TouchableOpacity>
             </View>
             {aciklamaTab === 'not' ? (
-              <TextInput style={[styles.input, styles.textarea]} placeholder="Kendi notlarınız (müşteri görmez)..." value={aciklama} onChangeText={setAciklama} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+              <>
+                <TextInput style={[styles.input, styles.textarea]} placeholder="Kendi notlarınız (müşteri görmez)..." value={aciklama} onChangeText={setAciklama} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+                {submitted && !musteriAciklamasi && (
+                  <Text style={styles.errText}>Müşteri açıklaması zorunludur.</Text>
+                )}
+              </>
             ) : (
-              <TextInput style={[styles.input, styles.textarea]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+              <TextInput style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
             )}
           </FormGroup>
 
-          <FormGroup label="Bina Yaşı">
-            <View style={styles.chipRow}>
+          <FormGroup label={arsaTarla ? 'Bina Yaşı' : 'Bina Yaşı *'}>
+            <View style={[styles.chipRow, submitted && !arsaTarla && !binaYasi && styles.chipRowErr]}>
               {BINA_YASLARI.map(y => {
                 const secili = binaYasi === y;
                 return (
@@ -613,6 +623,9 @@ const styles = StyleSheet.create({
   m2Kutu: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   m2Etiket: { backgroundColor: Colors.surfaceContainerHigh, borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 6 },
   m2EtiketText: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant },
+  inputErr: { borderWidth: 1.5, borderColor: '#E53935' },
+  chipRowErr: { borderWidth: 1.5, borderColor: '#E53935', borderRadius: 10, padding: 6 },
+  errText: { fontSize: 12, color: '#E53935', marginTop: 4, fontWeight: '500' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: { borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow },
   chipActive: { backgroundColor: Colors.primaryFixed },
