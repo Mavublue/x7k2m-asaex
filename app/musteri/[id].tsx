@@ -101,6 +101,10 @@ export default function MusteriDetayScreen() {
   const [linkIlanSearch, setLinkIlanSearch] = useState('');
   const [linkFiltreTip, setLinkFiltreTip] = useState('');
   const [linkFiltreKategori, setLinkFiltreKategori] = useState('');
+  const [paylasAltTab, setPaylasAltTab] = useState<'sec' | 'filtrele'>('sec');
+  const [linkFiyatMin, setLinkFiyatMin] = useState('');
+  const [linkFiyatMax, setLinkFiyatMax] = useState('');
+  const [linkFiltreIl, setLinkFiltreIl] = useState('');
 
   const fetchMusteri = useCallback(async () => {
     const { data } = await supabase.from('musteriler').select('*').eq('id', id).single();
@@ -689,36 +693,86 @@ export default function MusteriDetayScreen() {
                 <>
                   {!linkUrl ? (
                     <>
-                      <TextInput
-                        style={styles.modalSearch}
-                        placeholder="İlan ara..."
-                        placeholderTextColor={Colors.outlineVariant}
-                        value={linkIlanSearch}
-                        onChangeText={setLinkIlanSearch}
-                      />
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
-                        {['Satılık', 'Kiralık'].map(t => (
-                          <TouchableOpacity key={t} onPress={() => setLinkFiltreTip(linkFiltreTip === t ? '' : t)}
-                            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreTip === t ? Colors.primary : Colors.outline, backgroundColor: linkFiltreTip === t ? Colors.primaryFixed : Colors.surface }}>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreTip === t ? Colors.primary : Colors.onSurfaceVariant }}>{t}</Text>
-                          </TouchableOpacity>
-                        ))}
-                        {['Daire','Villa','Arsa','Tarla','İşyeri','Otel','Müstakil Ev','Rezidans'].map(k => (
-                          <TouchableOpacity key={k} onPress={() => setLinkFiltreKategori(linkFiltreKategori === k ? '' : k)}
-                            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreKategori === k ? Colors.primary : Colors.outline, backgroundColor: linkFiltreKategori === k ? Colors.primaryFixed : Colors.surface }}>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreKategori === k ? Colors.primary : Colors.onSurfaceVariant }}>{k}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
+                      {/* Alt sekme: Elle Seç / Filtrele */}
+                      <View style={styles.paylasAltBar}>
+                        <TouchableOpacity
+                          style={[styles.paylasAltBtn, paylasAltTab === 'sec' && styles.paylasAltBtnAktif]}
+                          onPress={() => setPaylasAltTab('sec')}
+                        >
+                          <Text style={[styles.paylasAltBtnText, paylasAltTab === 'sec' && styles.paylasAltBtnTextAktif]}>Elle Seç</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.paylasAltBtn, paylasAltTab === 'filtrele' && styles.paylasAltBtnAktif]}
+                          onPress={() => setPaylasAltTab('filtrele')}
+                        >
+                          <Text style={[styles.paylasAltBtnText, paylasAltTab === 'filtrele' && styles.paylasAltBtnTextAktif]}>Filtrele</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {paylasAltTab === 'filtrele' && (
+                        <>
+                          <TextInput
+                            style={styles.modalSearch}
+                            placeholder="İlan ara..."
+                            placeholderTextColor={Colors.outlineVariant}
+                            value={linkIlanSearch}
+                            onChangeText={setLinkIlanSearch}
+                          />
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
+                            {['Satılık', 'Kiralık'].map(t => (
+                              <TouchableOpacity key={t} onPress={() => setLinkFiltreTip(linkFiltreTip === t ? '' : t)}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreTip === t ? Colors.primary : Colors.outline, backgroundColor: linkFiltreTip === t ? Colors.primaryFixed : Colors.surface }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreTip === t ? Colors.primary : Colors.onSurfaceVariant }}>{t}</Text>
+                              </TouchableOpacity>
+                            ))}
+                            {['Daire','Villa','Arsa','Tarla','İşyeri','Otel','Müstakil Ev','Rezidans'].map(k => (
+                              <TouchableOpacity key={k} onPress={() => setLinkFiltreKategori(linkFiltreKategori === k ? '' : k)}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreKategori === k ? Colors.primary : Colors.outline, backgroundColor: linkFiltreKategori === k ? Colors.primaryFixed : Colors.surface }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreKategori === k ? Colors.primary : Colors.onSurfaceVariant }}>{k}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+                            <TextInput
+                              style={[styles.input, { flex: 1 }]}
+                              placeholder="Min ₺"
+                              placeholderTextColor={Colors.outlineVariant}
+                              value={linkFiyatMin}
+                              onChangeText={v => setLinkFiyatMin(v.replace(/\D/g, ''))}
+                              keyboardType="numeric"
+                            />
+                            <TextInput
+                              style={[styles.input, { flex: 1 }]}
+                              placeholder="Max ₺"
+                              placeholderTextColor={Colors.outlineVariant}
+                              value={linkFiyatMax}
+                              onChangeText={v => setLinkFiyatMax(v.replace(/\D/g, ''))}
+                              keyboardType="numeric"
+                            />
+                          </View>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
+                            {ILLER_LISTESI.map(il => (
+                              <TouchableOpacity key={il} onPress={() => setLinkFiltreIl(linkFiltreIl === il ? '' : il)}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreIl === il ? Colors.primary : Colors.outline, backgroundColor: linkFiltreIl === il ? Colors.primaryFixed : Colors.surface }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreIl === il ? Colors.primary : Colors.onSurfaceVariant }}>{il}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </>
+                      )}
+
                       {linkYukleniyor ? (
                         <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
                       ) : (
-                        linkTumIlanlar.filter(i => {
+                        (paylasAltTab === 'sec' ? linkTumIlanlar : linkTumIlanlar.filter(i => {
                           const aramaOk = !linkIlanSearch || i.baslik?.toLowerCase().includes(linkIlanSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkIlanSearch.toLowerCase());
                           const tipOk = !linkFiltreTip || i.tip === linkFiltreTip;
                           const katOk = !linkFiltreKategori || i.kategori === linkFiltreKategori;
-                          return aramaOk && tipOk && katOk;
-                        }).map(item => {
+                          const minOk = !linkFiyatMin || i.fiyat >= parseInt(linkFiyatMin);
+                          const maxOk = !linkFiyatMax || i.fiyat <= parseInt(linkFiyatMax);
+                          const ilOk = !linkFiltreIl || i.konum === linkFiltreIl;
+                          return aramaOk && tipOk && katOk && minOk && maxOk && ilOk;
+                        })).map(item => {
                           const secili = linkSecimIlanlar.includes(item.id);
                           return (
                             <TouchableOpacity
@@ -745,6 +799,7 @@ export default function MusteriDetayScreen() {
                           );
                         })
                       )}
+
                       <View style={[styles.linkFooter, { marginTop: Spacing.md }]}>
                         <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                           {[{ saat: '1', label: '1 saat' }, { saat: '24', label: '1 gün' }, { saat: '72', label: '3 gün' }, { saat: '168', label: '7 gün' }].map(({ saat, label }) => (
@@ -1081,6 +1136,11 @@ const styles = StyleSheet.create({
   eslesBulkBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 9 },
   eslesBulkBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
+  paylasAltBar: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, padding: 2, gap: 2, marginBottom: Spacing.sm },
+  paylasAltBtn: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: Radius.sm },
+  paylasAltBtnAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  paylasAltBtnText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
+  paylasAltBtnTextAktif: { color: Colors.primary },
   tabBar: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 3, gap: 3 },
   tabBtn: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: Radius.md },
   tabBtnAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
