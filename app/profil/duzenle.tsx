@@ -16,6 +16,7 @@ export default function ProfilDuzenleScreen() {
   const [telefon, setTelefon] = useState('');
   const [ofisAdi, setOfisAdi] = useState('');
   const [calismaBolgesi, setCalismaBolgesi] = useState('');
+  const [watermarkText, setWatermarkText] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [veriYuklendi, setVeriYuklendi] = useState(false);
@@ -35,6 +36,7 @@ export default function ProfilDuzenleScreen() {
           setTelefon(tel);
           setOfisAdi(data.ofis_adi ?? '');
           setCalismaBolgesi(data.calisma_bolgesi ?? '');
+          setWatermarkText(data.watermark_text ?? '');
         }
       }
       setVeriYuklendi(true);
@@ -53,6 +55,7 @@ export default function ProfilDuzenleScreen() {
       id: user.id, ad, soyad, telefon: telKayit,
       ofis_adi: ofisAdi || null,
       calisma_bolgesi: calismaBolgesi || null,
+      watermark_text: watermarkText || null,
     });
 
     if (error) Alert.alert('Hata', error.message);
@@ -119,6 +122,7 @@ export default function ProfilDuzenleScreen() {
             </View>
           </View>
           <Field label="Emlak Ofisi Adı (opsiyonel)" value={ofisAdi} onChangeText={setOfisAdi} placeholder="Yılmaz Gayrimenkul" />
+          <Field label="Fotoğraf Filigranı (opsiyonel)" value={watermarkText} onChangeText={setWatermarkText} placeholder="ahmetemlak.com" />
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Çalışma Bölgesi</Text>

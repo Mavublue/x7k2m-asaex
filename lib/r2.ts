@@ -25,10 +25,16 @@ export async function uploadToR2(key: string, body: Uint8Array, contentType: str
 
 export async function optimizePhoto(key: string, isFirst = false): Promise<void> {
   const token = await getToken();
+  const { data: { user } } = await supabase.auth.getUser();
+  let watermarkText: string | null = null;
+  if (user) {
+    const { data } = await supabase.from('profiller').select('watermark_text').eq('id', user.id).single();
+    watermarkText = data?.watermark_text ?? null;
+  }
   fetch(`${MEDIA_SERVICE}/optimize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ key, isFirst }),
+    body: JSON.stringify({ key, isFirst, ...(watermarkText ? { watermarkText } : {}) }),
   }).catch(() => {});
 }
 
