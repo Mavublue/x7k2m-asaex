@@ -9,7 +9,7 @@ export interface Ilan {
   oda_sayisi: string | null;
   tip: 'Satılık' | 'Kiralık';
   durum?: 'Aktif' | 'İptal';
-  kategori: 'Daire' | 'Villa' | 'Arsa' | 'İşyeri';
+  kategori: 'Daire' | 'Villa' | 'Arsa' | 'Tarla' | 'İşyeri';
   aciklama: string | null;
   musteri_aciklamasi: string | null;
   bina_yasi: string | null;
