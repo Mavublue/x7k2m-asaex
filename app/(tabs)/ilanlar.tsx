@@ -857,7 +857,7 @@ export default function IlanlarScreen() {
 
                     {/* Süre */}
                     <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ne kadar aktif olsun?</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                       {([['1','1 saat'],['24','1 gün'],['72','3 gün'],['168','7 gün']] as const).map(([val, label]) => (
                         <TouchableOpacity key={val} onPress={() => setPaylasSure(val)}
                           style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5,
@@ -866,6 +866,16 @@ export default function IlanlarScreen() {
                           <Text style={{ fontSize: 13, fontWeight: '600', color: paylasSure === val ? Colors.primary : Colors.onSurfaceVariant }}>{label}</Text>
                         </TouchableOpacity>
                       ))}
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+                      <TextInput
+                        value={paylasSure}
+                        onChangeText={v => setPaylasSure(v.replace(/\D/g, ''))}
+                        keyboardType="number-pad"
+                        style={{ width: 72, borderWidth: 1, borderColor: Colors.outline, borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
+                      />
+                      <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
+                      {parseInt(paylasSure) >= 24 && <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>({Math.round(parseInt(paylasSure) / 24)} gün)</Text>}
                     </View>
 
                     <TouchableOpacity
