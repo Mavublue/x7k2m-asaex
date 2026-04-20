@@ -2,24 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard, Share,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard,
 } from 'react-native';
-
-function genToken() {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 16; i++) result += chars[Math.floor(Math.random() * chars.length)];
-  return result;
-}
-
-function genPaketToken(ad: string) {
-  const trMap: Record<string, string> = { ğ:'g', ü:'u', ş:'s', ı:'i', ö:'o', ç:'c', İ:'i', Ğ:'g', Ü:'u', Ş:'s', Ö:'o', Ç:'c' };
-  const normalized = ad.toLowerCase().replace(/[ğüşıöçİĞÜŞÖÇ]/g, c => trMap[c] ?? c).replace(/[^a-z0-9]/g, '').slice(0, 10);
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let suffix = '';
-  for (let i = 0; i < 4; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
-  return `${normalized || 'ilan'}-${suffix}`;
-}
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
@@ -89,22 +73,6 @@ export default function MusteriDetayScreen() {
   const [pendingIlanlar, setPendingIlanlar] = useState<Ilan[]>([]);
   const [eslesiyorBulk, setEslesiyorBulk] = useState(false);
 
-  // Tab
-  const [aktifTab, setAktifTab] = useState<'detay' | 'paylas'>('detay');
-
-  // Link paylaşma (inline tab)
-  const [linkSaat, setLinkSaat] = useState('24');
-  const [linkTumIlanlar, setLinkTumIlanlar] = useState<Ilan[]>([]);
-  const [linkSecimIlanlar, setLinkSecimIlanlar] = useState<string[]>([]);
-  const [linkUrl, setLinkUrl] = useState<string | null>(null);
-  const [linkYukleniyor, setLinkYukleniyor] = useState(false);
-  const [linkIlanSearch, setLinkIlanSearch] = useState('');
-  const [linkFiltreTip, setLinkFiltreTip] = useState('');
-  const [linkFiltreKategori, setLinkFiltreKategori] = useState('');
-  const [paylasAltTab, setPaylasAltTab] = useState<'sec' | 'filtrele'>('sec');
-  const [linkFiyatMin, setLinkFiyatMin] = useState('');
-  const [linkFiyatMax, setLinkFiyatMax] = useState('');
-  const [linkFiltreIl, setLinkFiltreIl] = useState('');
 
   const fetchMusteri = useCallback(async () => {
     const { data } = await supabase.from('musteriler').select('*').eq('id', id).single();
@@ -228,64 +196,6 @@ export default function MusteriDetayScreen() {
     setPendingIlanlar([]);
     setEslesiyorBulk(false);
     fetchMusteri();
-  }
-
-  async function handlePaylasSekme() {
-    setAktifTab('paylas');
-    if (linkTumIlanlar.length === 0) {
-      setLinkYukleniyor(true);
-      const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').eq('musteri_gizle', false).order('olusturma_tarihi', { ascending: false });
-      setLinkTumIlanlar(data ?? []);
-      setLinkYukleniyor(false);
-    }
-  }
-
-  function toggleLinkIlan(ilanId: string) {
-    setLinkSecimIlanlar(prev =>
-      prev.includes(ilanId) ? prev.filter(x => x !== ilanId) : [...prev, ilanId]
-    );
-  }
-
-  async function handleLinkOlustur() {
-    if (linkSecimIlanlar.length === 0) { Alert.alert('Hata', 'En az bir ilan seçin.'); return; }
-    setLinkYukleniyor(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setLinkYukleniyor(false); return; }
-
-    const saatSayisi = parseInt(linkSaat);
-    const expiresAt = new Date(Date.now() + saatSayisi * 60 * 60 * 1000).toISOString();
-
-    // Müşteri token — varsa güncelle, yoksa oluştur
-    const { data: mevcutToken } = await supabase
-      .from('musteri_tokenler').select('token')
-      .eq('user_id', session.user.id).eq('musteri_id', id).single();
-
-    let musteriToken: string;
-    if (mevcutToken) {
-      musteriToken = mevcutToken.token;
-      await supabase.from('musteri_tokenler')
-        .update({ expires_at: expiresAt })
-        .eq('user_id', session.user.id).eq('musteri_id', id);
-    } else {
-      musteriToken = genToken();
-      await supabase.from('musteri_tokenler').insert({
-        token: musteriToken, user_id: session.user.id, musteri_id: id, expires_at: expiresAt,
-      });
-    }
-
-    // Her liste için benzersiz paket token
-    const paketToken = genPaketToken(ad);
-    const { error } = await supabase.from('paylasim_paketleri').insert({
-      token: paketToken,
-      ilan_ids: linkSecimIlanlar,
-      emlakci_id: session.user.id,
-      musteri_token: musteriToken,
-    });
-    if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
-
-    const webUrl = process.env.EXPO_PUBLIC_WEB_URL ?? '';
-    setLinkUrl(`${webUrl}/ozel-ilanlar/${paketToken}/${musteriToken}`);
-    setLinkYukleniyor(false);
   }
 
   async function handleEslesIptal(eslesmeId: string) {
@@ -541,25 +451,7 @@ export default function MusteriDetayScreen() {
             </>
           ) : (
             <>
-              {/* Tab Bar */}
-              <View style={styles.tabBar}>
-                <TouchableOpacity
-                  style={[styles.tabBtn, aktifTab === 'detay' && styles.tabBtnAktif]}
-                  onPress={() => setAktifTab('detay')}
-                >
-                  <Text style={[styles.tabBtnText, aktifTab === 'detay' && styles.tabBtnTextAktif]}>Detay</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.tabBtn, aktifTab === 'paylas' && styles.tabBtnAktif]}
-                  onPress={handlePaylasSekme}
-                >
-                  <Text style={[styles.tabBtnText, aktifTab === 'paylas' && styles.tabBtnTextAktif]}>İlan Paylaş</Text>
-                </TouchableOpacity>
-              </View>
-
-              {aktifTab === 'detay' ? (
-                <>
-                  {/* Bütçe & Konum Bilgisi */}
+                {/* Bütçe & Konum Bilgisi */}
                   <View style={styles.infoBox}>
                     {(butceMin || butceMax) ? (
                       <View style={styles.infoRow}>
@@ -687,173 +579,6 @@ export default function MusteriDetayScreen() {
                       <Text style={styles.ilanFiyat}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
                     </TouchableOpacity>
                   ))
-              )}
-                </>
-              ) : (
-                <>
-                  {!linkUrl ? (
-                    <>
-                      {/* Alt sekme: Elle Seç / Filtrele */}
-                      <View style={styles.paylasAltBar}>
-                        <TouchableOpacity
-                          style={[styles.paylasAltBtn, paylasAltTab === 'sec' && styles.paylasAltBtnAktif]}
-                          onPress={() => setPaylasAltTab('sec')}
-                        >
-                          <Text style={[styles.paylasAltBtnText, paylasAltTab === 'sec' && styles.paylasAltBtnTextAktif]}>Elle Seç</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.paylasAltBtn, paylasAltTab === 'filtrele' && styles.paylasAltBtnAktif]}
-                          onPress={() => setPaylasAltTab('filtrele')}
-                        >
-                          <Text style={[styles.paylasAltBtnText, paylasAltTab === 'filtrele' && styles.paylasAltBtnTextAktif]}>Filtrele</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {paylasAltTab === 'filtrele' && (
-                        <>
-                          <TextInput
-                            style={styles.modalSearch}
-                            placeholder="İlan ara..."
-                            placeholderTextColor={Colors.outlineVariant}
-                            value={linkIlanSearch}
-                            onChangeText={setLinkIlanSearch}
-                          />
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
-                            {['Satılık', 'Kiralık'].map(t => (
-                              <TouchableOpacity key={t} onPress={() => setLinkFiltreTip(linkFiltreTip === t ? '' : t)}
-                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreTip === t ? Colors.primary : Colors.outline, backgroundColor: linkFiltreTip === t ? Colors.primaryFixed : Colors.surface }}>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreTip === t ? Colors.primary : Colors.onSurfaceVariant }}>{t}</Text>
-                              </TouchableOpacity>
-                            ))}
-                            {['Daire','Villa','Arsa','Tarla','İşyeri','Otel','Müstakil Ev','Rezidans'].map(k => (
-                              <TouchableOpacity key={k} onPress={() => setLinkFiltreKategori(linkFiltreKategori === k ? '' : k)}
-                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreKategori === k ? Colors.primary : Colors.outline, backgroundColor: linkFiltreKategori === k ? Colors.primaryFixed : Colors.surface }}>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreKategori === k ? Colors.primary : Colors.onSurfaceVariant }}>{k}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
-                            <TextInput
-                              style={[styles.input, { flex: 1 }]}
-                              placeholder="Min ₺"
-                              placeholderTextColor={Colors.outlineVariant}
-                              value={linkFiyatMin}
-                              onChangeText={v => setLinkFiyatMin(v.replace(/\D/g, ''))}
-                              keyboardType="numeric"
-                            />
-                            <TextInput
-                              style={[styles.input, { flex: 1 }]}
-                              placeholder="Max ₺"
-                              placeholderTextColor={Colors.outlineVariant}
-                              value={linkFiyatMax}
-                              onChangeText={v => setLinkFiyatMax(v.replace(/\D/g, ''))}
-                              keyboardType="numeric"
-                            />
-                          </View>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
-                            {ILLER_LISTESI.map(il => (
-                              <TouchableOpacity key={il} onPress={() => setLinkFiltreIl(linkFiltreIl === il ? '' : il)}
-                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreIl === il ? Colors.primary : Colors.outline, backgroundColor: linkFiltreIl === il ? Colors.primaryFixed : Colors.surface }}>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreIl === il ? Colors.primary : Colors.onSurfaceVariant }}>{il}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </>
-                      )}
-
-                      {linkYukleniyor ? (
-                        <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
-                      ) : (
-                        (paylasAltTab === 'sec' ? linkTumIlanlar : linkTumIlanlar.filter(i => {
-                          const aramaOk = !linkIlanSearch || i.baslik?.toLowerCase().includes(linkIlanSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkIlanSearch.toLowerCase());
-                          const tipOk = !linkFiltreTip || i.tip === linkFiltreTip;
-                          const katOk = !linkFiltreKategori || i.kategori === linkFiltreKategori;
-                          const minOk = !linkFiyatMin || i.fiyat >= parseInt(linkFiyatMin);
-                          const maxOk = !linkFiyatMax || i.fiyat <= parseInt(linkFiyatMax);
-                          const ilOk = !linkFiltreIl || i.konum === linkFiltreIl;
-                          return aramaOk && tipOk && katOk && minOk && maxOk && ilOk;
-                        })).map(item => {
-                          const secili = linkSecimIlanlar.includes(item.id);
-                          return (
-                            <TouchableOpacity
-                              key={item.id}
-                              style={[styles.ilanKart, { marginBottom: Spacing.sm, backgroundColor: secili ? Colors.primaryFixed : Colors.surfaceContainerLowest }]}
-                              onPress={() => toggleLinkIlan(item.id)}
-                            >
-                              <View style={[styles.secimKutucuk, { borderColor: secili ? Colors.primary : Colors.outline, backgroundColor: secili ? Colors.primary : 'transparent' }]}>
-                                {secili && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
-                              </View>
-                              {item.fotograflar?.[0] ? (
-                                <R2Image source={item.fotograflar[0]} style={styles.ilanFoto} resizeMode="cover" size="sm" />
-                              ) : (
-                                <View style={styles.ilanFotoPlaceholder}>
-                                  <Text style={{ fontSize: 20 }}>🏠</Text>
-                                </View>
-                              )}
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.ilanBaslik} numberOfLines={1}>{item.baslik}</Text>
-                                <Text style={styles.ilanKonum}>📍 {item.konum}{item.ilce ? `, ${item.ilce}` : ''}</Text>
-                              </View>
-                              <Text style={styles.ilanFiyat}>₺{item.fiyat?.toLocaleString('tr-TR')}</Text>
-                            </TouchableOpacity>
-                          );
-                        })
-                      )}
-
-                      <View style={[styles.linkFooter, { marginTop: Spacing.md }]}>
-                        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                          {[{ saat: '1', label: '1 saat' }, { saat: '24', label: '1 gün' }, { saat: '72', label: '3 gün' }, { saat: '168', label: '7 gün' }].map(({ saat, label }) => (
-                            <TouchableOpacity key={saat} onPress={() => setLinkSaat(saat)}
-                              style={[styles.saatChip, linkSaat === saat && styles.saatChipActive]}>
-                              <Text style={[styles.saatChipText, linkSaat === saat && styles.saatChipTextActive]}>{label}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <TextInput
-                            value={linkSaat}
-                            onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
-                            keyboardType="number-pad"
-                            style={{ width: 72, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
-                          />
-                          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
-                          {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: '#9ca3af' }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>
-                            {linkSecimIlanlar.length > 0 ? `${linkSecimIlanlar.length} ilan seçildi` : 'İlan seçin'}
-                          </Text>
-                          <TouchableOpacity
-                            style={[styles.eslesBulkBtn, { opacity: linkSecimIlanlar.length === 0 || linkYukleniyor ? 0.5 : 1 }]}
-                            onPress={handleLinkOlustur}
-                            disabled={linkSecimIlanlar.length === 0 || linkYukleniyor}
-                          >
-                            {linkYukleniyor
-                              ? <ActivityIndicator size="small" color="#fff" />
-                              : <Text style={styles.eslesBulkBtnText}>Link Oluştur{linkSecimIlanlar.length > 0 ? ` (${linkSecimIlanlar.length})` : ''}</Text>
-                            }
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '700', marginBottom: 16 }}>
-                        ✓ Link oluşturuldu — {linkSecimIlanlar.length} ilan
-                      </Text>
-                      <View style={styles.linkKart}>
-                        <Text style={styles.linkKartUrl} numberOfLines={3}>{linkUrl}</Text>
-                        <TouchableOpacity style={styles.linkKopyalaBtn} onPress={() => Share.share({ message: linkUrl! })}>
-                          <Text style={styles.linkKopyalaBtnText}>Paylaş / Kopyala</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <TouchableOpacity style={[styles.temizleBtn, { marginTop: 12, alignSelf: 'stretch', alignItems: 'center' }]}
-                        onPress={() => { setLinkUrl(null); setLinkSecimIlanlar([]); setLinkSaat('24'); }}>
-                        <Text style={styles.temizleBtnText}>Yeni Link Oluştur</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </>
               )}
             </>
           )}
@@ -1135,29 +860,6 @@ const styles = StyleSheet.create({
   secimKutucuk: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   eslesBulkBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 9 },
   eslesBulkBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-
-  paylasAltBar: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, padding: 2, gap: 2, marginBottom: Spacing.sm },
-  paylasAltBtn: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: Radius.sm },
-  paylasAltBtnAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-  paylasAltBtnText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
-  paylasAltBtnTextAktif: { color: Colors.primary },
-  tabBar: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 3, gap: 3 },
-  tabBtn: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: Radius.md },
-  tabBtnAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
-  tabBtnText: { fontSize: 13, fontWeight: '600', color: Colors.onSurfaceVariant },
-  tabBtnTextAktif: { color: Colors.primary },
-
-  linkFooter: { borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, backgroundColor: Colors.surface },
-  saatChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1.5, borderColor: Colors.outline, backgroundColor: Colors.surface },
-  saatChipActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFixed },
-  saatChipText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
-  saatChipTextActive: { color: Colors.primary },
-
-  linkKart: { backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.surfaceContainerLow },
-  linkKartBaslik: { fontSize: 14, fontWeight: '700', color: Colors.onSurface, marginBottom: 6 },
-  linkKartUrl: { fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 8 },
-  linkKopyalaBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-start' },
-  linkKopyalaBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 
   etiketInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, width: 80 },
   etiketHash: { fontSize: 16, fontWeight: '700', color: Colors.primary, marginRight: 1 },
