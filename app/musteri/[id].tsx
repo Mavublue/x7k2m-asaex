@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard, Share,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -72,6 +72,15 @@ export default function MusteriDetayScreen() {
   const [ilanSearch, setIlanSearch] = useState('');
   const [pendingIlanlar, setPendingIlanlar] = useState<Ilan[]>([]);
   const [eslesiyorBulk, setEslesiyorBulk] = useState(false);
+
+  // Link paylaş
+  const [linkModal, setLinkModal] = useState(false);
+  const [linkTumIlanlar, setLinkTumIlanlar] = useState<Ilan[]>([]);
+  const [linkSecimIds, setLinkSecimIds] = useState<string[]>([]);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [linkYukleniyor, setLinkYukleniyor] = useState(false);
+  const [linkSearch, setLinkSearch] = useState('');
+  const [linkSaat, setLinkSaat] = useState('24');
 
 
   const fetchMusteri = useCallback(async () => {
@@ -208,6 +217,53 @@ export default function MusteriDetayScreen() {
     ]);
   }
 
+  async function handleLinkModalAc() {
+    setLinkModal(true);
+    setLinkUrl(null);
+    setLinkSecimIds([]);
+    setLinkSearch('');
+    if (linkTumIlanlar.length === 0) {
+      setLinkYukleniyor(true);
+      const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').eq('musteri_gizle', false).order('olusturma_tarihi', { ascending: false });
+      setLinkTumIlanlar(data ?? []);
+      setLinkYukleniyor(false);
+    }
+  }
+
+  function toggleLinkIlan(ilanId: string) {
+    setLinkSecimIds(prev => prev.includes(ilanId) ? prev.filter(x => x !== ilanId) : [...prev, ilanId]);
+  }
+
+  async function handleLinkOlustur() {
+    if (linkSecimIds.length === 0) return;
+    setLinkYukleniyor(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setLinkYukleniyor(false); return; }
+    const expiresAt = new Date(Date.now() + parseInt(linkSaat) * 60 * 60 * 1000).toISOString();
+    const { data: mevcutMt } = await supabase.from('musteri_tokenler').select('token').eq('user_id', session.user.id).eq('musteri_id', id).single();
+    let musteriToken: string;
+    if (mevcutMt) {
+      musteriToken = mevcutMt.token;
+      await supabase.from('musteri_tokenler').update({ expires_at: expiresAt }).eq('user_id', session.user.id).eq('musteri_id', id);
+    } else {
+      const arr = new Uint8Array(12);
+      crypto.getRandomValues(arr);
+      musteriToken = Array.from(arr).map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 16);
+      await supabase.from('musteri_tokenler').insert({ token: musteriToken, user_id: session.user.id, musteri_id: id, expires_at: expiresAt });
+    }
+    const trMap: Record<string, string> = { ğ:'g', ü:'u', ş:'s', ı:'i', ö:'o', ç:'c', İ:'i', Ğ:'g', Ü:'u', Ş:'s', Ö:'o', Ç:'c' };
+    const adNorm = (musteri?.ad ?? '').toLowerCase().replace(/[ğüşıöçİĞÜŞÖÇ]/g, (c: string) => trMap[c] ?? c).replace(/[^a-z0-9]/g, '').slice(0, 10);
+    const arr2 = new Uint8Array(3);
+    crypto.getRandomValues(arr2);
+    const suffix = Array.from(arr2).map(b => b.toString(36)).join('').slice(0, 4);
+    const paketToken = `${adNorm || 'ilan'}-${suffix}`;
+    const { error } = await supabase.from('paylasim_paketleri').insert({ token: paketToken, ilan_ids: linkSecimIds, emlakci_id: session.user.id, musteri_token: musteriToken, expires_at: expiresAt });
+    if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    const url = `https://www.emlak-otomasyon.com/ozel-ilanlar/${paketToken}/${musteriToken}`;
+    setLinkUrl(url);
+    setLinkYukleniyor(false);
+  }
+
   async function handleSil() {
     Alert.alert('Müşteriyi Sil', 'Bu müşteriyi silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
@@ -252,6 +308,9 @@ export default function MusteriDetayScreen() {
             <>
               <TouchableOpacity style={styles.duzenleBtn} onPress={() => setDuzenle(true)}>
                 <Text style={styles.duzenleBtnText}>✏️ Düzenle</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkBtn} onPress={handleLinkModalAc}>
+                <Text style={styles.linkBtnText}>🔗</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.silBtn} onPress={handleSil}>
                 <Text style={styles.silBtnText}>🗑️</Text>
@@ -730,6 +789,84 @@ export default function MusteriDetayScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Link Paylaş Modali */}
+      <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => setLinkModal(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalDimmer} onPress={() => setLinkModal(false)} />
+          <View style={[styles.modalPanel, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setLinkModal(false)}>
+                <Text style={styles.modalKapat}>✕</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalBaslik}>🔗 Link Paylaş</Text>
+              <View style={{ width: 32 }} />
+            </View>
+            {!linkUrl ? (
+              <>
+                <TextInput
+                  style={styles.modalSearch}
+                  placeholder="İlan ara..."
+                  placeholderTextColor={Colors.outlineVariant}
+                  value={linkSearch}
+                  onChangeText={setLinkSearch}
+                />
+                <FlatList
+                  data={linkTumIlanlar.filter(i => !linkSearch || i.baslik?.toLowerCase().includes(linkSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkSearch.toLowerCase()))}
+                  keyExtractor={item => item.id}
+                  renderItem={({ item }) => {
+                    const secili = linkSecimIds.includes(item.id);
+                    return (
+                      <TouchableOpacity onPress={() => toggleLinkIlan(item.id)} style={[styles.modalItem, secili && { backgroundColor: Colors.primaryFixed }]}>
+                        <View style={[styles.secimKutucuk, { borderColor: secili ? Colors.primary : Colors.outline, backgroundColor: secili ? Colors.primary : Colors.surface }]}>
+                          {secili && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.modalItemBaslik} numberOfLines={1}>{item.baslik}</Text>
+                          <Text style={styles.modalItemAlt}>₺{item.fiyat?.toLocaleString('tr-TR')} · {item.kategori}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }}
+                  ListEmptyComponent={linkYukleniyor ? <ActivityIndicator style={{ margin: 24 }} color={Colors.primary} /> : <Text style={styles.modalBosTxt}>Aktif ilan bulunamadı</Text>}
+                />
+                <View style={{ paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, backgroundColor: Colors.surface }}>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                    {([1, 24, 72, 168] as const).map(s => (
+                      <TouchableOpacity key={s} onPress={() => setLinkSaat(String(s))} style={[styles.saatBtn, linkSaat === String(s) && styles.saatBtnAktif]}>
+                        <Text style={[styles.saatBtnText, linkSaat === String(s) && styles.saatBtnTextAktif]}>
+                          {s === 1 ? '1 saat' : s === 24 ? '1 gün' : s === 72 ? '3 gün' : '7 gün'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>{linkSecimIds.length > 0 ? `${linkSecimIds.length} ilan seçildi` : 'İlan seçin'}</Text>
+                    <TouchableOpacity onPress={handleLinkOlustur} disabled={linkSecimIds.length === 0 || linkYukleniyor}
+                      style={[styles.eslesBulkBtn, { opacity: linkSecimIds.length === 0 ? 0.4 : 1 }]}>
+                      {linkYukleniyor ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.eslesBulkBtnText}>Link Oluştur{linkSecimIds.length > 0 ? ` (${linkSecimIds.length})` : ''}</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ padding: Spacing.xl }}>
+                <Text style={{ fontSize: 14, color: Colors.primary, fontWeight: '700', marginBottom: 12 }}>✓ Link oluşturuldu</Text>
+                <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, padding: Spacing.md, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }} selectable>{linkUrl}</Text>
+                </View>
+                <TouchableOpacity onPress={() => Share.share({ message: linkUrl! })} style={[styles.eslesBulkBtn, { marginBottom: 10 }]}>
+                  <Text style={styles.eslesBulkBtnText}>Paylaş / Kopyala</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSecimIds([]); setLinkSaat('24'); }}
+                  style={{ padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.outline, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -773,6 +910,12 @@ const styles = StyleSheet.create({
   duzenleBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
   silBtn: { backgroundColor: '#fee2e2', borderRadius: Radius.full, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   silBtnText: { fontSize: 14 },
+  linkBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  linkBtnText: { fontSize: 14 },
+  saatBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.full, borderWidth: 1.5, borderColor: Colors.outline, backgroundColor: Colors.surface },
+  saatBtnAktif: { borderColor: Colors.primary, backgroundColor: Colors.primaryFixed },
+  saatBtnText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
+  saatBtnTextAktif: { color: Colors.primary },
 
   profilBox: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
@@ -853,8 +996,11 @@ const styles = StyleSheet.create({
   modalKapat: { fontSize: 20, color: Colors.onSurface, width: 32 },
   modalBaslik: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   modalSearch: { margin: Spacing.md, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 10, fontSize: 14, color: Colors.onSurface },
-  modalItem: { paddingHorizontal: Spacing.xl, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
+  modalItem: { paddingHorizontal: Spacing.xl, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow, flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalItemText: { fontSize: 15, color: Colors.onSurface },
+  modalItemBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
+  modalItemAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  modalBosTxt: { textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 13, padding: Spacing.xl },
   modalFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, backgroundColor: Colors.surface },
 
   secimKutucuk: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
