@@ -89,8 +89,10 @@ export default function MusteriDetayScreen() {
   const [pendingIlanlar, setPendingIlanlar] = useState<Ilan[]>([]);
   const [eslesiyorBulk, setEslesiyorBulk] = useState(false);
 
-  // Link paylaşma modal
-  const [linkModal, setLinkModal] = useState(false);
+  // Tab
+  const [aktifTab, setAktifTab] = useState<'detay' | 'paylas'>('detay');
+
+  // Link paylaşma (inline tab)
   const [linkSaat, setLinkSaat] = useState('24');
   const [linkTumIlanlar, setLinkTumIlanlar] = useState<Ilan[]>([]);
   const [linkSecimIlanlar, setLinkSecimIlanlar] = useState<string[]>([]);
@@ -224,16 +226,14 @@ export default function MusteriDetayScreen() {
     fetchMusteri();
   }
 
-  async function handleLinkModalAc() {
-    const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').eq('musteri_gizle', false).order('olusturma_tarihi', { ascending: false });
-    setLinkTumIlanlar(data ?? []);
-    setLinkSecimIlanlar([]);
-    setLinkUrl(null);
-    setLinkSaat('24');
-    setLinkIlanSearch('');
-    setLinkFiltreTip('');
-    setLinkFiltreKategori('');
-    setLinkModal(true);
+  async function handlePaylasSekme() {
+    setAktifTab('paylas');
+    if (linkTumIlanlar.length === 0) {
+      setLinkYukleniyor(true);
+      const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').eq('musteri_gizle', false).order('olusturma_tarihi', { ascending: false });
+      setLinkTumIlanlar(data ?? []);
+      setLinkYukleniyor(false);
+    }
   }
 
   function toggleLinkIlan(ilanId: string) {
@@ -537,86 +537,99 @@ export default function MusteriDetayScreen() {
             </>
           ) : (
             <>
-              {/* Bütçe & Konum Bilgisi */}
-              <View style={styles.infoBox}>
-                {(butceMin || butceMax) ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Bütçe</Text>
-                    <Text style={styles.infoDeger}>
-                      ₺{butceMin || '?'} – ₺{butceMax || '?'}
-                    </Text>
-                  </View>
-                ) : null}
-                {konumlar.length > 0 ? (
-                  <View style={[styles.infoRow, { alignItems: 'flex-start' }]}>
-                    <Text style={[styles.infoLabel, { paddingTop: 2 }]}>Tercih Konum</Text>
-                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                      {(konumAcik ? konumlar : konumlar.slice(0, 2)).map((k, i) => (
-                        <Text key={i} style={[styles.infoDeger, { textAlign: 'right' }]}>📍 {k}</Text>
-                      ))}
-                      {konumlar.length > 2 && (
-                        <TouchableOpacity onPress={() => setKonumAcik(p => !p)}>
-                          <Text style={{ fontSize: 12, color: Colors.primary, marginTop: 2 }}>
-                            {konumAcik ? 'Daha az göster' : `+${konumlar.length - 2} daha...`}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                ) : null}
-                {tercihTipler.length > 0 ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Tercih Tip</Text>
-                    <Text style={styles.infoDeger}>{tercihTipler.join(', ')}</Text>
-                  </View>
-                ) : null}
-                {minOda ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Min. Oda</Text>
-                    <Text style={styles.infoDeger}>{minOda}</Text>
-                  </View>
-                ) : null}
-                {binaYaslari.length > 0 ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Bina Yaşı</Text>
-                    <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{binaYaslari.join(', ')}</Text>
-                  </View>
-                ) : null}
-                {ozelIstekler.length > 0 ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Özel İstekler</Text>
-                    <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{ozelIstekler.join(', ')}</Text>
-                  </View>
-                ) : null}
-                {takipTarihi ? (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Takip Tarihi</Text>
-                    <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
-                  </View>
-                ) : null}
-                {notlar ? (
-                  <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                    <Text style={styles.infoLabel}>Notlar</Text>
-                    <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{notlar}</Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Link Paylaş */}
-              <TouchableOpacity style={styles.linkPaylasBtn} onPress={handleLinkModalAc}>
-                <Text style={styles.linkPaylasBtnText}>🔗 İlan Link Paylaş</Text>
-              </TouchableOpacity>
-
-              {/* Elle Eşleştirilenler */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.sm }}>
-                <Text style={styles.sectionTitle}>Elle Eşleştirilenler</Text>
-                <TouchableOpacity style={styles.eslesBtn} onPress={handleIlanModalAc}>
-                  <Text style={styles.eslesBtnText}>+ İlan Eşleştir</Text>
+              {/* Tab Bar */}
+              <View style={styles.tabBar}>
+                <TouchableOpacity
+                  style={[styles.tabBtn, aktifTab === 'detay' && styles.tabBtnAktif]}
+                  onPress={() => setAktifTab('detay')}
+                >
+                  <Text style={[styles.tabBtnText, aktifTab === 'detay' && styles.tabBtnTextAktif]}>Detay</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabBtn, aktifTab === 'paylas' && styles.tabBtnAktif]}
+                  onPress={handlePaylasSekme}
+                >
+                  <Text style={[styles.tabBtnText, aktifTab === 'paylas' && styles.tabBtnTextAktif]}>İlan Paylaş</Text>
                 </TouchableOpacity>
               </View>
-              {elleEslesen.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>Elle eşleştirilmiş ilan yok</Text>
+
+              {aktifTab === 'detay' ? (
+                <>
+                  {/* Bütçe & Konum Bilgisi */}
+                  <View style={styles.infoBox}>
+                    {(butceMin || butceMax) ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Bütçe</Text>
+                        <Text style={styles.infoDeger}>
+                          ₺{butceMin || '?'} – ₺{butceMax || '?'}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {konumlar.length > 0 ? (
+                      <View style={[styles.infoRow, { alignItems: 'flex-start' }]}>
+                        <Text style={[styles.infoLabel, { paddingTop: 2 }]}>Tercih Konum</Text>
+                        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                          {(konumAcik ? konumlar : konumlar.slice(0, 2)).map((k, i) => (
+                            <Text key={i} style={[styles.infoDeger, { textAlign: 'right' }]}>📍 {k}</Text>
+                          ))}
+                          {konumlar.length > 2 && (
+                            <TouchableOpacity onPress={() => setKonumAcik(p => !p)}>
+                              <Text style={{ fontSize: 12, color: Colors.primary, marginTop: 2 }}>
+                                {konumAcik ? 'Daha az göster' : `+${konumlar.length - 2} daha...`}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    ) : null}
+                    {tercihTipler.length > 0 ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Tercih Tip</Text>
+                        <Text style={styles.infoDeger}>{tercihTipler.join(', ')}</Text>
+                      </View>
+                    ) : null}
+                    {minOda ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Min. Oda</Text>
+                        <Text style={styles.infoDeger}>{minOda}</Text>
+                      </View>
+                    ) : null}
+                    {binaYaslari.length > 0 ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Bina Yaşı</Text>
+                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{binaYaslari.join(', ')}</Text>
+                      </View>
+                    ) : null}
+                    {ozelIstekler.length > 0 ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Özel İstekler</Text>
+                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{ozelIstekler.join(', ')}</Text>
+                      </View>
+                    ) : null}
+                    {takipTarihi ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Takip Tarihi</Text>
+                        <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
+                      </View>
+                    ) : null}
+                    {notlar ? (
+                      <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+                        <Text style={styles.infoLabel}>Notlar</Text>
+                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{notlar}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Elle Eşleştirilenler */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.sm }}>
+                    <Text style={styles.sectionTitle}>Elle Eşleştirilenler</Text>
+                    <TouchableOpacity style={styles.eslesBtn} onPress={handleIlanModalAc}>
+                      <Text style={styles.eslesBtnText}>+ İlan Eşleştir</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {elleEslesen.length === 0 ? (
+                    <View style={styles.emptyBox}>
+                      <Text style={styles.emptyText}>Elle eşleştirilmiş ilan yok</Text>
                 </View>
               ) : (
                 elleEslesen.map(({ id: eslesmeId, ilan }) => ilan ? (
@@ -670,6 +683,122 @@ export default function MusteriDetayScreen() {
                       <Text style={styles.ilanFiyat}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
                     </TouchableOpacity>
                   ))
+              )}
+                </>
+              ) : (
+                <>
+                  {!linkUrl ? (
+                    <>
+                      <TextInput
+                        style={styles.modalSearch}
+                        placeholder="İlan ara..."
+                        placeholderTextColor={Colors.outlineVariant}
+                        value={linkIlanSearch}
+                        onChangeText={setLinkIlanSearch}
+                      />
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
+                        {['Satılık', 'Kiralık'].map(t => (
+                          <TouchableOpacity key={t} onPress={() => setLinkFiltreTip(linkFiltreTip === t ? '' : t)}
+                            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreTip === t ? Colors.primary : Colors.outline, backgroundColor: linkFiltreTip === t ? Colors.primaryFixed : Colors.surface }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreTip === t ? Colors.primary : Colors.onSurfaceVariant }}>{t}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        {['Daire','Villa','Arsa','Tarla','İşyeri','Otel','Müstakil Ev','Rezidans'].map(k => (
+                          <TouchableOpacity key={k} onPress={() => setLinkFiltreKategori(linkFiltreKategori === k ? '' : k)}
+                            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreKategori === k ? Colors.primary : Colors.outline, backgroundColor: linkFiltreKategori === k ? Colors.primaryFixed : Colors.surface }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreKategori === k ? Colors.primary : Colors.onSurfaceVariant }}>{k}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      {linkYukleniyor ? (
+                        <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
+                      ) : (
+                        linkTumIlanlar.filter(i => {
+                          const aramaOk = !linkIlanSearch || i.baslik?.toLowerCase().includes(linkIlanSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkIlanSearch.toLowerCase());
+                          const tipOk = !linkFiltreTip || i.tip === linkFiltreTip;
+                          const katOk = !linkFiltreKategori || i.kategori === linkFiltreKategori;
+                          return aramaOk && tipOk && katOk;
+                        }).map(item => {
+                          const secili = linkSecimIlanlar.includes(item.id);
+                          return (
+                            <TouchableOpacity
+                              key={item.id}
+                              style={[styles.ilanKart, { marginBottom: Spacing.sm, backgroundColor: secili ? Colors.primaryFixed : Colors.surfaceContainerLowest }]}
+                              onPress={() => toggleLinkIlan(item.id)}
+                            >
+                              <View style={[styles.secimKutucuk, { borderColor: secili ? Colors.primary : Colors.outline, backgroundColor: secili ? Colors.primary : 'transparent' }]}>
+                                {secili && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
+                              </View>
+                              {item.fotograflar?.[0] ? (
+                                <R2Image source={item.fotograflar[0]} style={styles.ilanFoto} resizeMode="cover" size="sm" />
+                              ) : (
+                                <View style={styles.ilanFotoPlaceholder}>
+                                  <Text style={{ fontSize: 20 }}>🏠</Text>
+                                </View>
+                              )}
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.ilanBaslik} numberOfLines={1}>{item.baslik}</Text>
+                                <Text style={styles.ilanKonum}>📍 {item.konum}{item.ilce ? `, ${item.ilce}` : ''}</Text>
+                              </View>
+                              <Text style={styles.ilanFiyat}>₺{item.fiyat?.toLocaleString('tr-TR')}</Text>
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+                      <View style={[styles.linkFooter, { marginTop: Spacing.md }]}>
+                        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+                          {[{ saat: '1', label: '1 saat' }, { saat: '24', label: '1 gün' }, { saat: '72', label: '3 gün' }, { saat: '168', label: '7 gün' }].map(({ saat, label }) => (
+                            <TouchableOpacity key={saat} onPress={() => setLinkSaat(saat)}
+                              style={[styles.saatChip, linkSaat === saat && styles.saatChipActive]}>
+                              <Text style={[styles.saatChipText, linkSaat === saat && styles.saatChipTextActive]}>{label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <TextInput
+                            value={linkSaat}
+                            onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
+                            keyboardType="number-pad"
+                            style={{ width: 72, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
+                          />
+                          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
+                          {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: '#9ca3af' }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>
+                            {linkSecimIlanlar.length > 0 ? `${linkSecimIlanlar.length} ilan seçildi` : 'İlan seçin'}
+                          </Text>
+                          <TouchableOpacity
+                            style={[styles.eslesBulkBtn, { opacity: linkSecimIlanlar.length === 0 || linkYukleniyor ? 0.5 : 1 }]}
+                            onPress={handleLinkOlustur}
+                            disabled={linkSecimIlanlar.length === 0 || linkYukleniyor}
+                          >
+                            {linkYukleniyor
+                              ? <ActivityIndicator size="small" color="#fff" />
+                              : <Text style={styles.eslesBulkBtnText}>Link Oluştur{linkSecimIlanlar.length > 0 ? ` (${linkSecimIlanlar.length})` : ''}</Text>
+                            }
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '700', marginBottom: 16 }}>
+                        ✓ Link oluşturuldu — {linkSecimIlanlar.length} ilan
+                      </Text>
+                      <View style={styles.linkKart}>
+                        <Text style={styles.linkKartUrl} numberOfLines={3}>{linkUrl}</Text>
+                        <TouchableOpacity style={styles.linkKopyalaBtn} onPress={() => Share.share({ message: linkUrl! })}>
+                          <Text style={styles.linkKopyalaBtnText}>Paylaş / Kopyala</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity style={[styles.temizleBtn, { marginTop: 12, alignSelf: 'stretch', alignItems: 'center' }]}
+                        onPress={() => { setLinkUrl(null); setLinkSecimIlanlar([]); setLinkSaat('24'); }}>
+                        <Text style={styles.temizleBtnText}>Yeni Link Oluştur</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </>
               )}
             </>
           )}
@@ -750,142 +879,6 @@ export default function MusteriDetayScreen() {
                 }
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Link Paylaşma Modali */}
-      <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => { setLinkModal(false); setLinkUrl(null); }}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalDimmer} onPress={() => { setLinkModal(false); setLinkUrl(null); }} />
-          <View style={[styles.modalPanel, { maxHeight: '88%' }]}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => { setLinkModal(false); setLinkUrl(null); }}>
-                <Text style={styles.modalKapat}>✕</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalBaslik}>🔗 İlan Link Paylaş</Text>
-              <View style={{ width: 32 }} />
-            </View>
-
-            {!linkUrl ? (
-              <>
-                <TextInput
-                  style={styles.modalSearch}
-                  placeholder="İlan ara..."
-                  placeholderTextColor={Colors.outlineVariant}
-                  value={linkIlanSearch}
-                  onChangeText={setLinkIlanSearch}
-                />
-                {/* Filtre chip'leri */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: Spacing.md, marginBottom: 6 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
-                  {['Satılık', 'Kiralık'].map(t => (
-                    <TouchableOpacity key={t} onPress={() => setLinkFiltreTip(linkFiltreTip === t ? '' : t)}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreTip === t ? Colors.primary : Colors.outline, backgroundColor: linkFiltreTip === t ? Colors.primaryFixed : Colors.surface }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreTip === t ? Colors.primary : Colors.onSurfaceVariant }}>{t}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  {['Daire','Villa','Arsa','Tarla','İşyeri','Otel','Müstakil Ev','Rezidans'].map(k => (
-                    <TouchableOpacity key={k} onPress={() => setLinkFiltreKategori(linkFiltreKategori === k ? '' : k)}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreKategori === k ? Colors.primary : Colors.outline, backgroundColor: linkFiltreKategori === k ? Colors.primaryFixed : Colors.surface }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreKategori === k ? Colors.primary : Colors.onSurfaceVariant }}>{k}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <FlatList
-                  data={linkTumIlanlar.filter(i => {
-                    const aramaOk = !linkIlanSearch || i.baslik?.toLowerCase().includes(linkIlanSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkIlanSearch.toLowerCase());
-                    const tipOk = !linkFiltreTip || i.tip === linkFiltreTip;
-                    const katOk = !linkFiltreKategori || i.kategori === linkFiltreKategori;
-                    return aramaOk && tipOk && katOk;
-                  })}
-                  keyExtractor={item => item.id}
-                  renderItem={({ item }) => {
-                    const secili = linkSecimIlanlar.includes(item.id);
-                    return (
-                      <TouchableOpacity
-                        style={[styles.ilanKart, { marginHorizontal: Spacing.md, marginBottom: Spacing.sm, backgroundColor: secili ? Colors.primaryFixed : Colors.surfaceContainerLowest }]}
-                        onPress={() => toggleLinkIlan(item.id)}
-                      >
-                        <View style={[styles.secimKutucuk, { borderColor: secili ? Colors.primary : Colors.outline, backgroundColor: secili ? Colors.primary : 'transparent' }]}>
-                          {secili && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
-                        </View>
-                        {item.fotograflar?.[0] ? (
-                          <R2Image source={item.fotograflar[0]} style={styles.ilanFoto} resizeMode="cover" size="sm" />
-                        ) : (
-                          <View style={styles.ilanFotoPlaceholder}>
-                            <Text style={{ fontSize: 20 }}>🏠</Text>
-                          </View>
-                        )}
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.ilanBaslik} numberOfLines={1}>{item.baslik}</Text>
-                          <Text style={styles.ilanKonum}>📍 {item.konum}{item.ilce ? `, ${item.ilce}` : ''}</Text>
-                        </View>
-                        <Text style={styles.ilanFiyat}>₺{item.fiyat?.toLocaleString('tr-TR')}</Text>
-                      </TouchableOpacity>
-                    );
-                  }}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: 80 }}
-                />
-                {/* Süre seçimi */}
-                <View style={styles.linkFooter}>
-                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                    {[
-                      { saat: '1', label: '1 saat' },
-                      { saat: '24', label: '1 gün' },
-                      { saat: '72', label: '3 gün' },
-                      { saat: '168', label: '7 gün' },
-                    ].map(({ saat, label }) => (
-                      <TouchableOpacity key={saat} onPress={() => setLinkSaat(saat)}
-                        style={[styles.saatChip, linkSaat === saat && styles.saatChipActive]}>
-                        <Text style={[styles.saatChipText, linkSaat === saat && styles.saatChipTextActive]}>{label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <TextInput
-                      value={linkSaat}
-                      onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
-                      keyboardType="number-pad"
-                      style={{ width: 72, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
-                    />
-                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
-                    {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: '#9ca3af' }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>
-                      {linkSecimIlanlar.length > 0 ? `${linkSecimIlanlar.length} ilan seçildi` : 'İlan seçin'}
-                    </Text>
-                    <TouchableOpacity
-                      style={[styles.eslesBulkBtn, { opacity: linkSecimIlanlar.length === 0 || linkYukleniyor ? 0.5 : 1 }]}
-                      onPress={handleLinkOlustur}
-                      disabled={linkSecimIlanlar.length === 0 || linkYukleniyor}
-                    >
-                      {linkYukleniyor
-                        ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={styles.eslesBulkBtnText}>Link Oluştur{linkSecimIlanlar.length > 0 ? ` (${linkSecimIlanlar.length})` : ''}</Text>
-                      }
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </>
-            ) : (
-              <ScrollView contentContainerStyle={{ padding: Spacing.xl, paddingBottom: 32 }}>
-                <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '700', marginBottom: 16 }}>
-                  ✓ Link oluşturuldu — {linkSecimIlanlar.length} ilan
-                </Text>
-                <View style={styles.linkKart}>
-                  <Text style={styles.linkKartUrl} numberOfLines={3}>{linkUrl}</Text>
-                  <TouchableOpacity style={styles.linkKopyalaBtn} onPress={() => Share.share({ message: linkUrl! })}>
-                    <Text style={styles.linkKopyalaBtnText}>Paylaş / Kopyala</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity style={[styles.temizleBtn, { marginTop: 12, alignSelf: 'stretch', alignItems: 'center' }]}
-                  onPress={() => { setLinkUrl(null); setLinkSecimIlanlar([]); setLinkSaat('24'); }}>
-                  <Text style={styles.temizleBtnText}>Yeni Link Oluştur</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
           </View>
         </View>
       </Modal>
@@ -1088,8 +1081,11 @@ const styles = StyleSheet.create({
   eslesBulkBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 9 },
   eslesBulkBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  linkPaylasBtn: { backgroundColor: 'rgba(59,130,246,0.1)', borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 10, alignItems: 'center', marginTop: Spacing.sm },
-  linkPaylasBtnText: { fontSize: 14, fontWeight: '700', color: '#3b82f6' },
+  tabBar: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 3, gap: 3 },
+  tabBtn: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: Radius.md },
+  tabBtnAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  tabBtnText: { fontSize: 13, fontWeight: '600', color: Colors.onSurfaceVariant },
+  tabBtnTextAktif: { color: Colors.primary },
 
   linkFooter: { borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, backgroundColor: Colors.surface },
   saatChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1.5, borderColor: Colors.outline, backgroundColor: Colors.surface },
