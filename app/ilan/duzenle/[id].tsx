@@ -101,6 +101,7 @@ export default function IlanDuzenleScreen() {
   const [secilenOzellikler, setSecilenOzellikler] = useState<string[]>([]);
   const [binaYasi, setBinaYasi] = useState('');
   const [banyoSayisi, setBanyoSayisi] = useState('');
+  const [musteriGizle, setMusteriGizle] = useState(false);
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
 
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
@@ -137,6 +138,7 @@ export default function IlanDuzenleScreen() {
         setSecilenOzellikler((ilan as any).ozellikler ? (ilan as any).ozellikler.split(',') : []);
         setBinaYasi(ilan.bina_yasi ?? '');
         setBanyoSayisi((ilan as any).banyo_sayisi?.toString() ?? '');
+        setMusteriGizle((ilan as any).musteri_gizle ?? false);
         setLat(ilan.lat?.toString() ?? '');
         setLng(ilan.lng?.toString() ?? '');
         if (ilan.musteri_lat && ilan.musteri_lng) {
@@ -221,6 +223,7 @@ export default function IlanDuzenleScreen() {
       bina_yasi: binaYasi || null,
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
+      musteri_gizle: musteriGizle,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
       musteri_lat: (musteriKonumAktif && musteriLat) ? parseFloat(musteriLat) : null,
@@ -435,6 +438,17 @@ export default function IlanDuzenleScreen() {
             </View>
           </FormGroup>
 
+          {/* Müşteriye Gizle */}
+          <TouchableOpacity style={styles.gizleRow} onPress={() => setMusteriGizle(v => !v)} activeOpacity={0.7}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Müşteriye Gizle</Text>
+              <Text style={styles.gizleAlt}>Bu ilan toplu paylaşımlarda görünmez</Text>
+            </View>
+            <View style={[styles.tikBox, musteriGizle && styles.tikBoxAktif]}>
+              {musteriGizle && <Text style={styles.tikIsaret}>✓</Text>}
+            </View>
+          </TouchableOpacity>
+
           {tumOzellikler.length > 0 && (
             <FormGroup label="Özellikler">
               <View style={styles.chipRow}>
@@ -626,6 +640,8 @@ const styles = StyleSheet.create({
   inputErr: { borderWidth: 1.5, borderColor: '#E53935' },
   chipRowErr: { borderWidth: 1.5, borderColor: '#E53935', borderRadius: 10, padding: 6 },
   errText: { fontSize: 12, color: '#E53935', marginTop: 4, fontWeight: '500' },
+  gizleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: Spacing.lg, gap: 12 },
+  gizleAlt: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: { borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow },
   chipActive: { backgroundColor: Colors.primaryFixed },

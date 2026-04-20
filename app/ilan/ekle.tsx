@@ -75,6 +75,7 @@ export default function IlanEkleScreen() {
   const [secilenOzellikler, setSecilenOzellikler] = useState<string[]>([]);
   const [binaYasi, setBinaYasi] = useState('');
   const [banyoSayisi, setBanyoSayisi] = useState('');
+  const [musteriGizle, setMusteriGizle] = useState(false);
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
@@ -194,6 +195,7 @@ export default function IlanEkleScreen() {
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
       fotograflar: fotograflar.length > 0 ? fotograflar : null,
+      musteri_gizle: musteriGizle,
     });
     if (error) {
       Alert.alert('Hata', error.message);
@@ -463,6 +465,17 @@ export default function IlanEkleScreen() {
               })}
             </View>
           </FormGroup>
+
+          {/* Müşteriye Gizle */}
+          <TouchableOpacity style={styles.gizleRow} onPress={() => setMusteriGizle(v => !v)} activeOpacity={0.7}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Müşteriye Gizle</Text>
+              <Text style={styles.gizleAlt}>Bu ilan toplu paylaşımlarda görünmez</Text>
+            </View>
+            <View style={[styles.tikBox, musteriGizle && styles.tikBoxAktif]}>
+              {musteriGizle && <Text style={styles.tikIsaret}>✓</Text>}
+            </View>
+          </TouchableOpacity>
 
           {/* Özellikler */}
           {tumOzellikler.length > 0 && (
@@ -773,6 +786,8 @@ const styles = StyleSheet.create({
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
 
+  gizleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: Spacing.lg, gap: 12 },
+  gizleAlt: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
   btnRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
   taslakBtn: {
     flex: 1, backgroundColor: Colors.surfaceContainerLow,

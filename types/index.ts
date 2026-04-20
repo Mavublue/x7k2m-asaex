@@ -10,6 +10,7 @@ export interface Ilan {
   tip: 'Satılık' | 'Kiralık';
   durum?: 'Aktif' | 'İptal';
   kategori: 'Daire' | 'Villa' | 'Arsa' | 'Tarla' | 'İşyeri' | 'Otel';
+  musteri_gizle?: boolean | null;
   aciklama: string | null;
   musteri_aciklamasi: string | null;
   bina_yasi: string | null;

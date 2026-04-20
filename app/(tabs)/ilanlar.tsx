@@ -11,7 +11,6 @@ const POPUP_W = 290;
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
@@ -128,15 +127,6 @@ export default function IlanlarScreen() {
   const siralamaBtnRef = useRef<View>(null);
   const [siralamaBtnPos, setSiralamaBtnPos] = useState({ top: 0, right: 0 });
   const [profilSlug, setProfilSlug] = useState('');
-  const [linkKopyalandi, setLinkKopyalandi] = useState(false);
-  const [paylasModal, setPaylasModal] = useState(false);
-  const [paylasMusteriler, setPaylasMusteriler] = useState<{id:string;ad:string;soyad:string;etiketler:string|null}[]>([]);
-  const [paylasMusteri, setPaylasMusteri] = useState('');
-  const [paylasMusteriAra, setPaylasMusteriAra] = useState('');
-  const [paylasSure, setPaylasSure] = useState('24');
-  const [paylasYukleniyor, setPaylasYukleniyor] = useState(false);
-  const [paylasLink, setPaylasLink] = useState('');
-  const [paylasEtiketAra, setPaylasEtiketAra] = useState('');
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -270,58 +260,6 @@ export default function IlanlarScreen() {
   function filtreUygula() { setFiltre(gecici); setFiltrePaneli(false); }
   function filtreSifirla() { setGecici(BOS_FILTRE); }
 
-  function paylasAc() {
-    setPaylasModal(true);
-    setPaylasLink('');
-    setPaylasMusteri('');
-    setPaylasMusteriAra('');
-    setPaylasEtiketAra('');
-    setPaylasSure('24');
-    setLinkKopyalandi(false);
-    supabase.from('musteriler').select('id,ad,soyad,etiketler').eq('durum','Aktif').order('ad')
-      .then(({ data }) => { if (data) setPaylasMusteriler(data); });
-  }
-
-  async function paylasOlustur() {
-    if (!paylasMusteri) { Alert.alert('Hata', 'Lütfen müşteri seçin.'); return; }
-    setPaylasYukleniyor(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setPaylasYukleniyor(false); return; }
-
-    const ilanIds = filtered.map(i => i.id);
-    const arr = new Uint8Array(6);
-    crypto.getRandomValues(arr);
-    const token = Array.from(arr).map(b => b.toString(36)).join('').slice(0, 8);
-
-    const filtreler = [];
-    if (filtre.tip !== 'Tümü') filtreler.push(filtre.tip);
-    if (filtre.kategoriler.length) filtreler.push(filtre.kategoriler.join(', '));
-    if (filtre.odalar.length) filtreler.push(filtre.odalar.join(', '));
-    const baslik = filtreler.length ? filtreler.join(' · ') : 'Tüm Aktif İlanlar';
-
-    const expiresAt = new Date(Date.now() + parseInt(paylasSure) * 60 * 60 * 1000).toISOString();
-    const { data: mevcutMt } = await supabase.from('musteri_tokenler')
-      .select('token').eq('user_id', user.id).eq('musteri_id', paylasMusteri).single();
-    let musteriToken = mevcutMt?.token ?? null;
-    if (mevcutMt) {
-      await supabase.from('musteri_tokenler').update({ expires_at: expiresAt }).eq('user_id', user.id).eq('musteri_id', paylasMusteri);
-    } else {
-      const arr2 = new Uint8Array(12);
-      crypto.getRandomValues(arr2);
-      musteriToken = Array.from(arr2).map(b => b.toString(36).padStart(2,'0')).join('').slice(0,16);
-      await supabase.from('musteri_tokenler').insert({ token: musteriToken, user_id: user.id, musteri_id: paylasMusteri, expires_at: expiresAt });
-    }
-
-    const { error } = await supabase.from('paylasim_paketleri').insert({
-      token, emlakci_id: user.id, ilan_ids: ilanIds, baslik,
-      ...(musteriToken ? { musteri_token: musteriToken } : {}),
-    });
-    if (error) { Alert.alert('Hata', error.message); setPaylasYukleniyor(false); return; }
-
-    const link = `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}`;
-    setPaylasLink(link);
-    setPaylasYukleniyor(false);
-  }
 
   const badge = aktifFiltreSayisi(filtre);
   const [aramaModalAcik, setAramaModalAcik] = useState(false);
@@ -340,12 +278,6 @@ export default function IlanlarScreen() {
     <>
       <View style={styles.sonucRow}>
         <Text style={styles.sonucSayisi}>{filtered.length} ilan</Text>
-        <TouchableOpacity
-          style={styles.paylasBtn}
-          onPress={paylasAc}
-        >
-          <Text style={styles.paylasBtnText}>🔗 Paylaş</Text>
-        </TouchableOpacity>
         <View ref={siralamaBtnRef} collapsable={false}>
           <TouchableOpacity style={styles.siralamaBtn} onPress={() => {
             if (siralamaAcik) { setSiralamaAcik(false); return; }
@@ -792,136 +724,6 @@ export default function IlanlarScreen() {
       </Modal>
 
       {/* PAYLAŞ MODALİ */}
-      <Modal visible={paylasModal} animationType="slide" transparent onRequestClose={() => { setPaylasModal(false); setPaylasLink(''); }}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => { setPaylasModal(false); setPaylasLink(''); }} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: '92%' }}>
-              {/* Header */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface }}>🔗 Liste Paylaş</Text>
-                <TouchableOpacity onPress={() => { setPaylasModal(false); setPaylasLink(''); }}>
-                  <Text style={{ fontSize: 22, color: Colors.onSurfaceVariant }}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-                {!paylasLink ? (
-                  <>
-                    {/* İlan sayısı */}
-                    <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                      <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>{filtered.length} ilan paylaşılacak</Text>
-                    </View>
-
-                    {/* Müşteri ara */}
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Müşteri *</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-                      <TextInput
-                        style={{ flex: 1, backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.onSurface }}
-                        placeholder="İsim ara..."
-                        placeholderTextColor={Colors.outlineVariant}
-                        value={paylasMusteriAra}
-                        onChangeText={v => { setPaylasMusteriAra(v); setPaylasMusteri(''); }}
-                      />
-                      <TextInput
-                        style={{ flex: 1, backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.onSurface }}
-                        placeholder="Etiket ara..."
-                        placeholderTextColor={Colors.outlineVariant}
-                        value={paylasEtiketAra}
-                        onChangeText={v => { setPaylasEtiketAra(v); setPaylasMusteri(''); }}
-                      />
-                    </View>
-                    {(paylasMusteriAra.length > 0 || paylasEtiketAra.length > 0) && (
-                      <View style={{ backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.surfaceContainerLow, borderRadius: 10, maxHeight: 180, marginBottom: 8, overflow: 'hidden' }}>
-                        {paylasMusteriler
-                          .filter(m => {
-                            const isimOk = paylasMusteriAra === '' || `${m.ad} ${m.soyad}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
-                            const etiketOk = paylasEtiketAra === '' || (m.etiketler ?? '').toLowerCase().includes(paylasEtiketAra.toLowerCase());
-                            return isimOk && etiketOk;
-                          })
-                          .map(m => (
-                            <TouchableOpacity key={m.id}
-                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad} ${m.soyad}`); setPaylasEtiketAra(''); }}
-                              style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow, backgroundColor: paylasMusteri === m.id ? Colors.primaryFixed : Colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-                            >
-                              <Text style={{ fontSize: 14, color: paylasMusteri === m.id ? Colors.primary : Colors.onSurface, fontWeight: paylasMusteri === m.id ? '700' : '400' }}>{m.ad} {m.soyad}</Text>
-                              {m.etiketler ? (
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end', flex: 1 }}>
-                                  {m.etiketler.split(',').map(e => e.trim()).filter(Boolean).map(e => (
-                                    <View key={e} style={{ backgroundColor: Colors.primaryFixed, borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2 }}>
-                                      <Text style={{ fontSize: 10, color: Colors.primary, fontWeight: '600' }}>{e}</Text>
-                                    </View>
-                                  ))}
-                                </View>
-                              ) : null}
-                            </TouchableOpacity>
-                          ))}
-                      </View>
-                    )}
-                    {paylasMusteri && (
-                      <Text style={{ fontSize: 12, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
-                        ✓ {paylasMusteriler.find(m=>m.id===paylasMusteri)?.ad} {paylasMusteriler.find(m=>m.id===paylasMusteri)?.soyad} seçildi
-                      </Text>
-                    )}
-
-                    {/* Süre */}
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ne kadar aktif olsun?</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                      {([['1','1 saat'],['24','1 gün'],['72','3 gün'],['168','7 gün']] as const).map(([val, label]) => (
-                        <TouchableOpacity key={val} onPress={() => setPaylasSure(val)}
-                          style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5,
-                            borderColor: paylasSure === val ? Colors.primary : Colors.outline,
-                            backgroundColor: paylasSure === val ? Colors.primaryFixed : Colors.surface }}>
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: paylasSure === val ? Colors.primary : Colors.onSurfaceVariant }}>{label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 }}>
-                      <TextInput
-                        value={paylasSure}
-                        onChangeText={v => setPaylasSure(v.replace(/\D/g, ''))}
-                        keyboardType="number-pad"
-                        style={{ width: 72, borderWidth: 1, borderColor: Colors.outline, borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
-                      />
-                      <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
-                      {parseInt(paylasSure) >= 24 && <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>({Math.round(parseInt(paylasSure) / 24)} gün)</Text>}
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={paylasOlustur}
-                      disabled={paylasYukleniyor || !paylasMusteri}
-                      style={{ backgroundColor: paylasMusteri ? Colors.primary : Colors.outline, borderRadius: 12, paddingVertical: 14, alignItems: 'center', opacity: paylasYukleniyor ? 0.6 : 1 }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{paylasYukleniyor ? 'Oluşturuluyor...' : 'Link Oluştur'}</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '600', marginBottom: 16 }}>✓ Link oluşturuldu</Text>
-                    <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                      <Text style={{ fontSize: 12, color: Colors.onSurface, lineHeight: 18 }} selectable>{paylasLink}</Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={async () => {
-                        await Clipboard.setStringAsync(paylasLink);
-                        setLinkKopyalandi(true);
-                        setTimeout(() => setLinkKopyalandi(false), 2000);
-                      }}
-                      style={{ backgroundColor: linkKopyalandi ? '#3aaa6e' : Colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 10 }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>{linkKopyalandi ? '✓ Kopyalandı!' : 'Kopyala'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); }}
-                      style={{ borderWidth: 1, borderColor: Colors.outline, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 14, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
 
       {siralamaAcik && (
         <>

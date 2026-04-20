@@ -97,6 +97,8 @@ export default function MusteriDetayScreen() {
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkYukleniyor, setLinkYukleniyor] = useState(false);
   const [linkIlanSearch, setLinkIlanSearch] = useState('');
+  const [linkFiltreTip, setLinkFiltreTip] = useState('');
+  const [linkFiltreKategori, setLinkFiltreKategori] = useState('');
 
   const fetchMusteri = useCallback(async () => {
     const { data } = await supabase.from('musteriler').select('*').eq('id', id).single();
@@ -223,12 +225,14 @@ export default function MusteriDetayScreen() {
   }
 
   async function handleLinkModalAc() {
-    const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').order('olusturma_tarihi', { ascending: false });
+    const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').eq('musteri_gizle', false).order('olusturma_tarihi', { ascending: false });
     setLinkTumIlanlar(data ?? []);
     setLinkSecimIlanlar([]);
     setLinkUrl(null);
     setLinkSaat('24');
     setLinkIlanSearch('');
+    setLinkFiltreTip('');
+    setLinkFiltreKategori('');
     setLinkModal(true);
   }
 
@@ -772,11 +776,28 @@ export default function MusteriDetayScreen() {
                   value={linkIlanSearch}
                   onChangeText={setLinkIlanSearch}
                 />
+                {/* Filtre chip'leri */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: Spacing.md, marginBottom: 6 }} contentContainerStyle={{ gap: 6, paddingRight: Spacing.md }}>
+                  {['Satılık', 'Kiralık'].map(t => (
+                    <TouchableOpacity key={t} onPress={() => setLinkFiltreTip(linkFiltreTip === t ? '' : t)}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreTip === t ? Colors.primary : Colors.outline, backgroundColor: linkFiltreTip === t ? Colors.primaryFixed : Colors.surface }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreTip === t ? Colors.primary : Colors.onSurfaceVariant }}>{t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  {['Daire','Villa','Arsa','Tarla','İşyeri','Otel','Müstakil Ev','Rezidans'].map(k => (
+                    <TouchableOpacity key={k} onPress={() => setLinkFiltreKategori(linkFiltreKategori === k ? '' : k)}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1.5, borderColor: linkFiltreKategori === k ? Colors.primary : Colors.outline, backgroundColor: linkFiltreKategori === k ? Colors.primaryFixed : Colors.surface }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: linkFiltreKategori === k ? Colors.primary : Colors.onSurfaceVariant }}>{k}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
                 <FlatList
-                  data={linkTumIlanlar.filter(i =>
-                    i.baslik?.toLowerCase().includes(linkIlanSearch.toLowerCase()) ||
-                    i.konum?.toLowerCase().includes(linkIlanSearch.toLowerCase())
-                  )}
+                  data={linkTumIlanlar.filter(i => {
+                    const aramaOk = !linkIlanSearch || i.baslik?.toLowerCase().includes(linkIlanSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkIlanSearch.toLowerCase());
+                    const tipOk = !linkFiltreTip || i.tip === linkFiltreTip;
+                    const katOk = !linkFiltreKategori || i.kategori === linkFiltreKategori;
+                    return aramaOk && tipOk && katOk;
+                  })}
                   keyExtractor={item => item.id}
                   renderItem={({ item }) => {
                     const secili = linkSecimIlanlar.includes(item.id);
