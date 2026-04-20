@@ -3,7 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Image, ActivityIndicator, Modal, FlatList,
-  KeyboardAvoidingView, Platform, Dimensions,
+  KeyboardAvoidingView, Platform, Dimensions, RefreshControl,
 } from 'react-native';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -115,6 +115,7 @@ export default function IlanlarScreen() {
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const mapRef = useRef<WebView>(null);
   const [filtrePaneli, setFiltrePaneli] = useState(false);
   const [filtre, setFiltre] = useState<FiltreState>(BOS_FILTRE);
@@ -186,6 +187,12 @@ export default function IlanlarScreen() {
   useFocusEffect(useCallback(() => { fetchIlanlar(); }, []));
 
   useEffect(() => { uygula(filtre); }, [search, filtre, ilanlar, siralama]);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await fetchIlanlar();
+    setRefreshing(false);
+  }
 
   async function fetchIlanlar() {
     const { data } = await supabase.from('ilanlar').select('*').order('olusturma_tarihi', { ascending: false });
@@ -505,7 +512,9 @@ export default function IlanlarScreen() {
           })()}
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+        >
           {filtered.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyEmoji}>🔍</Text>

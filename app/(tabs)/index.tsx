@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Image, Modal, FlatList,
+  StyleSheet, ActivityIndicator, Image, Modal, FlatList, RefreshControl,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -18,6 +18,7 @@ export default function DashboardScreen() {
   const [yeniEslesmeler, setYeniEslesmeler] = useState<Eslesme[]>([]);
   const [takipMusteriler, setTakipMusteriler] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
   const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string}[]>([]);
   const [sildirimler, setSildirimler] = useState<Set<string>>(new Set());
@@ -146,6 +147,12 @@ export default function DashboardScreen() {
     });
   }
 
+  async function onRefresh() {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }
+
   async function fetchData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -207,7 +214,9 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+      >
 
         {/* Header */}
         <View style={styles.header}>

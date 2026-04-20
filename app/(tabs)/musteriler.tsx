@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, TextInput, ActivityIndicator, Modal, FlatList,
+  StyleSheet, TextInput, ActivityIndicator, Modal, FlatList, RefreshControl,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -22,6 +22,7 @@ export default function MusterilerScreen() {
   const [etiketSearch, setEtiketSearch] = useState('');
   const [activeDurum, setActiveDurum] = useState('Tümü');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { fetchMusteriler(); }, []);
   useFocusEffect(useCallback(() => { fetchMusteriler(); }, []));
@@ -42,6 +43,12 @@ export default function MusterilerScreen() {
     }
     setFiltered(result);
   }, [search, etiketSearch, activeDurum, musteriler]);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await fetchMusteriler();
+    setRefreshing(false);
+  }
 
   async function fetchMusteriler() {
     setLoading(true);
@@ -104,7 +111,9 @@ export default function MusterilerScreen() {
       {loading ? (
         <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+        >
           {filtered.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>Müşteri bulunamadı</Text>
