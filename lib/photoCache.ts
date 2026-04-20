@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { getPresignedUrl } from './r2';
+
+const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
 
 const CACHE_DIR = FileSystem.cacheDirectory + 'r2photos/';
 const META_FILE = CACHE_DIR + '_meta.json';
@@ -71,7 +72,7 @@ export async function getCachedPhoto(key: string, size: string): Promise<string>
     delete meta[sizedKey];
   }
 
-  const url = await getPresignedUrl(sizedKey, 604800);
+  const url = `${R2_BASE}/${sizedKey}`;
   const localPath = CACHE_DIR + keyToFilename(sizedKey);
   await FileSystem.downloadAsync(url, localPath);
 
