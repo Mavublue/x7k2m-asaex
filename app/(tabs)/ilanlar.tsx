@@ -71,7 +71,7 @@ const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
 
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '4+2', '5+1', '5+2', '6+1', '7+'];
-const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
+const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
 
 type FiltreState = {
   tip: string;
