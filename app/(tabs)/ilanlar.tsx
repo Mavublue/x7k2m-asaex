@@ -95,7 +95,7 @@ const BOS_FILTRE: FiltreState = {
 function aktifFiltreSayisi(f: FiltreState) {
   let n = 0;
   if (f.tip !== 'Tümü') n++;
-  if (f.durum !== 'Aktif') n++;
+  if (f.durum !== 'Aktif') n++; // 'İptal' veya 'Tümü' seçilmişse aktif filtre say
   if (f.kategoriler.length) n++;
   if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) n++;
   if (f.fiyatMin || f.fiyatMax) n++;
@@ -194,7 +194,8 @@ export default function IlanlarScreen() {
     let r = ilanlar;
     if (f.tip !== 'Tümü') r = r.filter(i => i.tip === f.tip);
     if (f.durum === 'Aktif') r = r.filter(i => !i.durum || i.durum === 'Aktif');
-    if (f.durum === 'İptal') r = r.filter(i => i.durum === 'İptal');
+    else if (f.durum === 'İptal') r = r.filter(i => i.durum === 'İptal');
+    // 'Tümü' = no filter
     if (f.kategoriler.length) r = r.filter(i => f.kategoriler.includes(i.kategori));
     if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) {
       r = r.filter(ilan => {
@@ -208,7 +209,7 @@ export default function IlanlarScreen() {
     if (f.fiyatMax) r = r.filter(i => i.fiyat <= parseInt(f.fiyatMax.replace(/\./g, '')));
     if (f.odalar.length) r = r.filter(i => i.oda_sayisi && f.odalar.includes(i.oda_sayisi));
     if (f.ozellikler.length) r = r.filter(i => {
-      const ilanOz = ((i as any).ozellikler ?? '').split(',').filter(Boolean);
+      const ilanOz = (i.ozellikler ?? '').split(',').filter(Boolean);
       return f.ozellikler.every(o => ilanOz.includes(o));
     });
     if (search) r = r.filter(i =>
@@ -339,6 +340,11 @@ export default function IlanlarScreen() {
           {filtre.odalar.map(o => (
             <TouchableOpacity key={o} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, odalar: f.odalar.filter(x => x !== o) }))}>
               <Text style={styles.etiketText}>{o} ✕</Text>
+            </TouchableOpacity>
+          ))}
+          {filtre.ozellikler.map(oz => (
+            <TouchableOpacity key={oz} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, ozellikler: f.ozellikler.filter(x => x !== oz) }))}>
+              <Text style={styles.etiketText}>✦ {oz} ✕</Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={styles.etiketSifirla} onPress={() => { setFiltre(BOS_FILTRE); setSearch(''); }}>
@@ -513,11 +519,11 @@ export default function IlanlarScreen() {
                 </View>
 
                 <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                  <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
                     <FilterSection title="İlan Durumu">
                       <View style={styles.chipRow}>
-                        {['Aktif', 'İptal'].map(d => (
+                        {['Tümü', 'Aktif', 'İptal'].map(d => (
                           <TouchableOpacity key={d} style={[styles.chip, gecici.durum === d && styles.chipActive]} onPress={() => setGecici(g => ({ ...g, durum: d }))}>
                             <Text style={[styles.chipText, gecici.durum === d && styles.chipTextActive]}>{d}</Text>
                           </TouchableOpacity>
