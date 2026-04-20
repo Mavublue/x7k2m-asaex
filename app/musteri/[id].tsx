@@ -808,7 +808,7 @@ export default function MusteriDetayScreen() {
                 />
                 {/* Süre seçimi */}
                 <View style={styles.linkFooter}>
-                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                     {[
                       { saat: '1', label: '1 saat' },
                       { saat: '24', label: '1 gün' },
@@ -820,6 +820,16 @@ export default function MusteriDetayScreen() {
                         <Text style={[styles.saatChipText, linkSaat === saat && styles.saatChipTextActive]}>{label}</Text>
                       </TouchableOpacity>
                     ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <TextInput
+                      value={linkSaat}
+                      onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
+                      keyboardType="number-pad"
+                      style={{ width: 72, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
+                    />
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
+                    {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: '#9ca3af' }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>

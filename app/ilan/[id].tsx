@@ -650,7 +650,7 @@ export default function IlanDetayScreen() {
 
                   {/* Süre */}
                   <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 8 }}>Ne kadar aktif olsun?</Text>
-                  <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                     {[{ s: 1, label: '1 saat' }, { s: 24, label: '1 gün' }, { s: 72, label: '3 gün' }, { s: 168, label: '7 gün' }].map(({ s, label }) => (
                       <TouchableOpacity key={s} onPress={() => setLinkSaat(String(s))} style={{
                         paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, borderWidth: 1.5,
@@ -660,6 +660,16 @@ export default function IlanDetayScreen() {
                         <Text style={{ fontSize: 12, fontWeight: '600', color: linkSaat === String(s) ? Colors.primary : Colors.onSurfaceVariant }}>{label}</Text>
                       </TouchableOpacity>
                     ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                    <TextInput
+                      value={linkSaat}
+                      onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
+                      keyboardType="number-pad"
+                      style={{ width: 72, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
+                    />
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
+                    {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: '#9ca3af' }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
                   </View>
                   <TouchableOpacity onPress={linkOlustur} disabled={linkYukleniyor} style={{
                     backgroundColor: Colors.primary, borderRadius: 8, padding: 14, alignItems: 'center',
