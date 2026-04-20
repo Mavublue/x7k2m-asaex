@@ -88,7 +88,7 @@ type FiltreState = {
 };
 
 const BOS_FILTRE: FiltreState = {
-  tip: 'Tümü', durum: 'Aktif', musteriGizle: 'Görünür',
+  tip: 'Tümü', durum: 'Aktif', musteriGizle: 'Tümü',
   kategoriler: [], filterIl: [], filterIlce: [], filterMahalle: [],
   fiyatMin: '', fiyatMax: '', odalar: [], ozellikler: [],
 };
@@ -97,7 +97,7 @@ function aktifFiltreSayisi(f: FiltreState) {
   let n = 0;
   if (f.tip !== 'Tümü') n++;
   if (f.durum !== 'Aktif') n++;
-  if (f.musteriGizle !== 'Görünür') n++;
+  if (f.musteriGizle !== 'Tümü') n++;
   if (f.kategoriler.length) n++;
   if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) n++;
   if (f.fiyatMin || f.fiyatMax) n++;
@@ -336,8 +336,8 @@ export default function IlanlarScreen() {
               <Text style={styles.etiketText}>{filtre.durum} ✕</Text>
             </TouchableOpacity>
           )}
-          {filtre.musteriGizle !== 'Görünür' && (
-            <TouchableOpacity style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, musteriGizle: 'Görünür' }))}>
+          {filtre.musteriGizle !== 'Tümü' && (
+            <TouchableOpacity style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, musteriGizle: 'Tümü' }))}>
               <Text style={styles.etiketText}>👁 {filtre.musteriGizle} ✕</Text>
             </TouchableOpacity>
           )}
