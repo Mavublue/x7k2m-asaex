@@ -76,6 +76,7 @@ const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezi
 type FiltreState = {
   tip: string;
   durum: string;
+  musteriGizle: string;
   kategoriler: string[];
   filterIl: string[];
   filterIlce: string[];
@@ -87,7 +88,7 @@ type FiltreState = {
 };
 
 const BOS_FILTRE: FiltreState = {
-  tip: 'Tümü', durum: 'Aktif',
+  tip: 'Tümü', durum: 'Aktif', musteriGizle: 'Görünür',
   kategoriler: [], filterIl: [], filterIlce: [], filterMahalle: [],
   fiyatMin: '', fiyatMax: '', odalar: [], ozellikler: [],
 };
@@ -95,7 +96,8 @@ const BOS_FILTRE: FiltreState = {
 function aktifFiltreSayisi(f: FiltreState) {
   let n = 0;
   if (f.tip !== 'Tümü') n++;
-  if (f.durum !== 'Aktif') n++; // 'İptal' veya 'Tümü' seçilmişse aktif filtre say
+  if (f.durum !== 'Aktif') n++;
+  if (f.musteriGizle !== 'Görünür') n++;
   if (f.kategoriler.length) n++;
   if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) n++;
   if (f.fiyatMin || f.fiyatMax) n++;
@@ -195,6 +197,8 @@ export default function IlanlarScreen() {
     if (f.tip !== 'Tümü') r = r.filter(i => i.tip === f.tip);
     if (f.durum === 'Aktif') r = r.filter(i => !i.durum || i.durum === 'Aktif');
     else if (f.durum === 'İptal') r = r.filter(i => i.durum === 'İptal');
+    if (f.musteriGizle === 'Görünür') r = r.filter(i => !i.musteri_gizle);
+    else if (f.musteriGizle === 'Gizli') r = r.filter(i => !!i.musteri_gizle);
     // 'Tümü' = no filter
     if (f.kategoriler.length) r = r.filter(i => f.kategoriler.includes(i.kategori));
     if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) {
@@ -330,6 +334,11 @@ export default function IlanlarScreen() {
           {filtre.durum !== 'Aktif' && (
             <TouchableOpacity style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, durum: 'Aktif' }))}>
               <Text style={styles.etiketText}>{filtre.durum} ✕</Text>
+            </TouchableOpacity>
+          )}
+          {filtre.musteriGizle !== 'Görünür' && (
+            <TouchableOpacity style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, musteriGizle: 'Görünür' }))}>
+              <Text style={styles.etiketText}>👁 {filtre.musteriGizle} ✕</Text>
             </TouchableOpacity>
           )}
           {filtre.kategoriler.map(k => (
@@ -526,6 +535,16 @@ export default function IlanlarScreen() {
                         {['Tümü', 'Aktif', 'İptal'].map(d => (
                           <TouchableOpacity key={d} style={[styles.chip, gecici.durum === d && styles.chipActive]} onPress={() => setGecici(g => ({ ...g, durum: d }))}>
                             <Text style={[styles.chipText, gecici.durum === d && styles.chipTextActive]}>{d}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </FilterSection>
+
+                    <FilterSection title="Müşteri Görünürlüğü">
+                      <View style={styles.chipRow}>
+                        {['Tümü', 'Görünür', 'Gizli'].map(g => (
+                          <TouchableOpacity key={g} style={[styles.chip, gecici.musteriGizle === g && styles.chipActive]} onPress={() => setGecici(prev => ({ ...prev, musteriGizle: g }))}>
+                            <Text style={[styles.chipText, gecici.musteriGizle === g && styles.chipTextActive]}>{g}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
