@@ -80,6 +80,7 @@ export default function MusteriDetayScreen() {
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkYukleniyor, setLinkYukleniyor] = useState(false);
   const [linkSearch, setLinkSearch] = useState('');
+  const [linkPortfoySearch, setLinkPortfoySearch] = useState('');
   const [linkSaat, setLinkSaat] = useState('24');
 
 
@@ -222,9 +223,10 @@ export default function MusteriDetayScreen() {
     setLinkUrl(null);
     setLinkSecimIds([]);
     setLinkSearch('');
+    setLinkPortfoySearch('');
     if (linkTumIlanlar.length === 0) {
       setLinkYukleniyor(true);
-      const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').eq('musteri_gizle', false).order('olusturma_tarihi', { ascending: false });
+      const { data } = await supabase.from('ilanlar').select('*').eq('durum', 'Aktif').order('olusturma_tarihi', { ascending: false });
       setLinkTumIlanlar(data ?? []);
       setLinkYukleniyor(false);
     }
@@ -804,15 +806,29 @@ export default function MusteriDetayScreen() {
             </View>
             {!linkUrl ? (
               <>
-                <TextInput
-                  style={styles.modalSearch}
-                  placeholder="İlan ara..."
-                  placeholderTextColor={Colors.outlineVariant}
-                  value={linkSearch}
-                  onChangeText={setLinkSearch}
-                />
+                <View style={{ flexDirection: 'row', gap: 8, margin: Spacing.md }}>
+                  <TextInput
+                    style={[styles.modalSearch, { flex: 1, margin: 0 }]}
+                    placeholder="İlan ara..."
+                    placeholderTextColor={Colors.outlineVariant}
+                    value={linkSearch}
+                    onChangeText={setLinkSearch}
+                  />
+                  <TextInput
+                    style={[styles.modalSearch, { width: 120, margin: 0 }]}
+                    placeholder="Portföy no..."
+                    placeholderTextColor={Colors.outlineVariant}
+                    value={linkPortfoySearch}
+                    onChangeText={setLinkPortfoySearch}
+                    keyboardType="numeric"
+                  />
+                </View>
                 <FlatList
-                  data={linkTumIlanlar.filter(i => !linkSearch || i.baslik?.toLowerCase().includes(linkSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkSearch.toLowerCase()))}
+                  data={linkTumIlanlar.filter(i => {
+                    const aramaOk = !linkSearch || i.baslik?.toLowerCase().includes(linkSearch.toLowerCase()) || i.konum?.toLowerCase().includes(linkSearch.toLowerCase());
+                    const portfoyOk = !linkPortfoySearch || (i.portfoy_no ?? '').toLowerCase().includes(linkPortfoySearch.toLowerCase());
+                    return aramaOk && portfoyOk;
+                  })}
                   keyExtractor={item => item.id}
                   renderItem={({ item }) => {
                     const secili = linkSecimIds.includes(item.id);
@@ -822,7 +838,7 @@ export default function MusteriDetayScreen() {
                           {secili && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.modalItemBaslik} numberOfLines={1}>{item.baslik}</Text>
+                          <Text style={styles.modalItemBaslik} numberOfLines={1}>{item.baslik}{item.portfoy_no ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}> #{item.portfoy_no}</Text> : ''}</Text>
                           <Text style={styles.modalItemAlt}>₺{item.fiyat?.toLocaleString('tr-TR')} · {item.kategori}</Text>
                         </View>
                       </TouchableOpacity>
@@ -831,7 +847,7 @@ export default function MusteriDetayScreen() {
                   ListEmptyComponent={linkYukleniyor ? <ActivityIndicator style={{ margin: 24 }} color={Colors.primary} /> : <Text style={styles.modalBosTxt}>Aktif ilan bulunamadı</Text>}
                 />
                 <View style={{ paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, backgroundColor: Colors.surface }}>
-                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                     {([1, 24, 72, 168] as const).map(s => (
                       <TouchableOpacity key={s} onPress={() => setLinkSaat(String(s))} style={[styles.saatBtn, linkSaat === String(s) && styles.saatBtnAktif]}>
                         <Text style={[styles.saatBtnText, linkSaat === String(s) && styles.saatBtnTextAktif]}>
@@ -839,6 +855,15 @@ export default function MusteriDetayScreen() {
                         </Text>
                       </TouchableOpacity>
                     ))}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <TextInput
+                        style={{ width: 50, borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.md, paddingHorizontal: 6, paddingVertical: 4, fontSize: 12, textAlign: 'center', color: Colors.onSurface }}
+                        value={linkSaat}
+                        onChangeText={v => setLinkSaat(v.replace(/\D/g, '') || '1')}
+                        keyboardType="numeric"
+                      />
+                      <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>saat</Text>
+                    </View>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>{linkSecimIds.length > 0 ? `${linkSecimIds.length} ilan seçildi` : 'İlan seçin'}</Text>
