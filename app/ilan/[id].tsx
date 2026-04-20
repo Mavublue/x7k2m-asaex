@@ -63,6 +63,14 @@ export default function IlanDetayScreen() {
   const flatListRef = useRef<any>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
 
+  async function toggleMusteriGizle() {
+    if (!ilan) return;
+    const yeni = !ilan.musteri_gizle;
+    await supabase.from('ilanlar').update({ musteri_gizle: yeni }).eq('id', id);
+    setIlan(prev => prev ? { ...prev, musteri_gizle: yeni } : prev);
+    setMenuModal(false);
+  }
+
   const fetchIlan = useCallback(() => {
     supabase.from('ilanlar').select('*').eq('id', id).single().then(({ data }) => {
       if (data) setIlan(data);
@@ -543,6 +551,10 @@ export default function IlanDetayScreen() {
           <View style={styles.menuPanel}>
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); router.push(`/ilan/duzenle/${id}` as any); }}>
               <Text style={styles.menuItemText}>✏️  Düzenle</Text>
+            </TouchableOpacity>
+            <View style={styles.menuSep} />
+            <TouchableOpacity style={styles.menuItem} onPress={toggleMusteriGizle}>
+              <Text style={styles.menuItemText}>{ilan?.musteri_gizle ? '👁  Müşteriye Göster' : '🙈  Müşteriye Gizle'}</Text>
             </TouchableOpacity>
             <View style={styles.menuSep} />
             {fotograflar.length > 0 && (
