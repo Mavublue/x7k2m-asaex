@@ -566,8 +566,8 @@ export default function IlanDetayScreen() {
               Alert.alert('İlanı Sil', 'Bu ilanı silmek istediğinize emin misiniz?', [
                 { text: 'İptal', style: 'cancel' },
                 { text: 'Sil', style: 'destructive', onPress: async () => {
+                  await deleteIlanPhotos(id as string);
                   await supabase.from('ilanlar').delete().eq('id', id);
-                  deleteIlanPhotos(id as string);
                   router.replace('/(tabs)/ilanlar');
                 }},
               ]);
