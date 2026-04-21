@@ -967,11 +967,18 @@ function IlanKart({ ilan }: { ilan: Ilan }) {
         <View style={[styles.tipBadge, { backgroundColor: ilan.tip === 'Satılık' ? 'rgba(0,35,111,0.85)' : 'rgba(253,118,26,0.85)' }]}>
           <Text style={styles.tipBadgeText}>{ilan.tip}</Text>
         </View>
-        {iptal && (
-          <View style={styles.iptalBadge}>
-            <Text style={styles.iptalBadgeText}>İPTAL</Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {ilan.musteri_gizle && (
+            <View style={styles.gizliBadge}>
+              <Text style={styles.gizliBadgeText}>👁 Gizli</Text>
+            </View>
+          )}
+          {iptal && (
+            <View style={styles.iptalBadge}>
+              <Text style={styles.iptalBadgeText}>İPTAL</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Bottom overlay content */}
@@ -1162,6 +1169,8 @@ const styles = StyleSheet.create({
   tipBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   iptalBadge: { backgroundColor: 'rgba(153,27,27,0.85)', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   iptalBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  gizliBadge: { backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
+  gizliBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   overlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, paddingBottom: 16 },
   overlayTop: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 2 },
