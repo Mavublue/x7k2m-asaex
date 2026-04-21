@@ -167,8 +167,8 @@ export default function IlanEkleScreen() {
       return;
     }
     setSubmitted(true);
-    const eksik = !baslik || !fiyat || !il || !musteriAciklamasi || !banyoSayisi ||
-      (!arsaTarla && (!netM2 || !brutM2 || !odaSayisi || !binaYasi));
+    const eksik = !baslik || !fiyat || !il || !musteriAciklamasi ||
+      (!arsaTarla && (!banyoSayisi || !netM2 || !brutM2 || !odaSayisi || !binaYasi));
     if (eksik) {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
@@ -382,8 +382,8 @@ export default function IlanEkleScreen() {
           </FormGroup>
 
           {/* Banyo Sayısı */}
-          <FormGroup label="Banyo Sayısı *">
-            <View style={[styles.chipRow, submitted && !banyoSayisi && styles.chipRowErr]}>
+          <FormGroup label={arsaTarla ? 'Banyo Sayısı' : 'Banyo Sayısı *'}>
+            <View style={[styles.chipRow, submitted && !arsaTarla && !banyoSayisi && styles.chipRowErr]}>
               {['1', '2', '3', '4', '5+'].map(b => (
                 <TouchableOpacity key={b} style={[styles.chip, banyoSayisi === b && styles.chipActive]} onPress={() => setBanyoSayisi(b)}>
                   <Text style={[styles.chipText, banyoSayisi === b && styles.chipTextActive]}>{b}</Text>
