@@ -122,7 +122,7 @@ export default function ProfilDuzenleScreen() {
             </View>
           </View>
           <Field label="Emlak Ofisi Adı (opsiyonel)" value={ofisAdi} onChangeText={setOfisAdi} placeholder="Yılmaz Gayrimenkul" />
-          <Field label="Fotoğraf Filigranı (opsiyonel)" value={watermarkText} onChangeText={setWatermarkText} placeholder="ahmetemlak.com" />
+          <Field label="Fotoğraf Filigranı (opsiyonel)" value={watermarkText} onChangeText={v => setWatermarkText(v.replace(/[<>&"']/g, '').slice(0, 40))} placeholder="ahmetemlak.com" />
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Çalışma Bölgesi</Text>
