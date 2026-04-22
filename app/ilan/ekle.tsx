@@ -101,20 +101,29 @@ export default function IlanEkleScreen() {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-      const { data } = await supabase.from('profiller').select('calisma_bolgesi, portfoy_prefix').eq('id', user.id).single();
-      if (data?.calisma_bolgesi) {
-        const koord = IL_KOORDINAT[data.calisma_bolgesi];
-        if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (!user) return;
+        setUserId(user.id);
+        const { data } = await supabase.from('profiller').select('calisma_bolgesi, portfoy_prefix').eq('id', user.id).single();
+        if (data?.calisma_bolgesi) {
+          const koord = IL_KOORDINAT[data.calisma_bolgesi];
+          if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
+        }
+        const prefix = (data?.portfoy_prefix ?? '').toUpperCase();
+        const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id);
+        const nums = new Set(
+          (ilanlar ?? [])
+            .map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10))
+            .filter((n: number) => n > 0)
+        );
+        let n = 1;
+        while (nums.has(n)) n++;
+        setPortfoyNo(prefix ? `${prefix}-${n}` : String(n));
+      } catch (e) {
+        setPortfoyNo('1');
       }
-      const prefix = ((data as any)?.portfoy_prefix ?? '').toUpperCase();
-      const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
-      const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
-      let n = 1;
-      while (nums.has(n)) n++;
-      setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
     })();
   }, []);
 
