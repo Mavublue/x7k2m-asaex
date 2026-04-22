@@ -104,6 +104,22 @@ export default function IlanDuzenleScreen() {
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
 
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
+
+  const [portfoyYukleniyor, setPortfoyYukleniyor] = useState(false);
+  async function otoPortfoyNo() {
+    setPortfoyYukleniyor(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPortfoyYukleniyor(false); return; }
+    const { data: profil } = await supabase.from('profiller').select('portfoy_prefix').eq('id', user.id).single();
+    const prefix = ((profil as any)?.portfoy_prefix ?? '').toUpperCase();
+    const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
+    const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
+    let n = 1;
+    while (nums.has(n)) n++;
+    setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
+    setPortfoyYukleniyor(false);
+  }
+
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
   const mahalleListesi = ((MAHALLELER as any)[il]?.[ilce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(mahalleSearch.toLowerCase()));
@@ -310,7 +326,24 @@ export default function IlanDuzenleScreen() {
           </FormGroup>
 
           <FormGroup label="Portföy No">
-            <TextInput style={styles.input} placeholder="Örn: 2024-001" value={portfoyNo} onChangeText={setPortfoyNo} placeholderTextColor={Colors.outlineVariant} />
+            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              <TextInput
+                style={[styles.input, { flex: 1, color: portfoyNo ? Colors.primary : Colors.outlineVariant, fontWeight: portfoyNo ? '700' : '400' }]}
+                value={portfoyNo}
+                placeholder="—"
+                editable={false}
+                placeholderTextColor={Colors.outlineVariant}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: Colors.primaryContainer, borderRadius: Radius.lg, paddingHorizontal: 14, justifyContent: 'center' }}
+                onPress={otoPortfoyNo}
+                disabled={portfoyYukleniyor}
+              >
+                <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 13 }}>
+                  {portfoyYukleniyor ? '...' : 'Otomatik'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </FormGroup>
 
           <FormGroup label="İlan Başlığı *">

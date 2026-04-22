@@ -109,14 +109,23 @@ export default function IlanEkleScreen() {
         const koord = IL_KOORDINAT[data.calisma_bolgesi];
         if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
       }
-      const prefix = (data?.portfoy_prefix ?? '').toUpperCase();
-      const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
-      const nums = new Set((ilanlar ?? []).map(i => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter(n => n > 0));
-      let n = 1;
-      while (nums.has(n)) n++;
-      setPortfoyNo(`${prefix}${n}`);
     })();
   }, []);
+
+  const [portfoyYukleniyor, setPortfoyYukleniyor] = useState(false);
+  async function otoPortfoyNo() {
+    setPortfoyYukleniyor(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPortfoyYukleniyor(false); return; }
+    const { data: profil } = await supabase.from('profiller').select('portfoy_prefix').eq('id', user.id).single();
+    const prefix = ((profil as any)?.portfoy_prefix ?? '').toUpperCase();
+    const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
+    const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
+    let n = 1;
+    while (nums.has(n)) n++;
+    setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
+    setPortfoyYukleniyor(false);
+  }
 
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
@@ -276,13 +285,25 @@ export default function IlanEkleScreen() {
           </FormGroup>
 
           {/* Portföy No */}
-          <FormGroup label="Portföy No (Otomatik)">
-            <TextInput
-              style={[styles.input, { color: Colors.primary, fontWeight: '700' }]}
-              value={portfoyNo}
-              editable={false}
-              placeholderTextColor={Colors.outlineVariant}
-            />
+          <FormGroup label="Portföy No">
+            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              <TextInput
+                style={[styles.input, { flex: 1, color: portfoyNo ? Colors.primary : Colors.outlineVariant, fontWeight: portfoyNo ? '700' : '400' }]}
+                value={portfoyNo}
+                placeholder="—"
+                editable={false}
+                placeholderTextColor={Colors.outlineVariant}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: Colors.primaryContainer, borderRadius: Radius.lg, paddingHorizontal: 14, justifyContent: 'center' }}
+                onPress={otoPortfoyNo}
+                disabled={portfoyYukleniyor}
+              >
+                <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 13 }}>
+                  {portfoyYukleniyor ? '...' : 'Otomatik'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </FormGroup>
 
           {/* Başlık */}
