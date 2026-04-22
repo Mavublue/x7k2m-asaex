@@ -104,11 +104,17 @@ export default function IlanEkleScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
-      const { data } = await supabase.from('profiller').select('calisma_bolgesi').eq('id', user.id).single();
+      const { data } = await supabase.from('profiller').select('calisma_bolgesi, portfoy_prefix').eq('id', user.id).single();
       if (data?.calisma_bolgesi) {
         const koord = IL_KOORDINAT[data.calisma_bolgesi];
         if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
       }
+      const prefix = (data?.portfoy_prefix ?? '').toUpperCase();
+      const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
+      const nums = new Set((ilanlar ?? []).map(i => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter(n => n > 0));
+      let n = 1;
+      while (nums.has(n)) n++;
+      setPortfoyNo(`${prefix}${n}`);
     })();
   }, []);
 
@@ -270,12 +276,11 @@ export default function IlanEkleScreen() {
           </FormGroup>
 
           {/* Portföy No */}
-          <FormGroup label="Portföy No">
+          <FormGroup label="Portföy No (Otomatik)">
             <TextInput
-              style={styles.input}
-              placeholder="Örn: 2024-001"
+              style={[styles.input, { color: Colors.primary, fontWeight: '700' }]}
               value={portfoyNo}
-              onChangeText={setPortfoyNo}
+              editable={false}
               placeholderTextColor={Colors.outlineVariant}
             />
           </FormGroup>

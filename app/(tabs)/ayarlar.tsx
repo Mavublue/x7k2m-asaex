@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Alert,
+  View, Text, TouchableOpacity, StyleSheet, Alert, TextInput,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +12,8 @@ export default function AyarlarScreen() {
   const [ad, setAd] = useState('');
   const [soyad, setSoyad] = useState('');
   const [ofisAdi, setOfisAdi] = useState('');
+  const [portfoyPrefix, setPortfoyPrefix] = useState('');
+  const [prefixKaydediliyor, setPrefixKaydediliyor] = useState(false);
 
   const fetchProfil = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -22,9 +24,21 @@ export default function AyarlarScreen() {
         setAd(data.ad ?? '');
         setSoyad(data.soyad ?? '');
         setOfisAdi(data.ofis_adi ?? '');
+        setPortfoyPrefix(data.portfoy_prefix ?? '');
       }
     }
   }, []);
+
+  async function handlePrefixKaydet() {
+    const temiz = portfoyPrefix.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ]/g, '').slice(0, 2).toUpperCase();
+    setPortfoyPrefix(temiz);
+    setPrefixKaydediliyor(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiller').update({ portfoy_prefix: temiz }).eq('id', user.id);
+    }
+    setPrefixKaydediliyor(false);
+  }
 
   useEffect(() => { fetchProfil(); }, []);
   useFocusEffect(useCallback(() => { fetchProfil(); }, [fetchProfil]));
@@ -77,6 +91,29 @@ export default function AyarlarScreen() {
         ))}
       </View>
 
+      {/* Portföy No Kısaltması */}
+      <View style={styles.prefixKart}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.prefixLabel}>Portföy No Kısaltması</Text>
+          <Text style={styles.prefixAciklama}>Her ilana otomatik numara verilir (ör: HZ1, HZ2…)</Text>
+        </View>
+        <View style={styles.prefixRow}>
+          <TextInput
+            style={styles.prefixInput}
+            value={portfoyPrefix}
+            onChangeText={v => setPortfoyPrefix(v.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ]/g, '').slice(0, 2).toUpperCase())}
+            onBlur={handlePrefixKaydet}
+            placeholder="HZ"
+            placeholderTextColor={Colors.outlineVariant}
+            maxLength={2}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity style={styles.prefixBtn} onPress={handlePrefixKaydet} disabled={prefixKaydediliyor}>
+            <Text style={styles.prefixBtnText}>{prefixKaydediliyor ? '...' : 'Kaydet'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Çıkış Yap</Text>
       </TouchableOpacity>
@@ -114,4 +151,12 @@ const styles = StyleSheet.create({
   logoutBtn: { backgroundColor: '#fee2e2', borderRadius: Radius.full, paddingVertical: 16, alignItems: 'center', marginBottom: Spacing.xl },
   logoutText: { color: '#991b1b', fontWeight: '700', fontSize: 15 },
   version: { textAlign: 'center', fontSize: 12, color: Colors.outlineVariant },
+
+  prefixKart: { backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg, gap: Spacing.md },
+  prefixLabel: { fontSize: 14, fontWeight: '700', color: Colors.onSurface },
+  prefixAciklama: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  prefixRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
+  prefixInput: { width: 64, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: 10, fontSize: 18, fontWeight: '700', color: Colors.primary, textAlign: 'center', letterSpacing: 2 },
+  prefixBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 10 },
+  prefixBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });
