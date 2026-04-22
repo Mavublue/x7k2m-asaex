@@ -288,24 +288,13 @@ export default function IlanEkleScreen() {
 
           {/* Portföy No */}
           <FormGroup label="Portföy No">
-            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              <TextInput
-                style={[styles.input, { flex: 1, color: portfoyNo ? Colors.primary : Colors.outlineVariant, fontWeight: portfoyNo ? '700' : '400' }]}
-                value={portfoyNo}
-                placeholder="—"
-                editable={false}
-                placeholderTextColor={Colors.outlineVariant}
-              />
-              <TouchableOpacity
-                style={{ backgroundColor: Colors.primaryContainer, borderRadius: Radius.lg, paddingHorizontal: 14, justifyContent: 'center' }}
-                onPress={otoPortfoyNo}
-                disabled={portfoyYukleniyor}
-              >
-                <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 13 }}>
-                  {portfoyYukleniyor ? '...' : 'Otomatik'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TextInput
+              style={[styles.input, { color: portfoyNo ? Colors.primary : Colors.outlineVariant, fontWeight: portfoyNo ? '700' : '400' }]}
+              value={portfoyNo}
+              placeholder="—"
+              editable={false}
+              placeholderTextColor={Colors.outlineVariant}
+            />
           </FormGroup>
 
           {/* Başlık */}
