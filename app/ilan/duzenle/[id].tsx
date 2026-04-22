@@ -50,9 +50,8 @@ map.on('click',function(e){
 
 const ILLER = TURKIYE;
 
-const ODALAR_KUCUK = ['Stüdyo', '1+0', '1+1', '2+0', '2+1'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
-const ODALAR_BUYUK = ['2+2', '3+0', '3+1', '3+2', '3+3', '4+0', '4+1', '4+2', '4+3', '4+4', '5+0', '5+1', '5+2', '5+3', '5+4', '6+0', '6+1', '6+2', '6+3', '6+4', '7+0', '7+1', '7+2', '7+3', '7+4', '8+0', '8+1', '8+2', '8+3', '8+4', '9+0', '9+1', '9+2', '9+3', '9+4', '10+0', '10+1', '10+2', '10+3', '10+4', '10+'];
+const ODALAR = ['Stüdyo', '1+0', '1+1', '2+0', '2+1', '2+2', '3+0', '3+1', '3+2', '3+3', '4+0', '4+1', '4+2', '4+3', '4+4', '5+0', '5+1', '5+2', '5+3', '5+4', '6+0', '6+1', '6+2', '6+3', '6+4', '7+0', '7+1', '7+2', '7+3', '7+4', '8+0', '8+1', '8+2', '8+3', '8+4', '9+0', '9+1', '9+2', '9+3', '9+4', '10+0', '10+1', '10+2', '10+3', '10+4', '10+'];
 const tipler = ['Satılık', 'Kiralık'];
 const kategoriler = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
 
@@ -389,18 +388,13 @@ export default function IlanDuzenleScreen() {
           </FormGroup>
 
           <FormGroup label={arsaTarla ? 'Oda Sayısı' : 'Oda Sayısı *'}>
-            <View style={[styles.chipRow, submitted && !arsaTarla && !odaSayisi && styles.chipRowErr]}>
-              {ODALAR_KUCUK.map(o => (
-                <TouchableOpacity key={o} style={[styles.chip, odaSayisi === o && styles.chipActive]} onPress={() => setOdaSayisi(o)}>
-                  <Text style={[styles.chipText, odaSayisi === o && styles.chipTextActive]}>{o}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={[styles.chip, ODALAR_BUYUK.includes(odaSayisi) && styles.chipActive]} onPress={() => setOdaModal(true)}>
-                <Text style={[styles.chipText, ODALAR_BUYUK.includes(odaSayisi) && styles.chipTextActive]}>
-                  {ODALAR_BUYUK.includes(odaSayisi) ? odaSayisi : 'Daha fazla ▾'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.selectBtn, submitted && !arsaTarla && !odaSayisi && { borderWidth: 1.5, borderColor: '#E53935' }]}
+              onPress={() => setOdaModal(true)}
+            >
+              <Text style={odaSayisi ? styles.selectText : styles.selectPlaceholder}>{odaSayisi || 'Oda Sayısı Seç'}</Text>
+              <Text style={styles.selectArrow}>▾</Text>
+            </TouchableOpacity>
           </FormGroup>
 
           <FormGroup label="Açıklama">
@@ -549,7 +543,7 @@ export default function IlanDuzenleScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Oda Sayısı Seçin</Text>
             <View style={styles.chipRow}>
-              {ODALAR_BUYUK.map(o => (
+              {ODALAR.map(o => (
                 <TouchableOpacity key={o} style={[styles.chip, odaSayisi === o && styles.chipActive]} onPress={() => { setOdaSayisi(o); setOdaModal(false); }}>
                   <Text style={[styles.chipText, odaSayisi === o && styles.chipTextActive]}>{o}</Text>
                 </TouchableOpacity>
