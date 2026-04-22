@@ -127,6 +127,8 @@ export default function IlanEkleScreen() {
     setPortfoyYukleniyor(false);
   }
 
+  useEffect(() => { otoPortfoyNo(); }, []);
+
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
