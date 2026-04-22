@@ -109,25 +109,14 @@ export default function IlanEkleScreen() {
         const koord = IL_KOORDINAT[data.calisma_bolgesi];
         if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
       }
+      const prefix = ((data as any)?.portfoy_prefix ?? '').toUpperCase();
+      const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
+      const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
+      let n = 1;
+      while (nums.has(n)) n++;
+      setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
     })();
   }, []);
-
-  const [portfoyYukleniyor, setPortfoyYukleniyor] = useState(false);
-  async function otoPortfoyNo() {
-    setPortfoyYukleniyor(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setPortfoyYukleniyor(false); return; }
-    const { data: profil } = await supabase.from('profiller').select('portfoy_prefix').eq('id', user.id).single();
-    const prefix = ((profil as any)?.portfoy_prefix ?? '').toUpperCase();
-    const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
-    const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
-    let n = 1;
-    while (nums.has(n)) n++;
-    setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
-    setPortfoyYukleniyor(false);
-  }
-
-  useEffect(() => { otoPortfoyNo(); }, []);
 
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
