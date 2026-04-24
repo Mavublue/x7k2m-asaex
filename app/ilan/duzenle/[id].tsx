@@ -46,7 +46,8 @@ map.on('click',function(e){
   else marker=L.marker(e.latlng,{icon:pin}).addTo(map);
   window.ReactNativeWebView.postMessage(JSON.stringify({lat:e.latlng.lat,lng:e.latlng.lng}));
 });
-window.__focusArea=function(s,n,w,e,la,ln){try{map.fitBounds([[s,w],[n,e]],{padding:[20,20],maxZoom:16});}catch(err){map.setView([la,ln],15);}};
+window.__focusArea=function(s,n,w,e,la,ln){try{map.fitBounds([[s,w],[n,e]],{padding:[20,20],maxZoom:13});}catch(err){map.setView([la,ln],13);}};
+window.__revertMarker=function(la,ln){if(marker){if(la==null||ln==null){marker.remove();marker=null;}else{marker.setLatLng([la,ln]);}}};
 </script></body></html>`;
 }
 
@@ -559,11 +560,32 @@ export default function IlanDuzenleScreen() {
                 ref={mapRef}
                 source={{ html: buildInlinePickerHtml(lat ? parseFloat(lat) : undefined, lng ? parseFloat(lng) : undefined) }}
                 style={styles.inlineMapView}
-                onMessage={e => {
+                onMessage={async e => {
                   try {
                     const { lat: la, lng: ln } = JSON.parse(e.nativeEvent.data);
+                    const prevLat = lat, prevLng = lng;
                     setLat(la.toString());
                     setLng(ln.toString());
+                    if (mahalle || ilce) {
+                      const check = await verifyLocation(la, ln, ilce, mahalle);
+                      if (check && !check.ok) {
+                        const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
+                        const expected = [mahalle, ilce].filter(Boolean).join(', ');
+                        Alert.alert(
+                          'Konum uyuşmuyor',
+                          `Seçtiğin nokta: ${seen}\nBekleneni: ${expected}\n\nYine de kullanmak istiyor musun?`,
+                          [
+                            { text: 'İptal', style: 'cancel', onPress: () => {
+                              setLat(prevLat); setLng(prevLng);
+                              const revertLat = prevLat ? parseFloat(prevLat) : 'null';
+                              const revertLng = prevLng ? parseFloat(prevLng) : 'null';
+                              mapRef.current?.injectJavaScript(`window.__revertMarker && window.__revertMarker(${revertLat}, ${revertLng}); true;`);
+                            } },
+                            { text: 'Devam', style: 'destructive' },
+                          ]
+                        );
+                      }
+                    }
                   } catch {}
                 }}
                 javaScriptEnabled

@@ -86,9 +86,9 @@ function buildPickerHtml(initLat?: number, initLng?: number) {
 
     window.__focusArea = function(s, n, w, e, lat, lng) {
       try {
-        map.fitBounds([[s, w], [n, e]], { padding: [20, 20], maxZoom: 16 });
+        map.fitBounds([[s, w], [n, e]], { padding: [20, 20], maxZoom: 13 });
       } catch (err) {
-        map.setView([lat, lng], 15);
+        map.setView([lat, lng], 13);
       }
     };
   </script>
