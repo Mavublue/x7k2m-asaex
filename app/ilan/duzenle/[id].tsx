@@ -47,7 +47,6 @@ map.on('click',function(e){
   window.ReactNativeWebView.postMessage(JSON.stringify({lat:e.latlng.lat,lng:e.latlng.lng}));
 });
 window.__focusArea=function(s,n,w,e,la,ln){try{map.fitBounds([[s,w],[n,e]],{padding:[20,20],maxZoom:13});}catch(err){map.setView([la,ln],13);}};
-window.__revertMarker=function(la,ln){if(marker){if(la==null||ln==null){marker.remove();marker=null;}else{marker.setLatLng([la,ln]);}}};
 </script></body></html>`;
 }
 
@@ -108,6 +107,14 @@ export default function IlanDuzenleScreen() {
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const mapRef = useRef<WebView>(null);
   const musteriMapRef = useRef<WebView>(null);
+  const [mapWarning, setMapWarning] = useState<string | null>(null);
+  const mapWarnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showMapWarning(text: string) {
+    setMapWarning(text);
+    if (mapWarnTimerRef.current) clearTimeout(mapWarnTimerRef.current);
+    mapWarnTimerRef.current = setTimeout(() => setMapWarning(null), 6000);
+  }
 
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
 
@@ -238,26 +245,6 @@ export default function IlanDuzenleScreen() {
     if (eksik) {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
-    }
-
-    if (lat && lng && (mahalle || ilce)) {
-      const check = await verifyLocation(parseFloat(lat), parseFloat(lng), ilce, mahalle);
-      if (check && !check.ok) {
-        const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
-        const expected = [mahalle, ilce].filter(Boolean).join(', ');
-        const devam = await new Promise<boolean>(resolve => {
-          Alert.alert(
-            'Konum uyuşmuyor',
-            `Seçtiğin nokta: ${seen}\nBekleneni: ${expected}\n\nYine de kaydedilsin mi?`,
-            [
-              { text: 'İptal', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Yine de Kaydet', style: 'destructive', onPress: () => resolve(true) },
-            ],
-            { cancelable: true, onDismiss: () => resolve(false) }
-          );
-        });
-        if (!devam) return;
-      }
     }
 
     const silinenler = orijinalFotograflar.filter(k => !fotograflar.includes(k));
@@ -563,27 +550,15 @@ export default function IlanDuzenleScreen() {
                 onMessage={async e => {
                   try {
                     const { lat: la, lng: ln } = JSON.parse(e.nativeEvent.data);
-                    const prevLat = lat, prevLng = lng;
                     setLat(la.toString());
                     setLng(ln.toString());
+                    setMapWarning(null);
                     if (mahalle || ilce) {
                       const check = await verifyLocation(la, ln, ilce, mahalle);
                       if (check && !check.ok) {
                         const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
                         const expected = [mahalle, ilce].filter(Boolean).join(', ');
-                        Alert.alert(
-                          'Konum uyuşmuyor',
-                          `Seçtiğin nokta: ${seen}\nBekleneni: ${expected}\n\nYine de kullanmak istiyor musun?`,
-                          [
-                            { text: 'İptal', style: 'cancel', onPress: () => {
-                              setLat(prevLat); setLng(prevLng);
-                              const revertLat = prevLat ? parseFloat(prevLat) : 'null';
-                              const revertLng = prevLng ? parseFloat(prevLng) : 'null';
-                              mapRef.current?.injectJavaScript(`window.__revertMarker && window.__revertMarker(${revertLat}, ${revertLng}); true;`);
-                            } },
-                            { text: 'Devam', style: 'destructive' },
-                          ]
-                        );
+                        showMapWarning(`Bu nokta ${seen} — ${expected} seçmiştin`);
                       }
                     }
                   } catch {}
@@ -593,6 +568,11 @@ export default function IlanDuzenleScreen() {
                 originWhitelist={['*']}
                 mixedContentMode="always"
               />
+              {mapWarning && (
+                <TouchableOpacity onPress={() => setMapWarning(null)} activeOpacity={0.85} style={styles.mapWarning}>
+                  <Text style={styles.mapWarningText} numberOfLines={2}>⚠ {mapWarning}</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {lat && lng && (
               <TouchableOpacity onPress={() => { setLat(''); setLng(''); }} style={styles.mapSifirla}>
@@ -761,8 +741,10 @@ const styles = StyleSheet.create({
   fotoEkle: { width: 80, height: 80, borderRadius: Radius.lg, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.outlineVariant, borderStyle: 'dashed' },
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
-  inlineMapBox: { height: 300, borderRadius: Radius.xl, overflow: 'hidden' },
+  inlineMapBox: { height: 300, borderRadius: Radius.xl, overflow: 'hidden', position: 'relative' },
   inlineMapView: { flex: 1 },
+  mapWarning: { position: 'absolute', top: 10, left: 10, right: 10, backgroundColor: 'rgba(229,149,0,0.95)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
+  mapWarningText: { color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center' },
   mapSifirla: { marginTop: Spacing.sm, alignSelf: 'flex-start' },
   mapSifirlaText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
   musteriKonumToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },

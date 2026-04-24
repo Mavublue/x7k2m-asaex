@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import { forwardGeocode, verifyLocation } from '../lib/geocode';
@@ -111,9 +111,18 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     initLat && initLng ? { lat: initLat, lng: initLng } : null
   );
-  const [verifying, setVerifying] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
+  const warnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const webRef = useRef<WebView>(null);
   const htmlRef = useRef(buildPickerHtml(initLat, initLng));
+
+  function showWarning(text: string) {
+    setWarning(text);
+    if (warnTimerRef.current) clearTimeout(warnTimerRef.current);
+    warnTimerRef.current = setTimeout(() => setWarning(null), 6000);
+  }
+
+  useEffect(() => () => { if (warnTimerRef.current) clearTimeout(warnTimerRef.current); }, []);
 
   useEffect(() => {
     if (!visible) return;
@@ -130,43 +139,26 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
     return () => { cancelled = true; };
   }, [visible, il, ilce, mahalle, initLat, initLng]);
 
-  function handleMessage(event: any) {
+  async function handleMessage(event: any) {
     try {
       const { lat, lng } = JSON.parse(event.nativeEvent.data);
       setSelected({ lat, lng });
+      setWarning(null);
+      if (mahalle || ilce) {
+        const check = await verifyLocation(lat, lng, ilce, mahalle);
+        if (check && !check.ok) {
+          const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
+          const expected = [mahalle, ilce].filter(Boolean).join(', ');
+          showWarning(`Bu nokta ${seen} — ${expected} seçmiştin`);
+        }
+      }
     } catch {}
   }
 
-  async function handleConfirm() {
+  function handleConfirm() {
     if (!selected) return;
-    if (!mahalle && !ilce) {
-      onConfirm(selected.lat, selected.lng);
-      onClose();
-      return;
-    }
-    setVerifying(true);
-    const check = await verifyLocation(selected.lat, selected.lng, ilce, mahalle);
-    setVerifying(false);
-    if (!check) {
-      onConfirm(selected.lat, selected.lng);
-      onClose();
-      return;
-    }
-    if (check.ok) {
-      onConfirm(selected.lat, selected.lng);
-      onClose();
-      return;
-    }
-    const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
-    const expected = [mahalle, ilce].filter(Boolean).join(', ');
-    Alert.alert(
-      'Konum uyuşmuyor',
-      `Seçtiğin nokta: ${seen}\nBekleneni: ${expected}\n\nYine de bu konumu kullanmak istiyor musun?`,
-      [
-        { text: 'İptal', style: 'cancel' },
-        { text: 'Yine de Kullan', style: 'destructive', onPress: () => { onConfirm(selected.lat, selected.lng); onClose(); } },
-      ]
-    );
+    onConfirm(selected.lat, selected.lng);
+    onClose();
   }
 
   return (
@@ -179,25 +171,30 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
           <Text style={styles.headerTitle}>Konum Seç</Text>
           <TouchableOpacity
             onPress={handleConfirm}
-            style={[styles.headerBtn, (!selected || verifying) && styles.headerBtnDisabled]}
-            disabled={!selected || verifying}
+            style={[styles.headerBtn, !selected && styles.headerBtnDisabled]}
+            disabled={!selected}
           >
-            {verifying
-              ? <ActivityIndicator size="small" color={Colors.primary} />
-              : <Text style={[styles.headerBtnTextPrimary, !selected && styles.headerBtnDisabled]}>Seç</Text>}
+            <Text style={[styles.headerBtnTextPrimary, !selected && styles.headerBtnDisabled]}>Seç</Text>
           </TouchableOpacity>
         </View>
 
-        <WebView
-          ref={webRef}
-          source={{ html: htmlRef.current }}
-          style={styles.map}
-          onMessage={handleMessage}
-          javaScriptEnabled
-          domStorageEnabled
-          originWhitelist={['*']}
-          mixedContentMode="always"
-        />
+        <View style={styles.mapWrap}>
+          <WebView
+            ref={webRef}
+            source={{ html: htmlRef.current }}
+            style={styles.map}
+            onMessage={handleMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            originWhitelist={['*']}
+            mixedContentMode="always"
+          />
+          {warning && (
+            <TouchableOpacity onPress={() => setWarning(null)} activeOpacity={0.85} style={styles.warning}>
+              <Text style={styles.warningText} numberOfLines={2}>⚠ {warning}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <View style={styles.bottom}>
           {mahalle || ilce ? (
@@ -232,7 +229,10 @@ const styles = StyleSheet.create({
   headerBtnText: { fontSize: 15, color: Colors.onSurfaceVariant },
   headerBtnTextPrimary: { fontSize: 15, color: Colors.primary, fontWeight: '700' },
   headerBtnDisabled: { opacity: 0.35 },
+  mapWrap: { flex: 1, position: 'relative' },
   map: { flex: 1 },
+  warning: { position: 'absolute', top: 12, left: 16, right: 16, backgroundColor: 'rgba(229,149,0,0.95)', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 5 },
+  warningText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   bottom: {
     paddingVertical: 12,
     paddingHorizontal: Spacing.xl,
