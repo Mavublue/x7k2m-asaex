@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 const CONTACT_EMAIL = 'yasin.35.94@hotmail.com';
 
@@ -22,6 +24,36 @@ export interface GeocodeResult {
   displayName: string;
 }
 
+async function cacheGet(il: string, ilce: string, mahalle: string): Promise<GeocodeResult | null> {
+  try {
+    const { data } = await supabase
+      .from('mahalle_koordinatlari')
+      .select('lat, lng, bbox, display_name')
+      .eq('il', il)
+      .eq('ilce', ilce)
+      .eq('mahalle', mahalle)
+      .maybeSingle();
+    if (!data) return null;
+    const bbox = Array.isArray(data.bbox) && data.bbox.length === 4
+      ? (data.bbox as [number, number, number, number])
+      : undefined;
+    return { lat: data.lat, lng: data.lng, bbox, displayName: data.display_name ?? '' };
+  } catch {
+    return null;
+  }
+}
+
+async function cacheSet(il: string, ilce: string, mahalle: string, r: GeocodeResult): Promise<void> {
+  try {
+    await supabase.from('mahalle_koordinatlari').insert({
+      il, ilce, mahalle,
+      lat: r.lat, lng: r.lng,
+      bbox: r.bbox ?? null,
+      display_name: r.displayName,
+    });
+  } catch {}
+}
+
 export async function forwardGeocode(
   il?: string,
   ilce?: string,
@@ -29,6 +61,13 @@ export async function forwardGeocode(
 ): Promise<GeocodeResult | null> {
   const parts = [mahalle, ilce, il, 'Türkiye'].filter(Boolean).join(', ');
   if (!parts) return null;
+
+  const kIl = il ?? '';
+  const kIlce = ilce ?? '';
+  const kMahalle = mahalle ?? '';
+  const cached = await cacheGet(kIl, kIlce, kMahalle);
+  if (cached) return cached;
+
   try {
     const url = `${NOMINATIM}/search?format=json&q=${encodeURIComponent(parts)}&limit=1&countrycodes=tr&email=${CONTACT_EMAIL}`;
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -44,7 +83,9 @@ export async function forwardGeocode(
       const [s, n, w, e] = r.boundingbox.map((v: string) => parseFloat(v));
       if ([s, n, w, e].every(v => !isNaN(v))) bbox = [s, n, w, e];
     }
-    return { lat, lng, bbox, displayName: r.display_name ?? '' };
+    const result: GeocodeResult = { lat, lng, bbox, displayName: r.display_name ?? '' };
+    cacheSet(kIl, kIlce, kMahalle, result);
+    return result;
   } catch {
     return null;
   }
