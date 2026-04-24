@@ -309,21 +309,41 @@ export default function IlanDetayScreen() {
                   const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
                   setAktifFoto(index);
                 }}
-                renderItem={({ item }) => (
-                  <R2Image source={item} style={styles.anaFoto} resizeMode="cover" />
-                )}
+                renderItem={({ item }) => {
+                  const gizli = (ilan.gizli_fotograflar ?? []).includes(item);
+                  return (
+                    <View>
+                      <R2Image source={item} style={styles.anaFoto} resizeMode="cover" />
+                      {gizli && (
+                        <View style={styles.gizliBadge}>
+                          <Text style={styles.gizliBadgeText}>🚫 Müşteriye gizli</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                }}
               />
               {fotograflar.length > 1 && (
                 <View style={styles.thumbRowWrap}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
-                    {fotograflar.map((f, i) => (
+                    {fotograflar.map((f, i) => {
+                      const gizli = (ilan.gizli_fotograflar ?? []).includes(f);
+                      return (
                       <TouchableOpacity key={i} onPress={() => {
                           setAktifFoto(i);
                           flatListRef.current?.scrollToIndex({ index: i, animated: true });
                         }} onLongPress={() => fotografIndir(f, i)}>
-                        <R2Image source={f} style={[styles.thumb, aktifFoto === i && styles.thumbAktif]} resizeMode="cover" size="sm" />
+                        <View>
+                          <R2Image source={f} style={[styles.thumb, aktifFoto === i && styles.thumbAktif]} resizeMode="cover" size="sm" />
+                          {gizli && (
+                            <View style={styles.thumbGizli}>
+                              <Text style={styles.thumbGizliText}>🚫</Text>
+                            </View>
+                          )}
+                        </View>
                       </TouchableOpacity>
-                    ))}
+                      );
+                    })}
                   </ScrollView>
                 </View>
               )}
@@ -818,6 +838,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     borderRadius: Radius.md,
   },
+  thumbGizli: {
+    position: 'absolute', top: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderTopRightRadius: Radius.md, borderBottomLeftRadius: Radius.md,
+    paddingHorizontal: 3, paddingVertical: 1,
+  },
+  thumbGizliText: { fontSize: 9 },
+  gizliBadge: {
+    position: 'absolute', top: 12, left: 12,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: Radius.full,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  gizliBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   content: { paddingHorizontal: Spacing.xl, paddingBottom: 100 },
 

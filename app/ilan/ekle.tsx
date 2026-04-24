@@ -80,6 +80,7 @@ export default function IlanEkleScreen() {
   const [userId, setUserId] = useState('');
   const [ilanId] = useState(() => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
   const [fotograflar, setFotograflar] = useState<string[]>([]);
+  const [gizliFotograflar, setGizliFotograflar] = useState<string[]>([]);
   const [fotograflarPreview, setFotograflarPreview] = useState<string[]>([]);
   const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -209,6 +210,7 @@ export default function IlanEkleScreen() {
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
       fotograflar: fotograflar.length > 0 ? fotograflar : null,
+      gizli_fotograflar: gizliFotograflar.length > 0 ? gizliFotograflar : null,
       musteri_gizle: musteriGizle,
     });
     if (error) {
@@ -258,20 +260,38 @@ export default function IlanEkleScreen() {
           {/* Fotoğraflar */}
           <FormGroup label="Fotoğraflar">
             <View style={styles.fotoGrid}>
-              {fotograflarPreview.map((url, i) => (
+              {fotograflarPreview.map((url, i) => {
+                const key = fotograflar[i];
+                const gizli = gizliFotograflar.includes(key);
+                return (
                 <View key={i} style={styles.fotoKutu}>
                   <Image source={{ uri: url }} style={styles.fotoImage} />
+                  {gizli && (
+                    <View style={styles.gizliOverlay}>
+                      <Text style={styles.gizliOverlayText}>🚫</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.fotoGoz}
+                    onPress={() => {
+                      setGizliFotograflar(prev => gizli ? prev.filter(k => k !== key) : [...prev, key]);
+                    }}
+                  >
+                    <Text style={styles.fotoGozText}>{gizli ? '🚫' : '👁'}</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.fotoSil}
                     onPress={() => {
                       setFotograflar(fotograflar.filter((_, j) => j !== i));
                       setFotograflarPreview(fotograflarPreview.filter((_, j) => j !== i));
+                      setGizliFotograflar(prev => prev.filter(k => k !== key));
                     }}
                   >
                     <Text style={styles.fotoSilText}>✕</Text>
                   </TouchableOpacity>
                 </View>
-              ))}
+                );
+              })}
               <TouchableOpacity style={styles.fotoEkle} onPress={fotografSec} disabled={fotoYukleniyor}>
                 {fotoYukleniyor
                   ? <ActivityIndicator size="small" color={Colors.primary} />
@@ -783,6 +803,18 @@ const styles = StyleSheet.create({
     width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
   },
   fotoSilText: { color: '#fff', fontSize: 10 },
+  fotoGoz: {
+    position: 'absolute', top: 4, left: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: Radius.full,
+    width: 22, height: 22, alignItems: 'center', justifyContent: 'center',
+  },
+  fotoGozText: { fontSize: 11 },
+  gizliOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  gizliOverlayText: { fontSize: 28 },
   fotoEkle: {
     width: 80, height: 80, borderRadius: Radius.lg,
     backgroundColor: Colors.surfaceContainerLow,

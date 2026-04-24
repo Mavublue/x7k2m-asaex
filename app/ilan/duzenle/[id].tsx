@@ -85,6 +85,7 @@ export default function IlanDuzenleScreen() {
   const [musteriLng, setMusteriLng] = useState('');
   const [userId, setUserId] = useState('');
   const [fotograflar, setFotograflar] = useState<string[]>([]);
+  const [gizliFotograflar, setGizliFotograflar] = useState<string[]>([]);
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
   const [orijinalFotograflar, setOrijinalFotograflar] = useState<string[]>([]);
   const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
@@ -164,6 +165,7 @@ export default function IlanDuzenleScreen() {
         const keys = ilan.fotograflar ?? [];
         setFotograflar(keys);
         setOrijinalFotograflar(keys);
+        setGizliFotograflar((ilan as any).gizli_fotograflar ?? []);
       }
       setVeriYuklendi(true);
     });
@@ -244,6 +246,9 @@ export default function IlanDuzenleScreen() {
       musteri_lat: (musteriKonumAktif && musteriLat) ? parseFloat(musteriLat) : null,
       musteri_lng: (musteriKonumAktif && musteriLng) ? parseFloat(musteriLng) : null,
       fotograflar: fotograflar.length > 0 ? fotograflar : null,
+      gizli_fotograflar: gizliFotograflar.filter(k => fotograflar.includes(k)).length > 0
+        ? gizliFotograflar.filter(k => fotograflar.includes(k))
+        : null,
     }).eq('id', id);
 
     if (error) {
@@ -282,15 +287,28 @@ export default function IlanDuzenleScreen() {
           {/* Fotoğraflar */}
           <FormGroup label="Fotoğraflar">
             <View style={styles.fotoGrid}>
-              {fotograflar.map((key, i) => (
+              {fotograflar.map((key, i) => {
+                const gizli = gizliFotograflar.includes(key);
+                return (
                 <View key={key} style={styles.fotoKutu}>
                   {localPreviews[key]
                     ? <Image source={{ uri: localPreviews[key] }} style={styles.fotoImage} resizeMode="cover" />
                     : <R2Image source={key} style={styles.fotoImage} resizeMode="cover" size="sm" />
                   }
+                  {gizli && (
+                    <View style={styles.gizliOverlay}>
+                      <Text style={styles.gizliOverlayText}>🚫</Text>
+                    </View>
+                  )}
                   {i === 0 && <View style={styles.kapakBadge}><Text style={styles.kapakText}>Kapak</Text></View>}
+                  <TouchableOpacity style={styles.fotoGoz} onPress={() => {
+                    setGizliFotograflar(prev => gizli ? prev.filter(k => k !== key) : [...prev, key]);
+                  }}>
+                    <Text style={styles.fotoGozText}>{gizli ? '🚫' : '👁'}</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.fotoSil} onPress={() => {
                     setFotograflar(fotograflar.filter((_, j) => j !== i));
+                    setGizliFotograflar(prev => prev.filter(k => k !== key));
                   }}>
                     <Text style={styles.fotoSilText}>✕</Text>
                   </TouchableOpacity>
@@ -315,7 +333,8 @@ export default function IlanDuzenleScreen() {
                     )}
                   </View>
                 </View>
-              ))}
+                );
+              })}
               <TouchableOpacity style={styles.fotoEkle} onPress={fotografEkle} disabled={fotoYukleniyor}>
                 {fotoYukleniyor ? <ActivityIndicator size="small" color={Colors.primary} /> : <>
                   <Text style={styles.fotoEkleIcon}>＋</Text>
@@ -668,6 +687,10 @@ const styles = StyleSheet.create({
   fotoImage: { width: 80, height: 80 },
   fotoSil: { position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: Radius.full, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   fotoSilText: { color: '#fff', fontSize: 9 },
+  fotoGoz: { position: 'absolute', top: 2, left: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: Radius.full, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  fotoGozText: { fontSize: 10 },
+  gizliOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  gizliOverlayText: { fontSize: 22 },
   kapakBadge: { position: 'absolute', bottom: 20, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center' },
   kapakText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   fotoSiraRow: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,0.45)' },
