@@ -626,8 +626,11 @@ export default function IlanEkleScreen() {
         visible={mapPickerVisible}
         onClose={() => setMapPickerVisible(false)}
         onConfirm={(la, ln) => { setLat(la.toString()); setLng(ln.toString()); }}
-        initLat={lat ? parseFloat(lat) : mapInitLat}
-        initLng={lng ? parseFloat(lng) : mapInitLng}
+        initLat={lat ? parseFloat(lat) : (mahalle || ilce || il ? undefined : mapInitLat)}
+        initLng={lng ? parseFloat(lng) : (mahalle || ilce || il ? undefined : mapInitLng)}
+        il={il}
+        ilce={ilce}
+        mahalle={mahalle}
       />
 
       {/* Müşteri Harita Picker */}
@@ -635,8 +638,11 @@ export default function IlanEkleScreen() {
         visible={musteriMapPickerVisible}
         onClose={() => setMusteriMapPickerVisible(false)}
         onConfirm={(la, ln) => { setMusteriLat(la.toString()); setMusteriLng(ln.toString()); }}
-        initLat={musteriLat ? parseFloat(musteriLat) : (lat ? parseFloat(lat) : mapInitLat)}
-        initLng={musteriLng ? parseFloat(musteriLng) : (lng ? parseFloat(lng) : mapInitLng)}
+        initLat={musteriLat ? parseFloat(musteriLat) : (lat ? parseFloat(lat) : (mahalle || ilce || il ? undefined : mapInitLat))}
+        initLng={musteriLng ? parseFloat(musteriLng) : (lng ? parseFloat(lng) : (mahalle || ilce || il ? undefined : mapInitLng))}
+        il={il}
+        ilce={ilce}
+        mahalle={mahalle}
       />
 
       {/* Oda Sayısı Modal */}

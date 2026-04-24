@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
+import { forwardGeocode, verifyLocation } from '../lib/geocode';
 
 function buildPickerHtml(initLat?: number, initLng?: number) {
   const center = initLat && initLng ? `[${initLat}, ${initLng}]` : '[39.925, 32.836]';
@@ -82,6 +83,14 @@ function buildPickerHtml(initLat?: number, initLng?: number) {
       }
       window.ReactNativeWebView.postMessage(JSON.stringify({ lat: lat, lng: lng }));
     });
+
+    window.__focusArea = function(s, n, w, e, lat, lng) {
+      try {
+        map.fitBounds([[s, w], [n, e]], { padding: [20, 20], maxZoom: 16 });
+      } catch (err) {
+        map.setView([lat, lng], 15);
+      }
+    };
   </script>
 </body>
 </html>`;
@@ -93,13 +102,33 @@ interface Props {
   onConfirm: (lat: number, lng: number) => void;
   initLat?: number;
   initLng?: number;
+  il?: string;
+  ilce?: string;
+  mahalle?: string;
 }
 
-export default function MapPickerModal({ visible, onClose, onConfirm, initLat, initLng }: Props) {
+export default function MapPickerModal({ visible, onClose, onConfirm, initLat, initLng, il, ilce, mahalle }: Props) {
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     initLat && initLng ? { lat: initLat, lng: initLng } : null
   );
-  const html = buildPickerHtml(initLat, initLng);
+  const [verifying, setVerifying] = useState(false);
+  const webRef = useRef<WebView>(null);
+  const htmlRef = useRef(buildPickerHtml(initLat, initLng));
+
+  useEffect(() => {
+    if (!visible) return;
+    if (initLat && initLng) return;
+    if (!mahalle && !ilce && !il) return;
+    let cancelled = false;
+    (async () => {
+      const r = await forwardGeocode(il, ilce, mahalle);
+      if (cancelled || !r) return;
+      const [s, n, w, e] = r.bbox ?? [r.lat - 0.01, r.lat + 0.01, r.lng - 0.01, r.lng + 0.01];
+      const js = `window.__focusArea && window.__focusArea(${s}, ${n}, ${w}, ${e}, ${r.lat}, ${r.lng}); true;`;
+      webRef.current?.injectJavaScript(js);
+    })();
+    return () => { cancelled = true; };
+  }, [visible, il, ilce, mahalle, initLat, initLng]);
 
   function handleMessage(event: any) {
     try {
@@ -108,17 +137,41 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
     } catch {}
   }
 
-  function handleConfirm() {
-    if (selected) {
+  async function handleConfirm() {
+    if (!selected) return;
+    if (!mahalle && !ilce) {
       onConfirm(selected.lat, selected.lng);
       onClose();
+      return;
     }
+    setVerifying(true);
+    const check = await verifyLocation(selected.lat, selected.lng, ilce, mahalle);
+    setVerifying(false);
+    if (!check) {
+      onConfirm(selected.lat, selected.lng);
+      onClose();
+      return;
+    }
+    if (check.ok) {
+      onConfirm(selected.lat, selected.lng);
+      onClose();
+      return;
+    }
+    const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
+    const expected = [mahalle, ilce].filter(Boolean).join(', ');
+    Alert.alert(
+      'Konum uyuşmuyor',
+      `Seçtiğin nokta: ${seen}\nBekleneni: ${expected}\n\nYine de bu konumu kullanmak istiyor musun?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Yine de Kullan', style: 'destructive', onPress: () => { onConfirm(selected.lat, selected.lng); onClose(); } },
+      ]
+    );
   }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
             <Text style={styles.headerBtnText}>İptal</Text>
@@ -126,16 +179,18 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
           <Text style={styles.headerTitle}>Konum Seç</Text>
           <TouchableOpacity
             onPress={handleConfirm}
-            style={[styles.headerBtn, !selected && styles.headerBtnDisabled]}
-            disabled={!selected}
+            style={[styles.headerBtn, (!selected || verifying) && styles.headerBtnDisabled]}
+            disabled={!selected || verifying}
           >
-            <Text style={[styles.headerBtnTextPrimary, !selected && styles.headerBtnDisabled]}>Seç</Text>
+            {verifying
+              ? <ActivityIndicator size="small" color={Colors.primary} />
+              : <Text style={[styles.headerBtnTextPrimary, !selected && styles.headerBtnDisabled]}>Seç</Text>}
           </TouchableOpacity>
         </View>
 
-        {/* Map */}
         <WebView
-          source={{ html }}
+          ref={webRef}
+          source={{ html: htmlRef.current }}
           style={styles.map}
           onMessage={handleMessage}
           javaScriptEnabled
@@ -144,11 +199,13 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
           mixedContentMode="always"
         />
 
-        {/* Bottom info */}
         <View style={styles.bottom}>
+          {mahalle || ilce ? (
+            <Text style={styles.contextText}>📍 Hedef: {[mahalle, ilce, il].filter(Boolean).join(', ')}</Text>
+          ) : null}
           {selected ? (
             <Text style={styles.coordText}>
-              📍 {selected.lat.toFixed(6)}, {selected.lng.toFixed(6)}
+              {selected.lat.toFixed(6)}, {selected.lng.toFixed(6)}
             </Text>
           ) : (
             <Text style={styles.hintText}>Haritaya dokunarak konum seçin</Text>
@@ -171,19 +228,21 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.surfaceContainerLow,
   },
   headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
-  headerBtn: { paddingHorizontal: 4, paddingVertical: 4 },
+  headerBtn: { paddingHorizontal: 4, paddingVertical: 4, minWidth: 40, alignItems: 'center' },
   headerBtnText: { fontSize: 15, color: Colors.onSurfaceVariant },
   headerBtnTextPrimary: { fontSize: 15, color: Colors.primary, fontWeight: '700' },
   headerBtnDisabled: { opacity: 0.35 },
   map: { flex: 1 },
   bottom: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: Spacing.xl,
     alignItems: 'center',
     backgroundColor: Colors.surfaceContainerLowest,
     borderTopWidth: 1,
     borderTopColor: Colors.surfaceContainerLow,
+    gap: 4,
   },
+  contextText: { fontSize: 12, color: Colors.onSurfaceVariant, fontWeight: '600' },
   coordText: { fontSize: 13, color: Colors.onSurface, fontWeight: '600' },
   hintText: { fontSize: 13, color: Colors.onSurfaceVariant },
 });

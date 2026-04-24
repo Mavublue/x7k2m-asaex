@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -15,6 +15,7 @@ import { getUploadUrl, optimizePhoto, deleteFile } from '../../../lib/r2';
 import { Colors, Radius, Spacing } from '../../../constants/theme';
 import { Ilan } from '../../../types';
 import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../../constants/turkiye';
+import { forwardGeocode, verifyLocation } from '../../../lib/geocode';
 
 function buildInlinePickerHtml(initLat?: number, initLng?: number) {
   const center = initLat && initLng ? `[${initLat},${initLng}]` : '[39.925,32.836]';
@@ -45,6 +46,7 @@ map.on('click',function(e){
   else marker=L.marker(e.latlng,{icon:pin}).addTo(map);
   window.ReactNativeWebView.postMessage(JSON.stringify({lat:e.latlng.lat,lng:e.latlng.lng}));
 });
+window.__focusArea=function(s,n,w,e,la,ln){try{map.fitBounds([[s,w],[n,e]],{padding:[20,20],maxZoom:16});}catch(err){map.setView([la,ln],15);}};
 </script></body></html>`;
 }
 
@@ -103,8 +105,24 @@ export default function IlanDuzenleScreen() {
   const [banyoSayisi, setBanyoSayisi] = useState('');
   const [musteriGizle, setMusteriGizle] = useState(false);
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
+  const mapRef = useRef<WebView>(null);
+  const musteriMapRef = useRef<WebView>(null);
 
   const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
+
+  useEffect(() => {
+    if (!mahalle && !ilce) return;
+    let cancelled = false;
+    (async () => {
+      const r = await forwardGeocode(il, ilce, mahalle);
+      if (cancelled || !r) return;
+      const [s, n, w, e] = r.bbox ?? [r.lat - 0.01, r.lat + 0.01, r.lng - 0.01, r.lng + 0.01];
+      const js = `window.__focusArea && window.__focusArea(${s}, ${n}, ${w}, ${e}, ${r.lat}, ${r.lng}); true;`;
+      if (!lat && !lng) mapRef.current?.injectJavaScript(js);
+      if (!musteriLat && !musteriLng) musteriMapRef.current?.injectJavaScript(js);
+    })();
+    return () => { cancelled = true; };
+  }, [il, ilce, mahalle]);
 
   const [portfoyYukleniyor, setPortfoyYukleniyor] = useState(false);
   async function otoPortfoyNo() {
@@ -219,6 +237,26 @@ export default function IlanDuzenleScreen() {
     if (eksik) {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
+    }
+
+    if (lat && lng && (mahalle || ilce)) {
+      const check = await verifyLocation(parseFloat(lat), parseFloat(lng), ilce, mahalle);
+      if (check && !check.ok) {
+        const seen = [check.seenMahalle, check.seenIlce].filter(Boolean).join(', ') || 'tanımsız bölge';
+        const expected = [mahalle, ilce].filter(Boolean).join(', ');
+        const devam = await new Promise<boolean>(resolve => {
+          Alert.alert(
+            'Konum uyuşmuyor',
+            `Seçtiğin nokta: ${seen}\nBekleneni: ${expected}\n\nYine de kaydedilsin mi?`,
+            [
+              { text: 'İptal', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Yine de Kaydet', style: 'destructive', onPress: () => resolve(true) },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) }
+          );
+        });
+        if (!devam) return;
+      }
     }
 
     const silinenler = orijinalFotograflar.filter(k => !fotograflar.includes(k));
@@ -518,6 +556,7 @@ export default function IlanDuzenleScreen() {
           }>
             <View style={styles.inlineMapBox}>
               <WebView
+                ref={mapRef}
                 source={{ html: buildInlinePickerHtml(lat ? parseFloat(lat) : undefined, lng ? parseFloat(lng) : undefined) }}
                 style={styles.inlineMapView}
                 onMessage={e => {
@@ -544,6 +583,7 @@ export default function IlanDuzenleScreen() {
             <FormGroup label="Müşteri Konumu">
               <View style={styles.inlineMapBox}>
                 <WebView
+                  ref={musteriMapRef}
                   source={{ html: buildInlinePickerHtml(musteriLat ? parseFloat(musteriLat) : (lat ? parseFloat(lat) : undefined), musteriLng ? parseFloat(musteriLng) : (lng ? parseFloat(lng) : undefined)) }}
                   style={styles.inlineMapView}
                   onMessage={e => {
