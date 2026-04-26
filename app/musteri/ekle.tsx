@@ -86,7 +86,7 @@ export default function MusteriEkleScreen() {
   }, []);
 
   async function handleKaydet() {
-    if (!ad || !soyad) { Alert.alert('Hata', 'Ad ve soyad zorunludur.'); return; }
+    if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     setLoading(true);
     let kArr = [];
     if (filterIl.length) kArr.push(filterIl.join(', '));
@@ -95,7 +95,7 @@ export default function MusteriEkleScreen() {
     const tercih_konum_val = kArr.length > 0 ? kArr.join(' | ') : null;
 
     const { error } = await supabase.from('musteriler').insert({
-      ad, soyad,
+      ad, soyad: soyad || null,
       telefon: telefon || null,
       butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
       butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
@@ -131,7 +131,7 @@ export default function MusteriEkleScreen() {
 
           <View style={styles.satir}>
             <View style={{ flex: 1 }}><Field label="Ad *" value={ad} onChangeText={setAd} placeholder="Ahmet" /></View>
-            <View style={{ flex: 1 }}><Field label="Soyad *" value={soyad} onChangeText={setSoyad} placeholder="Yılmaz" /></View>
+            <View style={{ flex: 1 }}><Field label="Soyad" value={soyad} onChangeText={setSoyad} placeholder="Yılmaz" /></View>
             <View style={[styles.inputContainer, { width: 80 }]}>
               <Text style={styles.label}>Etiket</Text>
               <View style={styles.etiketInputRow}>

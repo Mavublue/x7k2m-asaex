@@ -154,10 +154,10 @@ export default function MusteriDetayScreen() {
   }
 
   async function handleKaydet() {
-    if (!ad || !soyad) { Alert.alert('Hata', 'Ad ve soyad zorunludur.'); return; }
+    if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     setSaving(true);
     const { error } = await supabase.from('musteriler').update({
-      ad, soyad,
+      ad, soyad: soyad || null,
       telefon: telefon || null,
       butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
       butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
@@ -357,7 +357,7 @@ export default function MusteriDetayScreen() {
                   <Field label="Ad *" value={ad} onChangeText={setAd} placeholder="Ahmet" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="Soyad *" value={soyad} onChangeText={setSoyad} placeholder="Yılmaz" />
+                  <Field label="Soyad" value={soyad} onChangeText={setSoyad} placeholder="Yılmaz" />
                 </View>
                 <View style={[styles.inputContainer, { width: 80 }]}>
                   <Text style={styles.label}>Etiket</Text>
