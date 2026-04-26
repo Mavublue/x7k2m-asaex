@@ -157,7 +157,10 @@ export default function IlanDetayScreen() {
     if (m.butce_max != null && fiyat > Number(m.butce_max)) return false;
     if (m.tercih_tip) {
       const tipler = m.tercih_tip.split(',').map((t: string) => t.trim());
-      if (tipler.length > 0 && !tipler.includes(ilan!.kategori)) return false;
+      if (tipler.length > 0) {
+        const ilanCats = (ilan!.kategori ?? '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        if (!ilanCats.some((c: string) => tipler.includes(c))) return false;
+      }
     }
     if (m.tercih_konum) {
       const [il, ilce, mah] = m.tercih_konum.split(' / ').map((p: string) => p.trim());

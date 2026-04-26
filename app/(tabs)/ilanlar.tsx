@@ -210,7 +210,10 @@ export default function IlanlarScreen() {
     if (f.musteriGizle === 'Görünür') r = r.filter(i => !i.musteri_gizle);
     else if (f.musteriGizle === 'Gizli') r = r.filter(i => !!i.musteri_gizle);
     // 'Tümü' = no filter
-    if (f.kategoriler.length) r = r.filter(i => f.kategoriler.includes(i.kategori));
+    if (f.kategoriler.length) r = r.filter(i => {
+      const ilanCats = (i.kategori ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      return ilanCats.some(c => f.kategoriler.includes(c));
+    });
     if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) {
       r = r.filter(ilan => {
         if (f.filterIl.length > 0 && !f.filterIl.includes(ilan.konum)) return false;

@@ -50,7 +50,10 @@ export default function DashboardScreen() {
     if (m.butce_max != null && f > Number(m.butce_max)) return false;
     if (m.tercih_tip) {
       const tipler = m.tercih_tip.split(',').map((t: string) => t.trim());
-      if (tipler.length > 0 && !tipler.includes(i.kategori)) return false;
+      if (tipler.length > 0) {
+        const ilanCats = (i.kategori ?? '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        if (!ilanCats.some((c: string) => tipler.includes(c))) return false;
+      }
     }
     if (m.tercih_konum) {
       const [il, ilce, mah] = m.tercih_konum.split(' / ').map((p: string) => p.trim());
@@ -116,7 +119,10 @@ export default function DashboardScreen() {
         let q = supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip');
         if (m.butce_min != null) q = q.gte('fiyat', m.butce_min);
         if (m.butce_max != null) q = q.lte('fiyat', m.butce_max);
-        if (m.tercih_tip) q = q.in('kategori', m.tercih_tip.split(',').map((t: string) => t.trim()));
+        if (m.tercih_tip) {
+          const tipler = m.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
+          if (tipler.length) q = q.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
+        }
         if (m.tercih_konum) {
           const [il, ilce, mah] = m.tercih_konum.split(' / ').map((p: string) => p.trim());
           if (il) q = q.ilike('konum', il);

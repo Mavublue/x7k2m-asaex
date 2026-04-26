@@ -76,7 +76,7 @@ export default function IlanDuzenleScreen() {
   const [brutM2, setBrutM2] = useState('');
   const [odaSayisi, setOdaSayisi] = useState('');
   const [tip, setTip] = useState('Satılık');
-  const [kategori, setKategori] = useState('Daire');
+  const [secilenKategoriler, setSecilenKategoriler] = useState<string[]>(['Daire']);
   const [aciklama, setAciklama] = useState('');
   const [musteriAciklamasi, setMusteriAciklamasi] = useState('');
   const [aciklamaTab, setAciklamaTab] = useState<'not' | 'musteri'>('not');
@@ -118,7 +118,7 @@ export default function IlanDuzenleScreen() {
     mapWarnTimerRef.current = setTimeout(() => setMapWarning(null), 6000);
   }
 
-  const arsaTarla = kategori === 'Arsa' || kategori === 'Tarla';
+  const arsaTarla = secilenKategoriler.length > 0 && secilenKategoriler.every(k => k === 'Arsa' || k === 'Tarla');
 
   useEffect(() => {
     if (!mahalle && !ilce) return;
@@ -182,7 +182,7 @@ export default function IlanDuzenleScreen() {
         setNetM2(ilan.metrekare?.toString() ?? '');
         setOdaSayisi(ilan.oda_sayisi ?? '');
         setTip(ilan.tip);
-        setKategori(ilan.kategori);
+        setSecilenKategoriler(ilan.kategori ? ilan.kategori.split(',').map(s => s.trim()).filter(Boolean) : []);
         setAciklama(ilan.aciklama ?? '');
         setMusteriAciklamasi(ilan.musteri_aciklamasi ?? '');
         setSecilenOzellikler((ilan as any).ozellikler ? (ilan as any).ozellikler.split(',') : []);
@@ -288,7 +288,7 @@ export default function IlanDuzenleScreen() {
       return;
     }
     setSubmitted(true);
-    const eksik = !baslik || !fiyat || !il || !musteriAciklamasi ||
+    const eksik = !baslik || !fiyat || !il || !musteriAciklamasi || secilenKategoriler.length === 0 ||
       (!arsaTarla && (!banyoSayisi || !netM2 || !brutM2 || !odaSayisi || !binaYasi));
     if (eksik) {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
@@ -308,7 +308,7 @@ export default function IlanDuzenleScreen() {
       mahalle: mahalle || null,
       metrekare: netM2 ? parseFloat(netM2) : null,
       oda_sayisi: odaSayisi || null,
-      tip, kategori,
+      tip, kategori: secilenKategoriler.join(', '),
       aciklama: aciklama || null,
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
@@ -453,11 +453,14 @@ export default function IlanDuzenleScreen() {
 
           <FormGroup label="Kategori *">
             <View style={styles.chipRow}>
-              {kategoriler.map(k => (
-                <TouchableOpacity key={k} style={[styles.chip, kategori === k && styles.chipActive]} onPress={() => setKategori(k)}>
-                  <Text style={[styles.chipText, kategori === k && styles.chipTextActive]}>{k}</Text>
-                </TouchableOpacity>
-              ))}
+              {kategoriler.map(k => {
+                const aktif = secilenKategoriler.includes(k);
+                return (
+                  <TouchableOpacity key={k} style={[styles.chip, aktif && styles.chipActive]} onPress={() => setSecilenKategoriler(prev => aktif ? prev.filter(x => x !== k) : [...prev, k])}>
+                    <Text style={[styles.chipText, aktif && styles.chipTextActive]}>{k}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </FormGroup>
 

@@ -112,8 +112,8 @@ export default function MusteriDetayScreen() {
       if (data.butce_min) query = query.gte('fiyat', data.butce_min);
       if (data.butce_max) query = query.lte('fiyat', data.butce_max);
       if (data.tercih_tip) {
-        const tipler = data.tercih_tip.split(',').map((t: string) => t.trim());
-        if (tipler.length > 0) query = query.in('kategori', tipler);
+        const tipler = data.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
+        if (tipler.length > 0) query = query.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
       }
       if (data.tercih_konum) {
         const konumListesi = data.tercih_konum.split('|').filter(Boolean);
