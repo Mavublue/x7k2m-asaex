@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -82,8 +82,9 @@ export default function IlanEkleScreen() {
   const [fotograflar, setFotograflar] = useState<string[]>([]);
   const [gizliFotograflar, setGizliFotograflar] = useState<string[]>([]);
   const [fotograflarPreview, setFotograflarPreview] = useState<string[]>([]);
-  const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ index: number; total: number; percent: number } | null>(null);
+  const [pending, setPending] = useState<{ tempId: string; uri: string; percent: number; task: any | null }[]>([]);
+  const cancelledRef = useRef<Set<string>>(new Set());
+  const fotoYukleniyor = pending.length > 0;
   const [submitted, setSubmitted] = useState(false);
   const [ilModal, setIlModal] = useState(false);
   const [ilceModal, setIlceModal] = useState(false);
@@ -134,6 +135,15 @@ export default function IlanEkleScreen() {
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
   const mahalleListesi = ((MAHALLELER as any)[il]?.[ilce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(mahalleSearch.toLowerCase()));
 
+  function cancelUpload(tempId: string) {
+    cancelledRef.current.add(tempId);
+    setPending(prev => {
+      const item = prev.find(p => p.tempId === tempId);
+      if (item?.task) { try { item.task.cancelAsync(); } catch {} }
+      return prev.filter(p => p.tempId !== tempId);
+    });
+  }
+
   async function fotografSec() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -147,22 +157,27 @@ export default function IlanEkleScreen() {
     });
     if (result.canceled) return;
 
-    setFotoYukleniyor(true);
-    const total = result.assets.length;
-    const keys: string[] = [];
-    const previews: string[] = [];
-    for (let i = 0; i < total; i++) {
-      const asset = result.assets[i];
-      setUploadProgress({ index: i + 1, total, percent: 0 });
+    const newItems = result.assets.map(asset => ({
+      tempId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      uri: asset.uri,
+      percent: 0,
+      task: null as any,
+      asset,
+    }));
+    setPending(prev => [...prev, ...newItems.map(({ asset: _a, ...rest }) => rest)]);
+
+    for (const item of newItems) {
+      if (cancelledRef.current.has(item.tempId)) continue;
       try {
-        const ext = (asset.uri.split('.').pop() ?? 'jpg').toLowerCase();
+        const ext = (item.asset.uri.split('.').pop() ?? 'jpg').toLowerCase();
         const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
         const dosyaAdi = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const { uploadUrl, key } = await getUploadUrl(ilanId, dosyaAdi, mimeType);
+        if (cancelledRef.current.has(item.tempId)) continue;
 
         const task = FileSystem.createUploadTask(
           uploadUrl,
-          asset.uri,
+          item.asset.uri,
           {
             httpMethod: 'PUT',
             headers: { 'Content-Type': mimeType },
@@ -172,27 +187,29 @@ export default function IlanEkleScreen() {
             const p = data.totalBytesExpectedToSend > 0
               ? Math.round((data.totalBytesSent / data.totalBytesExpectedToSend) * 100)
               : 0;
-            setUploadProgress({ index: i + 1, total, percent: Math.min(99, p) });
+            setPending(prev => prev.map(it => it.tempId === item.tempId ? { ...it, percent: Math.min(99, p) } : it));
           }
         );
-        const uploadResult = await task.uploadAsync();
+        setPending(prev => prev.map(p => p.tempId === item.tempId ? { ...p, task } : p));
 
+        const uploadResult = await task.uploadAsync();
+        if (cancelledRef.current.has(item.tempId)) continue;
         if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
 
-        setUploadProgress({ index: i + 1, total, percent: 100 });
-
-        const isFirst = fotograflar.length + keys.length === 0;
+        let isFirst = false;
+        setFotograflar(prev => {
+          isFirst = prev.length === 0;
+          return [...prev, key];
+        });
+        setFotograflarPreview(prev => [...prev, item.asset.uri]);
         optimizePhoto(key, isFirst);
-        keys.push(key);
-        previews.push(asset.uri);
+        setPending(prev => prev.filter(p => p.tempId !== item.tempId));
       } catch (e) {
-        console.error('Fotoğraf hatası:', e);
+        if (!cancelledRef.current.has(item.tempId)) console.error('Fotoğraf hatası:', e);
+        setPending(prev => prev.filter(p => p.tempId !== item.tempId));
       }
     }
-    setFotograflar(prev => [...prev, ...keys]);
-    setFotograflarPreview(prev => [...prev, ...previews]);
-    setUploadProgress(null);
-    setFotoYukleniyor(false);
+    cancelledRef.current.clear();
   }
 
   async function handleKaydet(taslak = false) {
@@ -285,9 +302,6 @@ export default function IlanEkleScreen() {
                 return (
                 <View key={i} style={styles.fotoKutu}>
                   <Image source={{ uri: url }} style={styles.fotoImage} />
-                  <View style={styles.fotoSiraBadge}>
-                    <Text style={styles.fotoSiraBadgeText}>{i + 1}</Text>
-                  </View>
                   {i === 0 && (
                     <View style={styles.kapakBadge}>
                       <Text style={styles.kapakText}>Kapak</Text>
@@ -345,21 +359,20 @@ export default function IlanEkleScreen() {
                 </View>
                 );
               })}
-              <TouchableOpacity style={styles.fotoEkle} onPress={fotografSec} disabled={fotoYukleniyor}>
-                {fotoYukleniyor && uploadProgress
-                  ? (
-                      <>
-                        <Text style={styles.fotoProgressSira}>{uploadProgress.index}/{uploadProgress.total}</Text>
-                        <Text style={styles.fotoProgressPct}>%{uploadProgress.percent}</Text>
-                      </>
-                    )
-                  : fotoYukleniyor
-                    ? <ActivityIndicator size="small" color={Colors.primary} />
-                    : <>
-                        <Text style={styles.fotoEkleIcon}>＋</Text>
-                        <Text style={styles.fotoEkleText}>Ekle</Text>
-                      </>
-                }
+              {pending.map(item => (
+                <View key={item.tempId} style={[styles.fotoKutu, { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.outlineVariant }]}>
+                  <Image source={{ uri: item.uri }} style={[styles.fotoImage, { opacity: 0.25 }]} />
+                  <View style={styles.fotoPendingOverlay}>
+                    <Text style={styles.fotoPendingPct}>%{item.percent}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.fotoSil} onPress={() => cancelUpload(item.tempId)}>
+                    <Text style={styles.fotoSilText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity style={styles.fotoEkle} onPress={fotografSec}>
+                <Text style={styles.fotoEkleIcon}>＋</Text>
+                <Text style={styles.fotoEkleText}>Ekle</Text>
               </TouchableOpacity>
             </View>
           </FormGroup>
@@ -889,8 +902,8 @@ const styles = StyleSheet.create({
   },
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
-  fotoProgressSira: { fontSize: 11, color: Colors.onSurface, fontWeight: '700' },
-  fotoProgressPct: { fontSize: 13, color: Colors.primary, fontWeight: '700', marginTop: 2 },
+  fotoPendingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  fotoPendingPct: { fontSize: 14, color: Colors.onSurface, fontWeight: '700' },
   fotoSiraBadge: {
     position: 'absolute', top: 4, left: '50%', marginLeft: -10,
     width: 20, height: 20, borderRadius: 10,
