@@ -91,6 +91,7 @@ export default function IlanDuzenleScreen() {
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
   const [orijinalFotograflar, setOrijinalFotograflar] = useState<string[]>([]);
   const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ index: number; total: number; percent: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ilModal, setIlModal] = useState(false);
@@ -127,10 +128,16 @@ export default function IlanDuzenleScreen() {
       const [s, n, w, e] = r.bbox ?? [r.lat - 0.01, r.lat + 0.01, r.lng - 0.01, r.lng + 0.01];
       const js = `window.__focusArea && window.__focusArea(${s}, ${n}, ${w}, ${e}, ${r.lat}, ${r.lng}); true;`;
       if (!lat && !lng) mapRef.current?.injectJavaScript(js);
-      if (!musteriLat && !musteriLng) musteriMapRef.current?.injectJavaScript(js);
+      if (!musteriLat && !musteriLng) {
+        for (let i = 0; i < 20 && !musteriMapRef.current; i++) {
+          await new Promise(res => setTimeout(res, 100));
+          if (cancelled) return;
+        }
+        musteriMapRef.current?.injectJavaScript(js);
+      }
     })();
     return () => { cancelled = true; };
-  }, [il, ilce, mahalle]);
+  }, [il, ilce, mahalle, musteriKonumAktif]);
 
   const [portfoyYukleniyor, setPortfoyYukleniyor] = useState(false);
   async function otoPortfoyNo() {
@@ -209,20 +216,37 @@ export default function IlanDuzenleScreen() {
     if (result.canceled) return;
 
     setFotoYukleniyor(true);
+    const total = result.assets.length;
     const keys: string[] = [];
-    for (const asset of result.assets) {
+    for (let i = 0; i < total; i++) {
+      const asset = result.assets[i];
+      setUploadProgress({ index: i + 1, total, percent: 0 });
       try {
         const ext = (asset.uri.split('.').pop() ?? 'jpg').toLowerCase();
         const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
         const dosyaAdi = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const { uploadUrl, key } = await getUploadUrl(id as string, dosyaAdi, mimeType);
 
-        const uploadResult = await FileSystem.uploadAsync(uploadUrl, asset.uri, {
-          httpMethod: 'PUT',
-          headers: { 'Content-Type': mimeType },
-        });
+        const task = FileSystem.createUploadTask(
+          uploadUrl,
+          asset.uri,
+          {
+            httpMethod: 'PUT',
+            headers: { 'Content-Type': mimeType },
+            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          },
+          (data) => {
+            const p = data.totalBytesExpectedToSend > 0
+              ? Math.round((data.totalBytesSent / data.totalBytesExpectedToSend) * 100)
+              : 0;
+            setUploadProgress({ index: i + 1, total, percent: Math.min(99, p) });
+          }
+        );
+        const uploadResult = await task.uploadAsync();
 
-        if (uploadResult.status !== 200) throw new Error('Upload başarısız');
+        if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
+
+        setUploadProgress({ index: i + 1, total, percent: 100 });
 
         const isFirst = fotograflar.length + keys.length === 0;
         optimizePhoto(key, isFirst);
@@ -231,6 +255,7 @@ export default function IlanDuzenleScreen() {
       } catch (e) { console.error(e); }
     }
     setFotograflar(prev => [...prev, ...keys]);
+    setUploadProgress(null);
     setFotoYukleniyor(false);
   }
 
@@ -321,6 +346,9 @@ export default function IlanDuzenleScreen() {
                     ? <Image source={{ uri: localPreviews[key] }} style={styles.fotoImage} resizeMode="cover" />
                     : <R2Image source={key} style={styles.fotoImage} resizeMode="cover" size="sm" />
                   }
+                  <View style={styles.fotoSiraBadge}>
+                    <Text style={styles.fotoSiraBadgeText}>{i + 1}</Text>
+                  </View>
                   {gizli && (
                     <View style={styles.gizliOverlay}>
                       <Text style={styles.gizliOverlayText}>🚫</Text>
@@ -362,10 +390,18 @@ export default function IlanDuzenleScreen() {
                 );
               })}
               <TouchableOpacity style={styles.fotoEkle} onPress={fotografEkle} disabled={fotoYukleniyor}>
-                {fotoYukleniyor ? <ActivityIndicator size="small" color={Colors.primary} /> : <>
-                  <Text style={styles.fotoEkleIcon}>＋</Text>
-                  <Text style={styles.fotoEkleText}>Ekle</Text>
-                </>}
+                {fotoYukleniyor && uploadProgress
+                  ? <>
+                      <Text style={styles.fotoProgressSira}>{uploadProgress.index}/{uploadProgress.total}</Text>
+                      <Text style={styles.fotoProgressPct}>%{uploadProgress.percent}</Text>
+                    </>
+                  : fotoYukleniyor
+                    ? <ActivityIndicator size="small" color={Colors.primary} />
+                    : <>
+                        <Text style={styles.fotoEkleIcon}>＋</Text>
+                        <Text style={styles.fotoEkleText}>Ekle</Text>
+                      </>
+                }
               </TouchableOpacity>
             </View>
           </FormGroup>
@@ -741,6 +777,10 @@ const styles = StyleSheet.create({
   fotoEkle: { width: 80, height: 80, borderRadius: Radius.lg, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.outlineVariant, borderStyle: 'dashed' },
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
+  fotoProgressSira: { fontSize: 11, color: Colors.onSurface, fontWeight: '700' },
+  fotoProgressPct: { fontSize: 13, color: Colors.primary, fontWeight: '700', marginTop: 2 },
+  fotoSiraBadge: { position: 'absolute', top: 2, left: '50%', marginLeft: -10, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' },
+  fotoSiraBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   inlineMapBox: { height: 300, borderRadius: Radius.xl, overflow: 'hidden', position: 'relative' },
   inlineMapView: { flex: 1 },
   mapWarning: { position: 'absolute', top: 10, left: 10, right: 10, backgroundColor: 'rgba(229,149,0,0.95)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 },

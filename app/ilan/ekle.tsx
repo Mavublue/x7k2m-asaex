@@ -83,6 +83,7 @@ export default function IlanEkleScreen() {
   const [gizliFotograflar, setGizliFotograflar] = useState<string[]>([]);
   const [fotograflarPreview, setFotograflarPreview] = useState<string[]>([]);
   const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ index: number; total: number; percent: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [ilModal, setIlModal] = useState(false);
   const [ilceModal, setIlceModal] = useState(false);
@@ -147,21 +148,38 @@ export default function IlanEkleScreen() {
     if (result.canceled) return;
 
     setFotoYukleniyor(true);
+    const total = result.assets.length;
     const keys: string[] = [];
     const previews: string[] = [];
-    for (const asset of result.assets) {
+    for (let i = 0; i < total; i++) {
+      const asset = result.assets[i];
+      setUploadProgress({ index: i + 1, total, percent: 0 });
       try {
         const ext = (asset.uri.split('.').pop() ?? 'jpg').toLowerCase();
         const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
         const dosyaAdi = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const { uploadUrl, key } = await getUploadUrl(ilanId, dosyaAdi, mimeType);
 
-        const uploadResult = await FileSystem.uploadAsync(uploadUrl, asset.uri, {
-          httpMethod: 'PUT',
-          headers: { 'Content-Type': mimeType },
-        });
+        const task = FileSystem.createUploadTask(
+          uploadUrl,
+          asset.uri,
+          {
+            httpMethod: 'PUT',
+            headers: { 'Content-Type': mimeType },
+            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          },
+          (data) => {
+            const p = data.totalBytesExpectedToSend > 0
+              ? Math.round((data.totalBytesSent / data.totalBytesExpectedToSend) * 100)
+              : 0;
+            setUploadProgress({ index: i + 1, total, percent: Math.min(99, p) });
+          }
+        );
+        const uploadResult = await task.uploadAsync();
 
-        if (uploadResult.status !== 200) throw new Error('Upload başarısız');
+        if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
+
+        setUploadProgress({ index: i + 1, total, percent: 100 });
 
         const isFirst = fotograflar.length + keys.length === 0;
         optimizePhoto(key, isFirst);
@@ -173,6 +191,7 @@ export default function IlanEkleScreen() {
     }
     setFotograflar(prev => [...prev, ...keys]);
     setFotograflarPreview(prev => [...prev, ...previews]);
+    setUploadProgress(null);
     setFotoYukleniyor(false);
   }
 
@@ -266,6 +285,14 @@ export default function IlanEkleScreen() {
                 return (
                 <View key={i} style={styles.fotoKutu}>
                   <Image source={{ uri: url }} style={styles.fotoImage} />
+                  <View style={styles.fotoSiraBadge}>
+                    <Text style={styles.fotoSiraBadgeText}>{i + 1}</Text>
+                  </View>
+                  {i === 0 && (
+                    <View style={styles.kapakBadge}>
+                      <Text style={styles.kapakText}>Kapak</Text>
+                    </View>
+                  )}
                   {gizli && (
                     <View style={styles.gizliOverlay}>
                       <Text style={styles.gizliOverlayText}>🚫</Text>
@@ -289,16 +316,49 @@ export default function IlanEkleScreen() {
                   >
                     <Text style={styles.fotoSilText}>✕</Text>
                   </TouchableOpacity>
+                  <View style={styles.fotoSiraRow}>
+                    {i > 0 && (
+                      <TouchableOpacity style={styles.fotoSiraBtn} onPress={() => {
+                        const arr = [...fotograflar];
+                        const arrP = [...fotograflarPreview];
+                        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                        [arrP[i - 1], arrP[i]] = [arrP[i], arrP[i - 1]];
+                        setFotograflar(arr);
+                        setFotograflarPreview(arrP);
+                      }}>
+                        <Text style={styles.fotoSiraBtnText}>←</Text>
+                      </TouchableOpacity>
+                    )}
+                    {i < fotograflarPreview.length - 1 && (
+                      <TouchableOpacity style={styles.fotoSiraBtn} onPress={() => {
+                        const arr = [...fotograflar];
+                        const arrP = [...fotograflarPreview];
+                        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                        [arrP[i], arrP[i + 1]] = [arrP[i + 1], arrP[i]];
+                        setFotograflar(arr);
+                        setFotograflarPreview(arrP);
+                      }}>
+                        <Text style={styles.fotoSiraBtnText}>→</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
                 );
               })}
               <TouchableOpacity style={styles.fotoEkle} onPress={fotografSec} disabled={fotoYukleniyor}>
-                {fotoYukleniyor
-                  ? <ActivityIndicator size="small" color={Colors.primary} />
-                  : <>
-                      <Text style={styles.fotoEkleIcon}>＋</Text>
-                      <Text style={styles.fotoEkleText}>Ekle</Text>
-                    </>
+                {fotoYukleniyor && uploadProgress
+                  ? (
+                      <>
+                        <Text style={styles.fotoProgressSira}>{uploadProgress.index}/{uploadProgress.total}</Text>
+                        <Text style={styles.fotoProgressPct}>%{uploadProgress.percent}</Text>
+                      </>
+                    )
+                  : fotoYukleniyor
+                    ? <ActivityIndicator size="small" color={Colors.primary} />
+                    : <>
+                        <Text style={styles.fotoEkleIcon}>＋</Text>
+                        <Text style={styles.fotoEkleText}>Ekle</Text>
+                      </>
                 }
               </TouchableOpacity>
             </View>
@@ -829,6 +889,19 @@ const styles = StyleSheet.create({
   },
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
+  fotoProgressSira: { fontSize: 11, color: Colors.onSurface, fontWeight: '700' },
+  fotoProgressPct: { fontSize: 13, color: Colors.primary, fontWeight: '700', marginTop: 2 },
+  fotoSiraBadge: {
+    position: 'absolute', top: 4, left: '50%', marginLeft: -10,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center',
+  },
+  fotoSiraBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  kapakBadge: { position: 'absolute', bottom: 20, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center' },
+  kapakText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  fotoSiraRow: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,0.45)' },
+  fotoSiraBtn: { paddingHorizontal: 6, paddingVertical: 1 },
+  fotoSiraBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   gizleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: Spacing.lg, gap: 12 },
   gizleAlt: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },

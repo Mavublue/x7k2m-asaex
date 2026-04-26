@@ -91,6 +91,14 @@ function buildPickerHtml(initLat?: number, initLng?: number) {
         map.setView([lat, lng], 13);
       }
     };
+
+    window.__setMarkerView = function(lat, lng) {
+      try {
+        if (marker) { marker.setLatLng([lat, lng]); }
+        else { marker = L.marker([lat, lng], { icon: pinIcon }).addTo(map); }
+        map.setView([lat, lng], 14);
+      } catch (err) {}
+    };
   </script>
 </body>
 </html>`;
@@ -126,7 +134,16 @@ export default function MapPickerModal({ visible, onClose, onConfirm, initLat, i
 
   useEffect(() => {
     if (!visible) return;
-    if (initLat && initLng) return;
+    if (initLat && initLng) setSelected({ lat: initLat, lng: initLng });
+  }, [visible, initLat, initLng]);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (initLat && initLng) {
+      const js = `window.__setMarkerView && window.__setMarkerView(${initLat}, ${initLng}); true;`;
+      const t = setTimeout(() => webRef.current?.injectJavaScript(js), 300);
+      return () => clearTimeout(t);
+    }
     if (!mahalle && !ilce && !il) return;
     let cancelled = false;
     (async () => {
