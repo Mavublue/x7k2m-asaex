@@ -253,9 +253,9 @@ export default function IlanDuzenleScreen() {
           },
           (data) => {
             const p = data.totalBytesExpectedToSend > 0
-              ? Math.round((data.totalBytesSent / data.totalBytesExpectedToSend) * 100)
+              ? Math.round((data.totalBytesSent / data.totalBytesExpectedToSend) * 90)
               : 0;
-            setPending(prev => prev.map(it => it.tempId === item.tempId ? { ...it, percent: Math.min(99, p) } : it));
+            setPending(prev => prev.map(it => it.tempId === item.tempId ? { ...it, percent: Math.min(90, p) } : it));
           }
         );
         setPending(prev => prev.map(p => p.tempId === item.tempId ? { ...p, task } : p));
@@ -264,13 +264,15 @@ export default function IlanDuzenleScreen() {
         if (cancelledRef.current.has(item.tempId)) continue;
         if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
 
+        setPending(prev => prev.map(it => it.tempId === item.tempId ? { ...it, percent: 95 } : it));
+
         let isFirst = false;
         setFotograflar(prev => {
           isFirst = prev.length === 0;
           return [...prev, key];
         });
         setLocalPreviews(prev => ({ ...prev, [key]: item.asset.uri }));
-        optimizePhoto(key, isFirst);
+        await optimizePhoto(key, isFirst);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
       } catch (e) {
         if (!cancelledRef.current.has(item.tempId)) console.error(e);

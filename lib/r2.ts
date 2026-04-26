@@ -31,11 +31,11 @@ export async function optimizePhoto(key: string, isFirst = false): Promise<void>
     const { data } = await supabase.from('profiller').select('watermark_text').eq('id', user.id).single();
     watermarkText = data?.watermark_text ?? null;
   }
-  fetch(`${MEDIA_SERVICE}/optimize`, {
+  await fetch(`${MEDIA_SERVICE}/optimize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ key, isFirst, ...(watermarkText ? { watermarkText } : {}) }),
-  }).catch(() => {});
+  });
 }
 
 export async function deleteFile(key: string): Promise<void> {
