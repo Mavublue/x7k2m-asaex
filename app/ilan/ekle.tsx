@@ -131,6 +131,8 @@ export default function IlanEkleScreen() {
   }, []);
 
   const arsaTarla = secilenKategoriler.length > 0 && secilenKategoriler.every(k => k === 'Arsa' || k === 'Tarla');
+  const isyeri = secilenKategoriler.length > 0 && secilenKategoriler.every(k => k === 'İşyeri');
+  const banyoNetOdaOpsiyonel = arsaTarla || isyeri;
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
   const mahalleListesi = ((MAHALLELER as any)[il]?.[ilce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(mahalleSearch.toLowerCase()));
@@ -221,7 +223,8 @@ export default function IlanEkleScreen() {
     }
     setSubmitted(true);
     const eksik = !baslik || !fiyat || !il || !musteriAciklamasi || secilenKategoriler.length === 0 ||
-      (!arsaTarla && (!banyoSayisi || !netM2 || !brutM2 || !odaSayisi || !binaYasi));
+      (!arsaTarla && (!brutM2 || !binaYasi)) ||
+      (!banyoNetOdaOpsiyonel && (!banyoSayisi || !netM2 || !odaSayisi));
     if (eksik) {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
@@ -470,7 +473,7 @@ export default function IlanEkleScreen() {
             <View style={styles.satir}>
               <View style={[styles.m2Kutu, { flex: 1 }]}>
                 <TextInput
-                  style={[styles.input, { flex: 1 }, submitted && !arsaTarla && !netM2 && styles.inputErr]}
+                  style={[styles.input, { flex: 1 }, submitted && !banyoNetOdaOpsiyonel && !netM2 && styles.inputErr]}
                   placeholder="0"
                   value={netM2}
                   onChangeText={setNetM2}
@@ -494,8 +497,8 @@ export default function IlanEkleScreen() {
           </FormGroup>
 
           {/* Banyo Sayısı */}
-          <FormGroup label={arsaTarla ? 'Banyo Sayısı' : 'Banyo Sayısı *'}>
-            <View style={[styles.chipRow, submitted && !arsaTarla && !banyoSayisi && styles.chipRowErr]}>
+          <FormGroup label={banyoNetOdaOpsiyonel ? 'Banyo Sayısı' : 'Banyo Sayısı *'}>
+            <View style={[styles.chipRow, submitted && !banyoNetOdaOpsiyonel && !banyoSayisi && styles.chipRowErr]}>
               {['1', '2', '3', '4', '5+'].map(b => (
                 <TouchableOpacity key={b} style={[styles.chip, banyoSayisi === b && styles.chipActive]} onPress={() => setBanyoSayisi(b)}>
                   <Text style={[styles.chipText, banyoSayisi === b && styles.chipTextActive]}>{b}</Text>
@@ -505,9 +508,9 @@ export default function IlanEkleScreen() {
           </FormGroup>
 
           {/* Oda Sayısı */}
-          <FormGroup label={arsaTarla ? 'Oda Sayısı' : 'Oda Sayısı *'}>
+          <FormGroup label={banyoNetOdaOpsiyonel ? 'Oda Sayısı' : 'Oda Sayısı *'}>
             <TouchableOpacity
-              style={[styles.selectBtn, submitted && !arsaTarla && !odaSayisi && { borderWidth: 1.5, borderColor: '#E53935' }]}
+              style={[styles.selectBtn, submitted && !banyoNetOdaOpsiyonel && !odaSayisi && { borderWidth: 1.5, borderColor: '#E53935' }]}
               onPress={() => setOdaModal(true)}
             >
               <Text style={odaSayisi ? styles.selectText : styles.selectPlaceholder}>{odaSayisi || 'Oda Sayısı Seç'}</Text>
