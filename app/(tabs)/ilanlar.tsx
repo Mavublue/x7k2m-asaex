@@ -950,7 +950,7 @@ function IlanKart({ ilan }: { ilan: Ilan }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
   return (
-    <TouchableOpacity style={[styles.kart, iptal && styles.kartIptal]} onPress={() => router.push(`/ilan/${ilan.id}`)}>
+    <TouchableOpacity style={[styles.kart, !ilan.musteri_gizle && styles.kartAcik, iptal && styles.kartIptal]} onPress={() => router.push(`/ilan/${ilan.id}`)}>
       {ilkFoto ? (
         <R2Image source={ilkFoto} style={[styles.image, iptal && styles.imageIptal]} resizeMode="cover" size="sm" />
       ) : (
@@ -1160,6 +1160,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 }, elevation: 5,
   },
   kartIptal: { opacity: 0.65 },
+  kartAcik: { borderWidth: 3, borderColor: 'rgba(58,170,110,0.55)' },
   image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   imageIptal: { opacity: 0.6 },
   imagePlaceholder: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
