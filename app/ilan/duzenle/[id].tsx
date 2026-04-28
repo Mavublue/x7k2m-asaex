@@ -6,6 +6,7 @@ import {
   Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import R2Image from '../../../components/R2Image';
+import FotoGridSortable from '../../../components/FotoGridSortable';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -363,71 +364,33 @@ export default function IlanDuzenleScreen() {
 
           {/* Fotoğraflar */}
           <FormGroup label="Fotoğraflar">
-            <View style={styles.fotoGrid}>
-              {fotograflar.map((key, i) => {
-                const gizli = gizliFotograflar.includes(key);
-                return (
-                <View key={key} style={styles.fotoKutu}>
-                  {localPreviews[key]
-                    ? <Image source={{ uri: localPreviews[key] }} style={styles.fotoImage} resizeMode="cover" />
-                    : <R2Image source={key} style={styles.fotoImage} resizeMode="cover" size="sm" />
-                  }
-                  {gizli && (
-                    <View style={styles.gizliOverlay}>
-                      <Text style={styles.gizliOverlayText}>🚫</Text>
-                    </View>
-                  )}
-                  {i === 0 && <View style={styles.kapakBadge}><Text style={styles.kapakText}>Kapak</Text></View>}
-                  <TouchableOpacity style={styles.fotoGoz} onPress={() => {
-                    setGizliFotograflar(prev => gizli ? prev.filter(k => k !== key) : [...prev, key]);
-                  }}>
-                    <Text style={styles.fotoGozText}>{gizli ? '🚫' : '👁'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.fotoSil} onPress={() => {
-                    setFotograflar(fotograflar.filter((_, j) => j !== i));
-                    setGizliFotograflar(prev => prev.filter(k => k !== key));
-                  }}>
-                    <Text style={styles.fotoSilText}>✕</Text>
-                  </TouchableOpacity>
-                  <View style={styles.fotoSiraRow}>
-                    {i > 0 && (
-                      <TouchableOpacity style={styles.fotoSiraBtn} onPress={() => {
-                        const arr = [...fotograflar];
-                        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-                        setFotograflar(arr);
-                      }}>
-                        <Text style={styles.fotoSiraBtnText}>←</Text>
-                      </TouchableOpacity>
-                    )}
-                    {i < fotograflar.length - 1 && (
-                      <TouchableOpacity style={styles.fotoSiraBtn} onPress={() => {
-                        const arr = [...fotograflar];
-                        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-                        setFotograflar(arr);
-                      }}>
-                        <Text style={styles.fotoSiraBtnText}>→</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-                );
-              })}
-              {pending.map(item => (
-                <View key={item.tempId} style={[styles.fotoKutu, { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.outlineVariant }]}>
-                  <Image source={{ uri: item.uri }} style={[styles.fotoImage, { opacity: 0.25 }]} />
-                  <View style={styles.fotoPendingOverlay}>
-                    <Text style={styles.fotoPendingPct}>%{item.percent}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.fotoSil} onPress={() => cancelUpload(item.tempId)}>
-                    <Text style={styles.fotoSilText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity style={styles.fotoEkle} onPress={fotografEkle}>
-                <Text style={styles.fotoEkleIcon}>＋</Text>
-                <Text style={styles.fotoEkleText}>Ekle</Text>
-              </TouchableOpacity>
-            </View>
+            <FotoGridSortable
+              fotograflar={fotograflar}
+              gizliFotograflar={gizliFotograflar}
+              pending={pending.map(({ tempId, uri, percent }) => ({ tempId, uri, percent }))}
+              renderImage={(key) => (
+                localPreviews[key]
+                  ? <Image source={{ uri: localPreviews[key] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  : <R2Image source={key} style={{ width: '100%', height: '100%' }} resizeMode="cover" size="sm" />
+              )}
+              onReorder={(from, to) => {
+                setFotograflar(prev => { const a = [...prev]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a; });
+              }}
+              onSilTekli={(key) => {
+                setFotograflar(prev => prev.filter(k => k !== key));
+                setGizliFotograflar(prev => prev.filter(k => k !== key));
+              }}
+              onTopluSil={(keys) => {
+                const setK = new Set(keys);
+                setFotograflar(prev => prev.filter(k => !setK.has(k)));
+                setGizliFotograflar(prev => prev.filter(k => !setK.has(k)));
+              }}
+              onGizleToggle={(key) => {
+                setGizliFotograflar(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+              }}
+              onEkle={fotografEkle}
+              onCancelUpload={cancelUpload}
+            />
           </FormGroup>
 
           <FormGroup label="Portföy No">

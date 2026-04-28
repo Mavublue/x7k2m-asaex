@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { getUploadUrl, optimizePhoto } from '../../lib/r2';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import MapPickerModal from '../../components/MapPickerModal';
+import FotoGridSortable from '../../components/FotoGridSortable';
 import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
@@ -300,86 +301,36 @@ export default function IlanEkleScreen() {
         >
           {/* Fotoğraflar */}
           <FormGroup label="Fotoğraflar">
-            <View style={styles.fotoGrid}>
-              {fotograflarPreview.map((url, i) => {
-                const key = fotograflar[i];
-                const gizli = gizliFotograflar.includes(key);
-                return (
-                <View key={i} style={styles.fotoKutu}>
-                  <Image source={{ uri: url }} style={styles.fotoImage} />
-                  {i === 0 && (
-                    <View style={styles.kapakBadge}>
-                      <Text style={styles.kapakText}>Kapak</Text>
-                    </View>
-                  )}
-                  {gizli && (
-                    <View style={styles.gizliOverlay}>
-                      <Text style={styles.gizliOverlayText}>🚫</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={styles.fotoGoz}
-                    onPress={() => {
-                      setGizliFotograflar(prev => gizli ? prev.filter(k => k !== key) : [...prev, key]);
-                    }}
-                  >
-                    <Text style={styles.fotoGozText}>{gizli ? '🚫' : '👁'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.fotoSil}
-                    onPress={() => {
-                      setFotograflar(fotograflar.filter((_, j) => j !== i));
-                      setFotograflarPreview(fotograflarPreview.filter((_, j) => j !== i));
-                      setGizliFotograflar(prev => prev.filter(k => k !== key));
-                    }}
-                  >
-                    <Text style={styles.fotoSilText}>✕</Text>
-                  </TouchableOpacity>
-                  <View style={styles.fotoSiraRow}>
-                    {i > 0 && (
-                      <TouchableOpacity style={styles.fotoSiraBtn} onPress={() => {
-                        const arr = [...fotograflar];
-                        const arrP = [...fotograflarPreview];
-                        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-                        [arrP[i - 1], arrP[i]] = [arrP[i], arrP[i - 1]];
-                        setFotograflar(arr);
-                        setFotograflarPreview(arrP);
-                      }}>
-                        <Text style={styles.fotoSiraBtnText}>←</Text>
-                      </TouchableOpacity>
-                    )}
-                    {i < fotograflarPreview.length - 1 && (
-                      <TouchableOpacity style={styles.fotoSiraBtn} onPress={() => {
-                        const arr = [...fotograflar];
-                        const arrP = [...fotograflarPreview];
-                        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-                        [arrP[i], arrP[i + 1]] = [arrP[i + 1], arrP[i]];
-                        setFotograflar(arr);
-                        setFotograflarPreview(arrP);
-                      }}>
-                        <Text style={styles.fotoSiraBtnText}>→</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-                );
-              })}
-              {pending.map(item => (
-                <View key={item.tempId} style={[styles.fotoKutu, { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.outlineVariant }]}>
-                  <Image source={{ uri: item.uri }} style={[styles.fotoImage, { opacity: 0.25 }]} />
-                  <View style={styles.fotoPendingOverlay}>
-                    <Text style={styles.fotoPendingPct}>%{item.percent}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.fotoSil} onPress={() => cancelUpload(item.tempId)}>
-                    <Text style={styles.fotoSilText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity style={styles.fotoEkle} onPress={fotografSec}>
-                <Text style={styles.fotoEkleIcon}>＋</Text>
-                <Text style={styles.fotoEkleText}>Ekle</Text>
-              </TouchableOpacity>
-            </View>
+            <FotoGridSortable
+              fotograflar={fotograflar}
+              gizliFotograflar={gizliFotograflar}
+              pending={pending.map(({ tempId, uri, percent }) => ({ tempId, uri, percent }))}
+              renderImage={(_key, i) => (
+                <Image source={{ uri: fotograflarPreview[i] }} style={{ width: '100%', height: '100%' }} />
+              )}
+              onReorder={(from, to) => {
+                setFotograflar(prev => { const a = [...prev]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a; });
+                setFotograflarPreview(prev => { const a = [...prev]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a; });
+              }}
+              onSilTekli={(key, i) => {
+                setFotograflar(prev => prev.filter((_, j) => j !== i));
+                setFotograflarPreview(prev => prev.filter((_, j) => j !== i));
+                setGizliFotograflar(prev => prev.filter(k => k !== key));
+              }}
+              onTopluSil={(keys) => {
+                const setK = new Set(keys);
+                const idxs = new Set<number>();
+                fotograflar.forEach((k, i) => { if (setK.has(k)) idxs.add(i); });
+                setFotograflar(prev => prev.filter((_, i) => !idxs.has(i)));
+                setFotograflarPreview(prev => prev.filter((_, i) => !idxs.has(i)));
+                setGizliFotograflar(prev => prev.filter(k => !setK.has(k)));
+              }}
+              onGizleToggle={(key) => {
+                setGizliFotograflar(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+              }}
+              onEkle={fotografSec}
+              onCancelUpload={cancelUpload}
+            />
           </FormGroup>
 
           {/* Portföy No */}
