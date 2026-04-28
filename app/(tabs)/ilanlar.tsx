@@ -1160,7 +1160,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 }, elevation: 5,
   },
   kartIptal: { opacity: 0.65 },
-  kartAcik: { borderWidth: 3, borderColor: 'rgba(58,170,110,0.55)' },
+  kartAcik: { borderWidth: 4, borderColor: '#3aaa6e' },
   image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   imageIptal: { opacity: 0.6 },
   imagePlaceholder: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
