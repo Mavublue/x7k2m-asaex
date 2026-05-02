@@ -250,11 +250,15 @@ export default function IlanEkleScreen() {
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
-      ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
       fotograflar: fotograflar.length > 0 ? fotograflar : null,
       gizli_fotograflar: gizliFotograflar.length > 0 ? gizliFotograflar : null,
       musteri_gizle: musteriGizle,
     });
+    if (!error && secilenOzellikler.length) {
+      const rows = secilenOzellikler.map(oid => ({ ilan_id: ilanId, ozellik_id: oid }));
+      const { error: jErr } = await supabase.from('ilan_ozellikler').insert(rows);
+      if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setLoading(false); return; }
+    }
     if (error) {
       Alert.alert('Hata', error.message);
     } else if (taslak) {
@@ -540,13 +544,13 @@ export default function IlanEkleScreen() {
             <FormGroup label="Özellikler">
               <View style={styles.chipRow}>
                 {tumOzellikler.map(oz => {
-                  const secili = secilenOzellikler.includes(oz.ad);
+                  const secili = secilenOzellikler.includes(oz.id);
                   return (
                     <TouchableOpacity
                       key={oz.id}
                       style={[styles.chip, secili && styles.chipActive]}
                       onPress={() => setSecilenOzellikler(prev =>
-                        secili ? prev.filter(x => x !== oz.ad) : [...prev, oz.ad]
+                        secili ? prev.filter(x => x !== oz.id) : [...prev, oz.id]
                       )}
                     >
                       <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>

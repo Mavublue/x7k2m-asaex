@@ -94,7 +94,7 @@ export default function MusteriEkleScreen() {
     if (filterMahalle.length) kArr.push(filterMahalle.join(', '));
     const tercih_konum_val = kArr.length > 0 ? kArr.join(' | ') : null;
 
-    const { error } = await supabase.from('musteriler').insert({
+    const { data: inserted, error } = await supabase.from('musteriler').insert({
       ad, soyad: soyad || null,
       telefon: telefon || null,
       butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
@@ -102,15 +102,19 @@ export default function MusteriEkleScreen() {
       tercih_konum: tercih_konum_val,
       tercih_tip: tercihTipler.length ? tercihTipler.join(',') : null,
       min_oda: minOda || null,
-      ozel_istekler: ozelIstekler.length ? ozelIstekler.join(',') : null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
       notlar: notlar || null,
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
       etiketler: etiket.trim() || null,
       durum,
-    });
-    if (error) Alert.alert('Hata', error.message);
-    else router.back();
+    }).select('id').single();
+    if (error) { Alert.alert('Hata', error.message); setLoading(false); return; }
+    if (ozelIstekler.length && inserted) {
+      const rows = ozelIstekler.map(oid => ({ musteri_id: (inserted as any).id, ozellik_id: oid }));
+      const { error: jErr } = await supabase.from('musteri_ozellikler').insert(rows);
+      if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setLoading(false); return; }
+    }
+    router.back();
     setLoading(false);
   }
 
@@ -270,10 +274,10 @@ export default function MusteriEkleScreen() {
               <Text style={styles.label}>Özel İstekler</Text>
               <View style={styles.chipRow}>
                 {tumOzellikler.map(oz => {
-                  const secili = ozelIstekler.includes(oz.ad);
+                  const secili = ozelIstekler.includes(oz.id);
                   return (
                     <TouchableOpacity key={oz.id} style={[styles.chip, secili && styles.chipActive]}
-                      onPress={() => setOzelIstekler(prev => secili ? prev.filter(x => x !== oz.ad) : [...prev, oz.ad])}>
+                      onPress={() => setOzelIstekler(prev => secili ? prev.filter(x => x !== oz.id) : [...prev, oz.id])}>
                       <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>
                     </TouchableOpacity>
                   );

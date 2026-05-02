@@ -52,6 +52,7 @@ export default function MusteriDetayScreen() {
   const [tercihTipler, setTercihTipler] = useState<string[]>([]);
   const [minOda, setMinOda] = useState('');
   const [ozelIstekler, setOzelIstekler] = useState<string[]>([]);
+  const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
   const [takipTarihi, setTakipTarihi] = useState('');
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [binaYaslari, setBinaYaslari] = useState<string[]>([]);
@@ -96,7 +97,6 @@ export default function MusteriDetayScreen() {
       setKonumlar((data.tercih_konum ?? '').split('|').filter(Boolean));
       setTercihTipler(data.tercih_tip ? data.tercih_tip.split(',') : []);
       setMinOda(data.min_oda ?? '');
-      setOzelIstekler(data.ozel_istekler ? data.ozel_istekler.split(',') : []);
       setTakipTarihi(data.takip_tarihi ? tarihFormat(data.takip_tarihi) : '');
       setNotlar(data.notlar ?? '');
       setBinaYaslari(data.bina_yasi ? data.bina_yasi.split(',') : []);
@@ -106,6 +106,16 @@ export default function MusteriDetayScreen() {
       // Özellikler listesi
       const { data: ozData } = await supabase.from('ozellikler').select('*').order('olusturma_tarihi');
       if (ozData) setTumOzellikler(ozData);
+
+      // Müşteri özellikleri (junction)
+      const { data: jData } = await supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id);
+      if (jData) {
+        setOzelIstekler(jData.map((r: any) => r.ozellik_id));
+        setOzellikAdlari(jData.map((r: any) => r.ozellikler?.ad).filter(Boolean));
+      } else {
+        setOzelIstekler([]);
+        setOzellikAdlari([]);
+      }
 
       // Eşleşen ilanlar
       let query = supabase.from('ilanlar').select('*');
@@ -164,7 +174,6 @@ export default function MusteriDetayScreen() {
       tercih_konum: konumlar.length ? konumlar.join('|') : null,
       tercih_tip: tercihTipler.length ? tercihTipler.join(',') : null,
       min_oda: minOda || null,
-      ozel_istekler: ozelIstekler.length ? ozelIstekler.join(',') : null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
       notlar: notlar || null,
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
@@ -172,8 +181,17 @@ export default function MusteriDetayScreen() {
       durum,
     }).eq('id', id);
 
-    if (error) Alert.alert('Hata', error.message);
-    else { setDuzenle(false); fetchMusteri(); }
+    if (error) { Alert.alert('Hata', error.message); setSaving(false); return; }
+
+    await supabase.from('musteri_ozellikler').delete().eq('musteri_id', id);
+    if (ozelIstekler.length) {
+      const rows = ozelIstekler.map(oid => ({ musteri_id: id, ozellik_id: oid }));
+      const { error: jErr } = await supabase.from('musteri_ozellikler').insert(rows);
+      if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setSaving(false); return; }
+    }
+
+    setDuzenle(false);
+    fetchMusteri();
     setSaving(false);
   }
 
@@ -454,13 +472,13 @@ export default function MusteriDetayScreen() {
                   <Text style={styles.label}>Özel İstekler</Text>
                   <View style={styles.chipRow}>
                     {tumOzellikler.map(oz => {
-                      const secili = ozelIstekler.includes(oz.ad);
+                      const secili = ozelIstekler.includes(oz.id);
                       return (
                         <TouchableOpacity
                           key={oz.id}
                           style={[styles.chip, secili && styles.chipActive]}
                           onPress={() => setOzelIstekler(prev =>
-                            secili ? prev.filter(x => x !== oz.ad) : [...prev, oz.ad]
+                            secili ? prev.filter(x => x !== oz.id) : [...prev, oz.id]
                           )}
                         >
                           <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>
@@ -557,10 +575,10 @@ export default function MusteriDetayScreen() {
                         <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{binaYaslari.join(', ')}</Text>
                       </View>
                     ) : null}
-                    {ozelIstekler.length > 0 ? (
+                    {ozellikAdlari.length > 0 ? (
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Özel İstekler</Text>
-                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{ozelIstekler.join(', ')}</Text>
+                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{ozellikAdlari.join(', ')}</Text>
                       </View>
                     ) : null}
                     {takipTarihi ? (

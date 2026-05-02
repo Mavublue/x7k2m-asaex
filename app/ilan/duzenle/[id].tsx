@@ -188,7 +188,9 @@ export default function IlanDuzenleScreen() {
         setSecilenKategoriler(ilan.kategori ? ilan.kategori.split(',').map(s => s.trim()).filter(Boolean) : []);
         setAciklama(ilan.aciklama ?? '');
         setMusteriAciklamasi(ilan.musteri_aciklamasi ?? '');
-        setSecilenOzellikler((ilan as any).ozellikler ? (ilan as any).ozellikler.split(',') : []);
+        supabase.from('ilan_ozellikler').select('ozellik_id').eq('ilan_id', id).then(({ data: jr }) => {
+          if (jr) setSecilenOzellikler(jr.map((r: any) => r.ozellik_id));
+        });
         setBinaYasi(ilan.bina_yasi ?? '');
         setBanyoSayisi((ilan as any).banyo_sayisi?.toString() ?? '');
         setMusteriGizle((ilan as any).musteri_gizle ?? false);
@@ -317,7 +319,6 @@ export default function IlanDuzenleScreen() {
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
-      ozellikler: secilenOzellikler.length ? secilenOzellikler.join(',') : null,
       musteri_gizle: musteriGizle,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
@@ -331,11 +332,18 @@ export default function IlanDuzenleScreen() {
 
     if (error) {
       Alert.alert('Hata', error.message);
-    } else {
-      Alert.alert('Kaydedildi', 'İlan güncellendi.', [
-        { text: 'Tamam', onPress: () => router.back() },
-      ]);
+      setLoading(false);
+      return;
     }
+    await supabase.from('ilan_ozellikler').delete().eq('ilan_id', id);
+    if (secilenOzellikler.length) {
+      const rows = secilenOzellikler.map(oid => ({ ilan_id: id, ozellik_id: oid }));
+      const { error: jErr } = await supabase.from('ilan_ozellikler').insert(rows);
+      if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setLoading(false); return; }
+    }
+    Alert.alert('Kaydedildi', 'İlan güncellendi.', [
+      { text: 'Tamam', onPress: () => router.back() },
+    ]);
     setLoading(false);
   }
 
@@ -540,13 +548,13 @@ export default function IlanDuzenleScreen() {
             <FormGroup label="Özellikler">
               <View style={styles.chipRow}>
                 {tumOzellikler.map(oz => {
-                  const secili = secilenOzellikler.includes(oz.ad);
+                  const secili = secilenOzellikler.includes(oz.id);
                   return (
                     <TouchableOpacity
                       key={oz.id}
                       style={[styles.chip, secili && styles.chipActive]}
                       onPress={() => setSecilenOzellikler(prev =>
-                        secili ? prev.filter(x => x !== oz.ad) : [...prev, oz.ad]
+                        secili ? prev.filter(x => x !== oz.id) : [...prev, oz.id]
                       )}
                     >
                       <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>

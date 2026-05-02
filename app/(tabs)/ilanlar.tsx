@@ -197,8 +197,11 @@ export default function IlanlarScreen() {
   }
 
   async function fetchIlanlar() {
-    const { data } = await supabase.from('ilanlar').select('*').order('olusturma_tarihi', { ascending: false });
-    if (data) setIlanlar(data);
+    const { data } = await supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').order('olusturma_tarihi', { ascending: false });
+    if (data) {
+      const mapped = (data as any[]).map(i => ({ ...i, ozellik_ids: (i.ilan_ozellikler ?? []).map((r: any) => r.ozellik_id) }));
+      setIlanlar(mapped);
+    }
     setLoading(false);
   }
 
@@ -226,7 +229,7 @@ export default function IlanlarScreen() {
     if (f.fiyatMax) r = r.filter(i => i.fiyat <= parseInt(f.fiyatMax.replace(/\./g, '')));
     if (f.odalar.length) r = r.filter(i => i.oda_sayisi && f.odalar.includes(i.oda_sayisi));
     if (f.ozellikler.length) r = r.filter(i => {
-      const ilanOz = (i.ozellikler ?? '').split(',').filter(Boolean);
+      const ilanOz: string[] = (i as any).ozellik_ids ?? [];
       return f.ozellikler.every(o => ilanOz.includes(o));
     });
     if (search) r = r.filter(i =>
@@ -402,11 +405,14 @@ export default function IlanlarScreen() {
               <Text style={styles.etiketText}>{o} ✕</Text>
             </TouchableOpacity>
           ))}
-          {filtre.ozellikler.map(oz => (
-            <TouchableOpacity key={oz} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, ozellikler: f.ozellikler.filter(x => x !== oz) }))}>
-              <Text style={styles.etiketText}>✦ {oz} ✕</Text>
-            </TouchableOpacity>
-          ))}
+          {filtre.ozellikler.map(oz => {
+            const ad = tumOzellikler.find(t => t.id === oz)?.ad ?? oz;
+            return (
+              <TouchableOpacity key={oz} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, ozellikler: f.ozellikler.filter(x => x !== oz) }))}>
+                <Text style={styles.etiketText}>✦ {ad} ✕</Text>
+              </TouchableOpacity>
+            );
+          })}
           <TouchableOpacity style={styles.etiketSifirla} onPress={() => { setFiltre(BOS_FILTRE); setSearch(''); }}>
             <Text style={styles.etiketSifirlaText}>Sıfırla</Text>
           </TouchableOpacity>
@@ -714,8 +720,8 @@ export default function IlanlarScreen() {
                       <FilterSection title="Özellikler">
                         <View style={styles.chipRow}>
                           {tumOzellikler.map(oz => (
-                            <TouchableOpacity key={oz.id} style={[styles.chip, gecici.ozellikler.includes(oz.ad) && styles.chipActive]} onPress={() => toggleOzellik(oz.ad)}>
-                              <Text style={[styles.chipText, gecici.ozellikler.includes(oz.ad) && styles.chipTextActive]}>{oz.ad}</Text>
+                            <TouchableOpacity key={oz.id} style={[styles.chip, gecici.ozellikler.includes(oz.id) && styles.chipActive]} onPress={() => toggleOzellik(oz.id)}>
+                              <Text style={[styles.chipText, gecici.ozellikler.includes(oz.id) && styles.chipTextActive]}>{oz.ad}</Text>
                             </TouchableOpacity>
                           ))}
                         </View>
