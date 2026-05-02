@@ -8,7 +8,7 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
-import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -66,12 +66,14 @@ export default function MusteriEkleScreen() {
     filterIl.forEach(il => {
       filterIlce.forEach(ilce => {
         if ((ILLER[il] ?? []).includes(ilce)) {
-          const mahalleler = (((MAHALLELER as any)[il]?.[ilce] ?? []) as string[])
-            .filter(m => m.toLowerCase().includes(konumSearch.toLowerCase()));
-          if (mahalleler.length > 0) {
+          const gruplar = getMahalleGruplar(il, ilce)
+            .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) }))
+            .filter(g => g.mahalleler.length > 0);
+          if (gruplar.length > 0) {
             filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
-            mahalleler.sort((a,b) => a.localeCompare(b,'tr')).forEach(mah => {
-              filteredBoxList.push({ type: 'item', label: mah, key: mah });
+            gruplar.forEach(g => {
+              if (g.semt) filteredBoxList.push({ type: 'header', label: `  ${g.semt}` });
+              g.mahalleler.forEach(mah => filteredBoxList.push({ type: 'item', label: mah, key: mah }));
             });
           }
         }

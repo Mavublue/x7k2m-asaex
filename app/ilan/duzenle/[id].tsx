@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, Modal, FlatList,
+  StyleSheet, Alert, ActivityIndicator, Modal, FlatList, SectionList,
   Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import R2Image from '../../../components/R2Image';
@@ -15,7 +15,7 @@ import { supabase } from '../../../lib/supabase';
 import { getUploadUrl, optimizePhoto, deleteFile } from '../../../lib/r2';
 import { Colors, Radius, Spacing } from '../../../constants/theme';
 import { Ilan } from '../../../types';
-import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../../constants/turkiye';
 import { forwardGeocode, verifyLocation } from '../../../lib/geocode';
 
 function buildInlinePickerHtml(initLat?: number, initLng?: number) {
@@ -160,7 +160,9 @@ export default function IlanDuzenleScreen() {
 
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
-  const mahalleListesi = ((MAHALLELER as any)[il]?.[ilce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(mahalleSearch.toLowerCase()));
+  const mahalleGruplar = getMahalleGruplar(il, ilce)
+    .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(mahalleSearch.toLowerCase())) }))
+    .filter(g => g.mahalleler.length > 0);
 
   useEffect(() => {
     supabase.from('ozellikler').select('*').order('olusturma_tarihi').then(({ data }) => {
@@ -652,7 +654,7 @@ export default function IlanDuzenleScreen() {
 
       <SelectModal visible={ilModal} onClose={() => { setIlModal(false); setIlSearch(''); }} title="İl Seçin" search={ilSearch} onSearch={setIlSearch} data={ilListesi} onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); }} selected={il} />
       <SelectModal visible={ilceModal} onClose={() => { setIlceModal(false); setIlceSearch(''); }} title="İlçe Seçin" search={ilceSearch} onSearch={setIlceSearch} data={ilceListesi} onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); }} selected={ilce} />
-      <SelectModal visible={mahalleModal} onClose={() => { setMahalleModal(false); setMahalleSearch(''); }} title="Mahalle Seçin" search={mahalleSearch} onSearch={setMahalleSearch} data={mahalleListesi} onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }} selected={mahalle} />
+      <SelectModal visible={mahalleModal} onClose={() => { setMahalleModal(false); setMahalleSearch(''); }} title="Mahalle Seçin" search={mahalleSearch} onSearch={setMahalleSearch} groupedData={mahalleGruplar} onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }} selected={mahalle} />
 
 
       <Modal visible={odaModal} transparent animationType="slide">
@@ -676,11 +678,17 @@ export default function IlanDuzenleScreen() {
   );
 }
 
-function SelectModal({ visible, onClose, title, search, onSearch, data, onSelect, selected }: {
+function SelectModal({ visible, onClose, title, search, onSearch, data, groupedData, onSelect, selected }: {
   visible: boolean; onClose: () => void; title: string;
   search: string; onSearch: (v: string) => void;
-  data: string[]; onSelect: (v: string) => void; selected: string;
+  data?: string[];
+  groupedData?: { semt: string | null; mahalleler: string[] }[];
+  onSelect: (v: string) => void; selected: string;
 }) {
+  const sections = groupedData?.map((g, idx) => ({
+    title: g.semt ?? '', showHeader: g.semt !== null,
+    data: g.mahalleler, key: g.semt ?? `__null_${idx}`,
+  })) ?? [];
   return (
     <Modal visible={visible} transparent animationType="slide">
       <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -688,13 +696,26 @@ function SelectModal({ visible, onClose, title, search, onSearch, data, onSelect
           <View style={[styles.modalBox, { maxHeight: '80%' }]}>
             <Text style={styles.modalTitle}>{title}</Text>
             <TextInput style={[styles.input, { marginBottom: Spacing.md }]} placeholder="Ara..." value={search} onChangeText={onSearch} placeholderTextColor={Colors.outlineVariant} autoFocus={false} />
-            <FlatList data={data} keyExtractor={item => item} keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
-                  <Text style={[styles.modalItemText, selected === item && styles.modalItemTextActive]}>{item}</Text>
-                  {selected === item && <Text style={{ color: Colors.primary }}>✓</Text>}
-                </TouchableOpacity>
-              )} />
+            {groupedData ? (
+              <SectionList sections={sections} keyExtractor={(item, index) => `${item}-${index}`} keyboardShouldPersistTaps="handled" stickySectionHeadersEnabled
+                renderSectionHeader={({ section }: any) => section.showHeader ? (
+                  <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText}>{section.title}</Text></View>
+                ) : null}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
+                    <Text style={[styles.modalItemText, selected === item && styles.modalItemTextActive]}>{item}</Text>
+                    {selected === item && <Text style={{ color: Colors.primary }}>✓</Text>}
+                  </TouchableOpacity>
+                )} />
+            ) : (
+              <FlatList data={data ?? []} keyExtractor={item => item} keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
+                    <Text style={[styles.modalItemText, selected === item && styles.modalItemTextActive]}>{item}</Text>
+                    {selected === item && <Text style={{ color: Colors.primary }}>✓</Text>}
+                  </TouchableOpacity>
+                )} />
+            )}
             <TouchableOpacity style={styles.modalKapat} onPress={onClose}>
               <Text style={styles.modalKapatText}>İptal</Text>
             </TouchableOpacity>
@@ -802,6 +823,8 @@ const styles = StyleSheet.create({
   modalItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   modalItemText: { fontSize: 15, color: Colors.onSurface },
   modalItemTextActive: { color: Colors.primary, fontWeight: '600' },
+  sectionHeader: { backgroundColor: Colors.surfaceContainerLow, paddingVertical: 8, paddingHorizontal: 12, borderRadius: Radius.sm },
+  sectionHeaderText: { fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
   modalKapat: { marginTop: Spacing.md, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, paddingVertical: 14, alignItems: 'center' },
   modalKapatText: { color: Colors.onSurface, fontWeight: '600' },
 });

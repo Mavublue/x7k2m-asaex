@@ -8,7 +8,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
-import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;

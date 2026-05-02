@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, Modal, FlatList,
+  StyleSheet, Alert, ActivityIndicator, Modal, FlatList, SectionList,
   Image, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -13,7 +13,7 @@ import { getUploadUrl, optimizePhoto } from '../../lib/r2';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import MapPickerModal from '../../components/MapPickerModal';
 import FotoGridSortable from '../../components/FotoGridSortable';
-import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
 
@@ -136,7 +136,9 @@ export default function IlanEkleScreen() {
   const banyoNetOdaOpsiyonel = arsaTarla || isyeri;
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
-  const mahalleListesi = ((MAHALLELER as any)[il]?.[ilce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(mahalleSearch.toLowerCase()));
+  const mahalleGruplar = getMahalleGruplar(il, ilce)
+    .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(mahalleSearch.toLowerCase())) }))
+    .filter(g => g.mahalleler.length > 0);
 
   function cancelUpload(tempId: string) {
     cancelledRef.current.add(tempId);
@@ -652,7 +654,7 @@ export default function IlanEkleScreen() {
         title="Mahalle Seçin"
         search={mahalleSearch}
         onSearch={setMahalleSearch}
-        data={mahalleListesi}
+        groupedData={mahalleGruplar}
         onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }}
         selected={mahalle}
       />
@@ -707,11 +709,20 @@ export default function IlanEkleScreen() {
   );
 }
 
-function SelectModal({ visible, onClose, title, search, onSearch, data, onSelect, selected }: {
+function SelectModal({ visible, onClose, title, search, onSearch, data, groupedData, onSelect, selected }: {
   visible: boolean; onClose: () => void; title: string;
   search: string; onSearch: (v: string) => void;
-  data: string[]; onSelect: (v: string) => void; selected: string;
+  data?: string[];
+  groupedData?: { semt: string | null; mahalleler: string[] }[];
+  onSelect: (v: string) => void; selected: string;
 }) {
+  const sections = groupedData?.map((g, idx) => ({
+    title: g.semt ?? '',
+    showHeader: g.semt !== null,
+    data: g.mahalleler,
+    key: g.semt ?? `__null_${idx}`,
+  })) ?? [];
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -726,17 +737,35 @@ function SelectModal({ visible, onClose, title, search, onSearch, data, onSelect
               placeholderTextColor={Colors.outlineVariant}
               autoFocus={false}
             />
-            <FlatList
-              data={data}
-              keyExtractor={item => item}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
-                  <Text style={[styles.modalItemText, selected === item && styles.modalItemTextActive]}>{item}</Text>
-                  {selected === item && <Text style={{ color: Colors.primary }}>✓</Text>}
-                </TouchableOpacity>
-              )}
-            />
+            {groupedData ? (
+              <SectionList
+                sections={sections}
+                keyExtractor={(item, index) => `${item}-${index}`}
+                keyboardShouldPersistTaps="handled"
+                stickySectionHeadersEnabled
+                renderSectionHeader={({ section }: any) => section.showHeader ? (
+                  <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText}>{section.title}</Text></View>
+                ) : null}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
+                    <Text style={[styles.modalItemText, selected === item && styles.modalItemTextActive]}>{item}</Text>
+                    {selected === item && <Text style={{ color: Colors.primary }}>✓</Text>}
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <FlatList
+                data={data ?? []}
+                keyExtractor={item => item}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalItem} onPress={() => onSelect(item)}>
+                    <Text style={[styles.modalItemText, selected === item && styles.modalItemTextActive]}>{item}</Text>
+                    {selected === item && <Text style={{ color: Colors.primary }}>✓</Text>}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
             <TouchableOpacity style={styles.modalKapat} onPress={onClose}>
               <Text style={styles.modalKapatText}>İptal</Text>
             </TouchableOpacity>
@@ -909,6 +938,12 @@ const styles = StyleSheet.create({
   },
   modalItemText: { fontSize: 15, color: Colors.onSurface },
   modalItemTextActive: { color: Colors.primary, fontWeight: '600' },
+  sectionHeader: {
+    backgroundColor: Colors.surfaceContainerLow,
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: Radius.sm,
+  },
+  sectionHeaderText: { fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
   modalKapat: {
     marginTop: Spacing.md, backgroundColor: Colors.surfaceContainerLow,
     borderRadius: Radius.full, paddingVertical: 14, alignItems: 'center',

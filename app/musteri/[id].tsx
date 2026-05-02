@@ -2,14 +2,14 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard, Share,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, SectionList, Image, Keyboard, Share,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri, Ilan } from '../../types';
 import R2Image from '../../components/R2Image';
-import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -775,37 +775,58 @@ export default function MusteriDetayScreen() {
               value={konumSearch}
               onChangeText={setKonumSearch}
             />
-            <FlatList
-              data={
-                konumSayfa === 'il'
-                  ? ILLER_LISTESI.filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
-                  : konumSayfa === 'ilce'
-                  ? (ILLER[tempIl] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
-                  : ((MAHALLELER as any)[tempIl]?.[tempIlce] ?? []).slice().sort((a: string, b: string) => a.localeCompare(b, 'tr')).filter((m: string) => m.toLowerCase().includes(konumSearch.toLowerCase()))
-              }
-              keyExtractor={(item, index) => `${konumSayfa}-${index}-${item}`}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.modalItem} onPress={() => {
-                  if (konumSayfa === 'il') {
-                    setTempIl(item); setTempIlce(''); setTempMahalle(''); setKonumSearch('');
-                    if (ILLER[item]?.length) setKonumSayfa('ilce');
-                    else { konumEkle(item); setKonumModal(false); }
-                  } else if (konumSayfa === 'ilce') {
-                    setTempIlce(item); setTempMahalle(''); setKonumSearch('');
-                    const mah = (MAHALLELER as any)[tempIl]?.[item] ?? [];
-                    if (mah.length) setKonumSayfa('mahalle');
-                    else { konumEkle(tempIl, item); setKonumModal(false); }
-                  } else {
+            {konumSayfa === 'mahalle' ? (
+              <SectionList
+                sections={getMahalleGruplar(tempIl, tempIlce)
+                  .map(g => ({
+                    title: g.semt ?? '',
+                    showHeader: g.semt !== null,
+                    data: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())),
+                  }))
+                  .filter(s => s.data.length > 0)}
+                keyExtractor={(item, index) => `mah-${index}-${item}`}
+                keyboardShouldPersistTaps="handled"
+                stickySectionHeadersEnabled
+                renderSectionHeader={({ section }: any) => section.showHeader ? (
+                  <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText}>{section.title}</Text></View>
+                ) : null}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalItem} onPress={() => {
                     setTempMahalle(item);
                     konumEkle(tempIl, tempIlce, item);
                     setKonumModal(false);
-                  }
-                }}>
-                  <Text style={styles.modalItemText}>{item}</Text>
-                </TouchableOpacity>
-              )}
-              keyboardShouldPersistTaps="handled"
-            />
+                  }}>
+                    <Text style={styles.modalItemText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <FlatList
+                data={
+                  konumSayfa === 'il'
+                    ? ILLER_LISTESI.filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
+                    : (ILLER[tempIl] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
+                }
+                keyExtractor={(item, index) => `${konumSayfa}-${index}-${item}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalItem} onPress={() => {
+                    if (konumSayfa === 'il') {
+                      setTempIl(item); setTempIlce(''); setTempMahalle(''); setKonumSearch('');
+                      if (ILLER[item]?.length) setKonumSayfa('ilce');
+                      else { konumEkle(item); setKonumModal(false); }
+                    } else {
+                      setTempIlce(item); setTempMahalle(''); setKonumSearch('');
+                      const mah = getMahalleler(tempIl, item);
+                      if (mah.length) setKonumSayfa('mahalle');
+                      else { konumEkle(tempIl, item); setKonumModal(false); }
+                    }
+                  }}>
+                    <Text style={styles.modalItemText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+                keyboardShouldPersistTaps="handled"
+              />
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1041,6 +1062,8 @@ const styles = StyleSheet.create({
   modalSearch: { margin: Spacing.md, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 10, fontSize: 14, color: Colors.onSurface },
   modalItem: { paddingHorizontal: Spacing.xl, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow, flexDirection: 'row', alignItems: 'center', gap: 10 },
   modalItemText: { fontSize: 15, color: Colors.onSurface },
+  sectionHeader: { backgroundColor: Colors.surfaceContainerLow, paddingVertical: 8, paddingHorizontal: Spacing.xl },
+  sectionHeaderText: { fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
   modalItemBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   modalItemAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   modalBosTxt: { textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 13, padding: Spacing.xl },

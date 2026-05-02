@@ -16,7 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
-import { TURKIYE, IL_LISTESI, MAHALLELER } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
 
 function fmtPin(fiyat: number) {
   if (fiyat >= 1_000_000) return (fiyat / 1_000_000).toFixed(1) + 'M';
@@ -159,12 +159,14 @@ export default function IlanlarScreen() {
     gecici.filterIl.forEach(il => {
       gecici.filterIlce.forEach(ilce => {
         if ((ILLER[il] ?? []).includes(ilce)) {
-          const mahalleler = (((MAHALLELER as any)[il]?.[ilce] ?? []) as string[])
-            .filter(m => m.toLowerCase().includes(konumSearch.toLowerCase()));
-          if (mahalleler.length > 0) {
+          const gruplar = getMahalleGruplar(il, ilce)
+            .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) }))
+            .filter(g => g.mahalleler.length > 0);
+          if (gruplar.length > 0) {
             filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
-            mahalleler.sort((a,b) => a.localeCompare(b,'tr')).forEach(mah => {
-              filteredBoxList.push({ type: 'item', label: mah, key: mah });
+            gruplar.forEach(g => {
+              if (g.semt) filteredBoxList.push({ type: 'header', label: `  ${g.semt}` });
+              g.mahalleler.forEach(mah => filteredBoxList.push({ type: 'item', label: mah, key: mah }));
             });
           }
         }
