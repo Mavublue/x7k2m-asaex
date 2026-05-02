@@ -15,6 +15,8 @@ export default function OzelliklerScreen() {
   const [loading, setLoading] = useState(true);
   const [yeni, setYeni] = useState('');
   const [ekliyor, setEkliyor] = useState(false);
+  const [duzenleId, setDuzenleId] = useState<string | null>(null);
+  const [duzenleAd, setDuzenleAd] = useState('');
 
   const fetch = useCallback(async () => {
     const { data } = await supabase.from('ozellikler').select('*').order('olusturma_tarihi', { ascending: true });
@@ -33,6 +35,22 @@ export default function OzelliklerScreen() {
     if (error) Alert.alert('Hata', error.message);
     else { setYeni(''); fetch(); }
     setEkliyor(false);
+  }
+
+  function handleDuzenleBaslat(id: string, ad: string) {
+    setDuzenleId(id);
+    setDuzenleAd(ad);
+  }
+
+  async function handleDuzenleKaydet() {
+    if (!duzenleId) return;
+    const ad = duzenleAd.trim();
+    if (!ad) return;
+    const { error } = await supabase.from('ozellikler').update({ ad }).eq('id', duzenleId);
+    if (error) { Alert.alert('Hata', error.message); return; }
+    setOzellikler(prev => prev.map(o => o.id === duzenleId ? { ...o, ad } : o));
+    setDuzenleId(null);
+    setDuzenleAd('');
   }
 
   async function handleSil(id: string, ad: string) {
@@ -85,10 +103,34 @@ export default function OzelliklerScreen() {
             contentContainerStyle={styles.liste}
             renderItem={({ item }) => (
               <View style={styles.ozellikItem}>
-                <Text style={styles.ozellikAd}>{item.ad}</Text>
-                <TouchableOpacity style={styles.silBtn} onPress={() => handleSil(item.id, item.ad)}>
-                  <Text style={styles.silBtnText}>✕</Text>
-                </TouchableOpacity>
+                {duzenleId === item.id ? (
+                  <>
+                    <TextInput
+                      style={styles.duzenleInput}
+                      value={duzenleAd}
+                      onChangeText={setDuzenleAd}
+                      onSubmitEditing={handleDuzenleKaydet}
+                      autoFocus
+                      returnKeyType="done"
+                    />
+                    <TouchableOpacity style={styles.kaydetBtn} onPress={handleDuzenleKaydet}>
+                      <Text style={styles.kaydetBtnText}>✓</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iptalBtn} onPress={() => setDuzenleId(null)}>
+                      <Text style={styles.iptalBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.ozellikAd}>{item.ad}</Text>
+                    <TouchableOpacity style={styles.duzenleBtn} onPress={() => handleDuzenleBaslat(item.id, item.ad)}>
+                      <Text style={styles.duzenleBtnText}>✎</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.silBtn} onPress={() => handleSil(item.id, item.ad)}>
+                      <Text style={styles.silBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             )}
           />
@@ -118,11 +160,22 @@ const styles = StyleSheet.create({
   ekleBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   liste: { paddingHorizontal: Spacing.xl, gap: Spacing.sm },
   ozellikItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
     backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg,
     paddingHorizontal: Spacing.lg, paddingVertical: 14,
   },
-  ozellikAd: { fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
+  ozellikAd: { flex: 1, fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
+  duzenleInput: {
+    flex: 1, fontSize: 15, color: Colors.onSurface, fontWeight: '500',
+    paddingVertical: 0, paddingHorizontal: 8,
+    backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, height: 36,
+  },
+  duzenleBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' },
+  duzenleBtnText: { color: '#1a1b21', fontSize: 14, fontWeight: '700' },
+  kaydetBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center' },
+  kaydetBtnText: { color: '#16a34a', fontSize: 14, fontWeight: '700' },
+  iptalBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  iptalBtnText: { color: '#6b7280', fontSize: 14, fontWeight: '700' },
   silBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center' },
   silBtnText: { color: '#991b1b', fontSize: 14, fontWeight: '700' },
   emptyText: { fontSize: 16, fontWeight: '600', color: Colors.onSurface },
