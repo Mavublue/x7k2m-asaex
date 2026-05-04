@@ -129,6 +129,13 @@ export default function DashboardScreen() {
     setDetayBildirim(b);
     setDetayListe([]);
     setDetayYukleniyor(true);
+    if (!okundu.has(b.id)) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setOkundu(prev => new Set([...prev, b.id]));
+        supabase.from('bildirim_okundu').upsert({ user_id: session.user.id, bildirim_id: b.id, silindi: false }, { onConflict: 'user_id,bildirim_id' }).then(() => {});
+      }
+    }
     if (b.tip === 'musteri') {
       const { data: m } = await supabase.from('musteriler').select('butce_min, butce_max, tercih_tip, tercih_konum').eq('id', b.hedefId).single();
       if (m) {
@@ -474,10 +481,14 @@ export default function DashboardScreen() {
       <Modal visible={menuAcikId !== null} transparent animationType="fade" onRequestClose={() => setMenuAcikId(null)}>
         <TouchableOpacity style={styles.bdMenuOverlay} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
           <View style={styles.bdMenuPopup}>
-            <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
-              <Text style={styles.bdMenuItemText}>{menuAcikId && okundu.has(menuAcikId) ? 'Okunmadı yap' : 'Okundu yap'}</Text>
-            </TouchableOpacity>
-            <View style={styles.bdMenuSep} />
+            {menuAcikId && okundu.has(menuAcikId) && (
+              <>
+                <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
+                  <Text style={styles.bdMenuItemText}>Okunmadı yap</Text>
+                </TouchableOpacity>
+                <View style={styles.bdMenuSep} />
+              </>
+            )}
             <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) bildirimSil(menuAcikId); setMenuAcikId(null); }}>
               <Text style={[styles.bdMenuItemText, { color: '#E53935' }]}>Sil</Text>
             </TouchableOpacity>
