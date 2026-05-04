@@ -19,10 +19,10 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
-  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}[]>([]);
+  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}[]>([]);
   const [okundu, setOkundu] = useState<Set<string>>(new Set());
   const [silindi, setSilindi] = useState<Set<string>>(new Set());
-  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}|null>(null);
+  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
@@ -86,11 +86,11 @@ export default function DashboardScreen() {
   }
 
   async function fetchBildirimler() {
-    const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}[] = [];
+    const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}[] = [];
     const bugun = new Date().toISOString().split('T')[0];
 
     const { data: tumMusteriler, error: mErr } = await supabase.from('musteriler').select('id, ad, soyad, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi');
-    const { data: tumIlanlar, error: iErr } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, olusturma_tarihi');
+    const { data: tumIlanlar, error: iErr } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi');
 
     if (mErr || iErr) {
       console.log('Bildirim hata:', mErr?.message, iErr?.message);
@@ -113,19 +113,19 @@ export default function DashboardScreen() {
     // Müşteri → ilan eşleşmesi
     for (const m of musteriler) {
       const eslesen = ilanlar.filter(i => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: `${m.ad} ${m.soyad}`, alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id, tarih: m.olusturma_tarihi ?? '' });
+      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: `${m.ad} ${m.soyad}`, alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id, tarih: m.olusturma_tarihi ?? '', foto: (eslesen[0] as any)?.fotograflar?.[0] ?? null });
     }
 
     // İlan → müşteri eşleşmesi
     for (const i of ilanlar) {
       const eslesen = musteriler.filter(m => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `ilan-${i.id}`, tip: 'ilan', baslik: i.baslik, alt: `${eslesen.length} uygun müşteri eşleşiyor`, hedefId: i.id, tarih: i.olusturma_tarihi ?? '' });
+      if (eslesen.length > 0) liste.push({ id: `ilan-${i.id}`, tip: 'ilan', baslik: i.baslik, alt: `${eslesen.length} uygun müşteri eşleşiyor`, hedefId: i.id, tarih: i.olusturma_tarihi ?? '', foto: (i as any).fotograflar?.[0] ?? null });
     }
 
     setBildirimler(liste);
   }
 
-  async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}) {
+  async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}) {
     setDetayBildirim(b);
     setDetayListe([]);
     setDetayYukleniyor(true);
@@ -419,13 +419,19 @@ export default function DashboardScreen() {
                       const isOkundu = okundu.has(item.id);
                       return (
                         <View style={[styles.bdItem, !isOkundu && styles.bdItemYeni]}>
-                          <TouchableOpacity style={[styles.bdIcon, {
-                            backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
-                          }]} onPress={() => bildirimDetayAc(item)}>
-                            <Text style={{ fontSize: 16 }}>
-                              {item.tip === 'takip' ? '⚠️' : item.tip === 'musteri' ? '👤' : '🏠'}
-                            </Text>
-                          </TouchableOpacity>
+                          {item.foto ? (
+                            <TouchableOpacity onPress={() => bildirimDetayAc(item)}>
+                              <Image source={{ uri: item.foto }} style={styles.bdFoto} resizeMode="cover" />
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity style={[styles.bdIcon, {
+                              backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
+                            }]} onPress={() => bildirimDetayAc(item)}>
+                              <Text style={{ fontSize: 16 }}>
+                                {item.tip === 'takip' ? '⚠️' : item.tip === 'musteri' ? '👤' : '🏠'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
                           <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
                             <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }]} numberOfLines={1}>{item.baslik}</Text>
                             <Text style={styles.bdAlt}>{item.alt}</Text>
@@ -690,6 +696,7 @@ const styles = StyleSheet.create({
   bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: Radius.lg, padding: Spacing.md },
   bdItemYeni: { backgroundColor: 'rgba(229,57,53,0.06)' },
   bdIcon: { width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
+  bdFoto: { width: 48, height: 48, borderRadius: Radius.md },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
