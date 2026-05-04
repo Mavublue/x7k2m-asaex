@@ -74,6 +74,7 @@ const ILLER_LISTESI = IL_LISTESI;
 
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '4+2', '5+1', '5+2', '6+1', '7+'];
 const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
+const KAT_DEGERLERI = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
 
 type FiltreState = {
   tip: string;
@@ -147,6 +148,9 @@ export default function IlanlarScreen() {
   const [ozellikModal, setOzellikModal] = useState<'ekle' | 'cikar' | null>(null);
   const [ozellikSecili, setOzellikSecili] = useState<Set<string>>(new Set());
   const [durumModal, setDurumModal] = useState(false);
+  const [katModal, setKatModal] = useState(false);
+  const [topluKatSayisi, setTopluKatSayisi] = useState<string>('');
+  const [topluBulunduguKat, setTopluBulunduguKat] = useState<string>('');
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -367,6 +371,23 @@ export default function IlanlarScreen() {
     setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, durum: yeni } : i));
     setTopluIslem(false);
     setDurumModal(false);
+    secimKapat();
+  }
+
+  async function topluKatUygula() {
+    const ids = Array.from(seciliIds);
+    if (!ids.length) return;
+    const payload: any = {};
+    if (topluKatSayisi) payload.kat_sayisi = topluKatSayisi === '__bos__' ? null : topluKatSayisi;
+    if (topluBulunduguKat) payload.bulundugu_kat = topluBulunduguKat === '__bos__' ? null : topluBulunduguKat;
+    if (!Object.keys(payload).length) return;
+    setTopluIslem(true);
+    await supabase.from('ilanlar').update(payload).in('id', ids);
+    setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, ...payload } : i));
+    setTopluIslem(false);
+    setKatModal(false);
+    setTopluKatSayisi('');
+    setTopluBulunduguKat('');
     secimKapat();
   }
 
@@ -626,6 +647,9 @@ export default function IlanlarScreen() {
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => setDurumModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>Durum</Text>
           </TouchableOpacity>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setTopluKatSayisi(''); setTopluBulunduguKat(''); setKatModal(true); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>Kat</Text>
+          </TouchableOpacity>
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setOzellikSecili(new Set()); setOzellikModal('ekle'); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>+ Özellik</Text>
           </TouchableOpacity>
@@ -671,6 +695,54 @@ export default function IlanlarScreen() {
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Kat Modal */}
+      <Modal visible={katModal} animationType="slide" transparent onRequestClose={() => setKatModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' }}>
+            <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.onSurface }}>Kat Bilgisi Değiştir ({seciliIds.size} ilan)</Text>
+              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 4 }}>Boş bırakılan alan değiştirilmez. Temizlemek için &quot;Boşalt&quot;.</Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, marginBottom: 8 }}>Kat Sayısı</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  <TouchableOpacity onPress={() => setTopluKatSayisi(topluKatSayisi === '__bos__' ? '' : '__bos__')} style={[styles.chip, topluKatSayisi === '__bos__' && styles.chipActive]}>
+                    <Text style={[styles.chipText, topluKatSayisi === '__bos__' && styles.chipTextActive]}>Boşalt</Text>
+                  </TouchableOpacity>
+                  {KAT_DEGERLERI.map(k => (
+                    <TouchableOpacity key={k} onPress={() => setTopluKatSayisi(topluKatSayisi === k ? '' : k)} style={[styles.chip, topluKatSayisi === k && styles.chipActive]}>
+                      <Text style={[styles.chipText, topluKatSayisi === k && styles.chipTextActive]}>{k}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, marginBottom: 8 }}>Bulunduğu Kat</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  <TouchableOpacity onPress={() => setTopluBulunduguKat(topluBulunduguKat === '__bos__' ? '' : '__bos__')} style={[styles.chip, topluBulunduguKat === '__bos__' && styles.chipActive]}>
+                    <Text style={[styles.chipText, topluBulunduguKat === '__bos__' && styles.chipTextActive]}>Boşalt</Text>
+                  </TouchableOpacity>
+                  {KAT_DEGERLERI.map(k => (
+                    <TouchableOpacity key={k} onPress={() => setTopluBulunduguKat(topluBulunduguKat === k ? '' : k)} style={[styles.chip, topluBulunduguKat === k && styles.chipActive]}>
+                      <Text style={[styles.chipText, topluBulunduguKat === k && styles.chipTextActive]}>{k}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+            <View style={{ flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow }}>
+              <TouchableOpacity onPress={() => setKatModal(false)} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: Colors.outline, borderRadius: 8 }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '600' }}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={topluKatUygula} disabled={(!topluKatSayisi && !topluBulunduguKat) || topluIslem} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: Colors.primary, borderRadius: 8, opacity: (topluKatSayisi || topluBulunduguKat) ? 1 : 0.5 }}>
+                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>{topluIslem ? 'İşleniyor...' : 'Uygula'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Özellik Modal */}
