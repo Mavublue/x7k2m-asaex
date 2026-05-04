@@ -13,6 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
+import { deleteIlanPhotos } from '../../lib/r2';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
@@ -139,6 +140,13 @@ export default function IlanlarScreen() {
   const [paylasMusteriAra, setPaylasMusteriAra] = useState('');
   const [paylasSaat, setPaylasSaat] = useState('168');
   const [paylasEtiketAra, setPaylasEtiketAra] = useState('');
+  // Toplu seçim
+  const [secimModu, setSecimModu] = useState(false);
+  const [seciliIds, setSeciliIds] = useState<Set<string>>(new Set());
+  const [topluIslem, setTopluIslem] = useState(false);
+  const [ozellikModal, setOzellikModal] = useState<'ekle' | 'cikar' | null>(null);
+  const [ozellikSecili, setOzellikSecili] = useState<Set<string>>(new Set());
+  const [durumModal, setDurumModal] = useState(false);
 
   let filteredBoxList: any[] = [];
   if (filterPage === 'il') {
@@ -322,6 +330,73 @@ export default function IlanlarScreen() {
   }
 
 
+  function secimToggle(id: string) {
+    setSeciliIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function tumunuSec() {
+    if (seciliIds.size === filtered.length) setSeciliIds(new Set());
+    else setSeciliIds(new Set(filtered.map(i => i.id)));
+  }
+  function secimKapat() { setSecimModu(false); setSeciliIds(new Set()); }
+
+  async function topluSil() {
+    const ids = Array.from(seciliIds);
+    if (!ids.length) return;
+    Alert.alert('Toplu Sil', `${ids.length} ilan silinsin mi? Geri alınamaz.`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: async () => {
+        setTopluIslem(true);
+        await Promise.all(ids.map(id => deleteIlanPhotos(id)));
+        await supabase.from('ilanlar').delete().in('id', ids);
+        setIlanlar(prev => prev.filter(i => !seciliIds.has(i.id)));
+        setTopluIslem(false);
+        secimKapat();
+      }},
+    ]);
+  }
+
+  async function topluDurum(yeni: 'Aktif' | 'İptal') {
+    const ids = Array.from(seciliIds);
+    if (!ids.length) return;
+    setTopluIslem(true);
+    await supabase.from('ilanlar').update({ durum: yeni }).in('id', ids);
+    setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, durum: yeni } : i));
+    setTopluIslem(false);
+    setDurumModal(false);
+    secimKapat();
+  }
+
+  async function topluOzellikUygula() {
+    const ilanIds = Array.from(seciliIds);
+    const ozIds = Array.from(ozellikSecili);
+    if (!ilanIds.length || !ozIds.length || !ozellikModal) return;
+    setTopluIslem(true);
+    if (ozellikModal === 'ekle') {
+      const rows = ilanIds.flatMap(ilan_id => ozIds.map(ozellik_id => ({ ilan_id, ozellik_id })));
+      await supabase.from('ilan_ozellikler').upsert(rows, { onConflict: 'ilan_id,ozellik_id', ignoreDuplicates: true });
+      setIlanlar(prev => prev.map(i => {
+        if (!seciliIds.has(i.id)) return i;
+        const mevcut: string[] = (i as any).ozellik_ids ?? [];
+        return { ...i, ozellik_ids: Array.from(new Set([...mevcut, ...ozIds])) } as any;
+      }));
+    } else {
+      await supabase.from('ilan_ozellikler').delete().in('ilan_id', ilanIds).in('ozellik_id', ozIds);
+      setIlanlar(prev => prev.map(i => {
+        if (!seciliIds.has(i.id)) return i;
+        const mevcut: string[] = (i as any).ozellik_ids ?? [];
+        return { ...i, ozellik_ids: mevcut.filter(o => !ozIds.includes(o)) } as any;
+      }));
+    }
+    setTopluIslem(false);
+    setOzellikModal(null);
+    setOzellikSecili(new Set());
+    secimKapat();
+  }
+
   const badge = aktifFiltreSayisi(filtre);
   const [aramaModalAcik, setAramaModalAcik] = useState(false);
 
@@ -430,6 +505,9 @@ export default function IlanlarScreen() {
         <>
           <View style={styles.header}>
             <SearchPill style={{ flex: 1 }} />
+            <TouchableOpacity style={[styles.paylasBtnSmall, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
+              <Text style={[styles.paylasBtnSmallText, secimModu && { color: '#fff' }]}>{secimModu ? '✕' : '☑'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.paylasBtnSmall} onPress={handleListePaylas}>
               <Text style={styles.paylasBtnSmallText}>🔗</Text>
             </TouchableOpacity>
@@ -533,26 +611,107 @@ export default function IlanlarScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} />)
+            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} />)
           )}
         </ScrollView>
       )}
 
-      {/* Liste / Harita Toggle */}
-      <View style={[styles.toggleBar, { paddingBottom: Spacing.sm }]}>
-        <TouchableOpacity
-          style={[styles.toggleBtn, gorunum === 'liste' && styles.toggleBtnActive]}
-          onPress={() => setGorunum('liste')}
-        >
-          <Text style={[styles.toggleBtnText, gorunum === 'liste' && styles.toggleBtnTextActive]}>☰ Liste</Text>
+      {/* Liste / Harita Toggle veya Toplu Aksiyon Bar */}
+      {secimModu ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingTop: 8, paddingBottom: Spacing.sm, backgroundColor: Colors.surfaceContainerLowest, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, marginRight: 4 }}>{seciliIds.size} seçili</Text>
+          <TouchableOpacity onPress={tumunuSec} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{seciliIds.size === filtered.length ? 'Hiçbiri' : 'Tümü'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => setDurumModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>Durum</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setOzellikSecili(new Set()); setOzellikModal('ekle'); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>+ Özellik</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setOzellikSecili(new Set()); setOzellikModal('cikar'); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>− Özellik</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={topluSil} style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#E53935', borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4, marginLeft: 'auto' }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>🗑 Sil</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={[styles.toggleBar, { paddingBottom: Spacing.sm }]}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, gorunum === 'liste' && styles.toggleBtnActive]}
+            onPress={() => setGorunum('liste')}
+          >
+            <Text style={[styles.toggleBtnText, gorunum === 'liste' && styles.toggleBtnTextActive]}>☰ Liste</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, gorunum === 'harita' && styles.toggleBtnActive]}
+            onPress={() => setGorunum('harita')}
+          >
+            <Text style={[styles.toggleBtnText, gorunum === 'harita' && styles.toggleBtnTextActive]}>🗺 Harita</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Durum Modal */}
+      <Modal visible={durumModal} animationType="fade" transparent onRequestClose={() => setDurumModal(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setDurumModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <TouchableOpacity activeOpacity={1} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.onSurface, marginBottom: 16 }}>Durum Değiştir ({seciliIds.size} ilan)</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => topluDurum('Aktif')} disabled={topluIslem} style={{ flex: 1, paddingVertical: 14, backgroundColor: 'rgba(58,170,110,0.1)', borderWidth: 1, borderColor: '#3aaa6e', borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#3aaa6e' }}>Aktif</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => topluDurum('İptal')} disabled={topluIslem} style={{ flex: 1, paddingVertical: 14, backgroundColor: 'rgba(229,57,53,0.08)', borderWidth: 1, borderColor: '#E53935', borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#E53935' }}>İptal</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => setDurumModal(false)} style={{ marginTop: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: Colors.outline, borderRadius: 8 }}>
+              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Vazgeç</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleBtn, gorunum === 'harita' && styles.toggleBtnActive]}
-          onPress={() => setGorunum('harita')}
-        >
-          <Text style={[styles.toggleBtnText, gorunum === 'harita' && styles.toggleBtnTextActive]}>🗺 Harita</Text>
-        </TouchableOpacity>
-      </View>
+      </Modal>
+
+      {/* Özellik Modal */}
+      <Modal visible={!!ozellikModal} animationType="slide" transparent onRequestClose={() => { setOzellikModal(null); setOzellikSecili(new Set()); }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' }}>
+            <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.onSurface }}>
+                Özellik {ozellikModal === 'ekle' ? 'Ekle' : 'Çıkar'} ({seciliIds.size} ilan)
+              </Text>
+              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 4 }}>
+                {ozellikModal === 'ekle' ? 'Eklenecek özellikleri seçin' : 'Çıkarılacak özellikleri seçin'}
+              </Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {tumOzellikler.map(oz => {
+                const sec = ozellikSecili.has(oz.id);
+                return (
+                  <TouchableOpacity key={oz.id} onPress={() => {
+                    setOzellikSecili(prev => {
+                      const next = new Set(prev);
+                      if (next.has(oz.id)) next.delete(oz.id); else next.add(oz.id);
+                      return next;
+                    });
+                  }} style={[styles.chip, sec && styles.chipActive]}>
+                    <Text style={[styles.chipText, sec && styles.chipTextActive]}>{oz.ad}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <View style={{ flexDirection: 'row', gap: 8, padding: 16, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow }}>
+              <TouchableOpacity onPress={() => { setOzellikModal(null); setOzellikSecili(new Set()); }} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: Colors.outline, borderRadius: 8 }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '600' }}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={topluOzellikUygula} disabled={!ozellikSecili.size || topluIslem} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: Colors.primary, borderRadius: 8, opacity: ozellikSecili.size ? 1 : 0.5 }}>
+                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>{topluIslem ? 'İşleniyor...' : 'Uygula'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* FİLTRE MODALİ — tek modal, sayfa değiştirme ile il/ilçe seçimi */}
       <Modal visible={filtrePaneli} animationType="slide" transparent onRequestClose={() => {
@@ -954,11 +1113,14 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
-function IlanKart({ ilan }: { ilan: Ilan }) {
+function IlanKart({ ilan, secimModu, secili, onToggle }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
   return (
-    <TouchableOpacity style={[styles.kart, !ilan.musteri_gizle && styles.kartAcik, iptal && styles.kartIptal]} onPress={() => router.push(`/ilan/${ilan.id}`)}>
+    <TouchableOpacity
+      style={[styles.kart, !ilan.musteri_gizle && styles.kartAcik, iptal && styles.kartIptal, secimModu && secili && { borderWidth: 4, borderColor: Colors.primary }]}
+      onPress={() => secimModu ? onToggle?.() : router.push(`/ilan/${ilan.id}`)}
+    >
       {ilkFoto ? (
         <R2Image source={ilkFoto} style={[styles.image, iptal && styles.imageIptal]} resizeMode="cover" size="sm" />
       ) : (
@@ -975,8 +1137,15 @@ function IlanKart({ ilan }: { ilan: Ilan }) {
 
       {/* Top badges */}
       <View style={styles.topRow}>
-        <View style={[styles.tipBadge, { backgroundColor: ilan.tip === 'Satılık' ? 'rgba(0,35,111,0.85)' : 'rgba(253,118,26,0.85)' }]}>
-          <Text style={styles.tipBadgeText}>{ilan.tip}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {secimModu && (
+            <View style={{ width: 28, height: 28, borderRadius: 6, borderWidth: 2, borderColor: secili ? Colors.primary : '#fff', backgroundColor: secili ? Colors.primary : 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+              {secili && <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>✓</Text>}
+            </View>
+          )}
+          <View style={[styles.tipBadge, { backgroundColor: ilan.tip === 'Satılık' ? 'rgba(0,35,111,0.85)' : 'rgba(253,118,26,0.85)' }]}>
+            <Text style={styles.tipBadgeText}>{ilan.tip}</Text>
+          </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {ilan.musteri_gizle && (
