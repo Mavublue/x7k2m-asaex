@@ -192,11 +192,14 @@ export default function DashboardScreen() {
     await supabase.from('bildirim_okundu').upsert({ user_id: user.id, bildirim_id: id, silindi: true }, { onConflict: 'user_id,bildirim_id' });
   }
 
-  async function tumunuOkunmadiYap() {
+  async function tumunuOkunduYap() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    setOkundu(new Set());
-    await supabase.from('bildirim_okundu').delete().eq('user_id', user.id).eq('silindi', false);
+    const ids = bildirimler.filter(b => !silindi.has(b.id)).map(b => b.id);
+    if (ids.length === 0) return;
+    setOkundu(new Set(ids));
+    const rows = ids.map(id => ({ user_id: user.id, bildirim_id: id, silindi: false }));
+    await supabase.from('bildirim_okundu').upsert(rows, { onConflict: 'user_id,bildirim_id' });
   }
 
   async function onRefresh() {
@@ -408,8 +411,8 @@ export default function DashboardScreen() {
                     keyExtractor={b => b.id}
                     contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
                     ListHeaderComponent={(
-                      <TouchableOpacity onPress={tumunuOkunmadiYap} style={styles.bdTumuBtn}>
-                        <Text style={styles.bdTumuText}>Tümünü okunmadı yap</Text>
+                      <TouchableOpacity onPress={tumunuOkunduYap} style={styles.bdTumuBtn}>
+                        <Text style={styles.bdTumuText}>Tümünü okundu yap</Text>
                       </TouchableOpacity>
                     )}
                     renderItem={({ item }) => {
