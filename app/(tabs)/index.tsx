@@ -192,6 +192,13 @@ export default function DashboardScreen() {
     await supabase.from('bildirim_okundu').upsert({ user_id: user.id, bildirim_id: id, silindi: true }, { onConflict: 'user_id,bildirim_id' });
   }
 
+  async function tumunuOkunmadiYap() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setOkundu(new Set());
+    await supabase.from('bildirim_okundu').delete().eq('user_id', user.id).eq('silindi', false);
+  }
+
   async function onRefresh() {
     setRefreshing(true);
     await fetchData();
@@ -400,6 +407,11 @@ export default function DashboardScreen() {
                     data={sirali}
                     keyExtractor={b => b.id}
                     contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
+                    ListHeaderComponent={(
+                      <TouchableOpacity onPress={tumunuOkunmadiYap} style={styles.bdTumuBtn}>
+                        <Text style={styles.bdTumuText}>Tümünü okunmadı yap</Text>
+                      </TouchableOpacity>
+                    )}
                     renderItem={({ item }) => {
                       const isOkundu = okundu.has(item.id);
                       return (
@@ -684,6 +696,8 @@ const styles = StyleSheet.create({
   bdMenuItem: { paddingVertical: 14, paddingHorizontal: 18 },
   bdMenuItemText: { fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
   bdMenuSep: { height: 1, backgroundColor: '#f3f4f6' },
+  bdTumuBtn: { alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
+  bdTumuText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   bdDetayItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md, overflow: 'hidden' },
   bdDetayFoto: { width: 52, height: 52, borderRadius: Radius.md },
 });
