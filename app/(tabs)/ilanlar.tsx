@@ -74,7 +74,8 @@ const ILLER_LISTESI = IL_LISTESI;
 
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '4+2', '5+1', '5+2', '6+1', '7+'];
 const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
-const KAT_DEGERLERI = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
+const KAT_SAYISI_DEGERLERI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];
+const BULUNDUGU_KAT_DEGERLERI = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
 
 type FiltreState = {
   tip: string;
@@ -712,7 +713,7 @@ export default function IlanlarScreen() {
                   <TouchableOpacity onPress={() => setTopluKatSayisi(topluKatSayisi === '__bos__' ? '' : '__bos__')} style={[styles.chip, topluKatSayisi === '__bos__' && styles.chipActive]}>
                     <Text style={[styles.chipText, topluKatSayisi === '__bos__' && styles.chipTextActive]}>Boşalt</Text>
                   </TouchableOpacity>
-                  {KAT_DEGERLERI.map(k => (
+                  {KAT_SAYISI_DEGERLERI.map(k => (
                     <TouchableOpacity key={k} onPress={() => setTopluKatSayisi(topluKatSayisi === k ? '' : k)} style={[styles.chip, topluKatSayisi === k && styles.chipActive]}>
                       <Text style={[styles.chipText, topluKatSayisi === k && styles.chipTextActive]}>{k}</Text>
                     </TouchableOpacity>
@@ -725,7 +726,7 @@ export default function IlanlarScreen() {
                   <TouchableOpacity onPress={() => setTopluBulunduguKat(topluBulunduguKat === '__bos__' ? '' : '__bos__')} style={[styles.chip, topluBulunduguKat === '__bos__' && styles.chipActive]}>
                     <Text style={[styles.chipText, topluBulunduguKat === '__bos__' && styles.chipTextActive]}>Boşalt</Text>
                   </TouchableOpacity>
-                  {KAT_DEGERLERI.map(k => (
+                  {BULUNDUGU_KAT_DEGERLERI.map(k => (
                     <TouchableOpacity key={k} onPress={() => setTopluBulunduguKat(topluBulunduguKat === k ? '' : k)} style={[styles.chip, topluBulunduguKat === k && styles.chipActive]}>
                       <Text style={[styles.chipText, topluBulunduguKat === k && styles.chipTextActive]}>{k}</Text>
                     </TouchableOpacity>
