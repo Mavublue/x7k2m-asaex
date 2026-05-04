@@ -54,6 +54,8 @@ window.__focusArea=function(s,n,w,e,la,ln){try{map.fitBounds([[s,w],[n,e]],{padd
 const ILLER = TURKIYE;
 
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
+const KAT_SAYILARI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11-15', '16-20', '20+'];
+const BULUNDUGU_KATLAR = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+0', '2+1', '2+2', '3+0', '3+1', '3+2', '3+3', '4+0', '4+1', '4+2', '4+3', '4+4', '5+0', '5+1', '5+2', '5+3', '5+4', '6+0', '6+1', '6+2', '6+3', '6+4', '7+0', '7+1', '7+2', '7+3', '7+4', '8+0', '8+1', '8+2', '8+3', '8+4', '9+0', '9+1', '9+2', '9+3', '9+4', '10+0', '10+1', '10+2', '10+3', '10+4', '10+'];
 const tipler = ['Satılık', 'Kiralık'];
 const kategoriler = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
@@ -106,6 +108,10 @@ export default function IlanDuzenleScreen() {
   const [secilenOzellikler, setSecilenOzellikler] = useState<string[]>([]);
   const [binaYasi, setBinaYasi] = useState('');
   const [banyoSayisi, setBanyoSayisi] = useState('');
+  const [katSayisi, setKatSayisi] = useState('');
+  const [bulunduguKat, setBulunduguKat] = useState('');
+  const [katModal, setKatModal] = useState(false);
+  const [bulunduguKatModal, setBulunduguKatModal] = useState(false);
   const [musteriGizle, setMusteriGizle] = useState(false);
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const mapRef = useRef<WebView>(null);
@@ -195,6 +201,8 @@ export default function IlanDuzenleScreen() {
         });
         setBinaYasi(ilan.bina_yasi ?? '');
         setBanyoSayisi((ilan as any).banyo_sayisi?.toString() ?? '');
+        setKatSayisi((ilan as any).kat_sayisi ?? '');
+        setBulunduguKat((ilan as any).bulundugu_kat ?? '');
         setMusteriGizle((ilan as any).musteri_gizle ?? false);
         setLat(ilan.lat?.toString() ?? '');
         setLng(ilan.lng?.toString() ?? '');
@@ -321,6 +329,8 @@ export default function IlanDuzenleScreen() {
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
+      kat_sayisi: katSayisi || null,
+      bulundugu_kat: bulunduguKat || null,
       musteri_gizle: musteriGizle,
       lat: lat ? parseFloat(lat) : null,
       lng: lng ? parseFloat(lng) : null,
@@ -535,6 +545,24 @@ export default function IlanDuzenleScreen() {
             </View>
           </FormGroup>
 
+          {!arsaTarla && (
+            <>
+              <FormGroup label="Kat Sayısı">
+                <TouchableOpacity style={styles.selectBtn} onPress={() => setKatModal(true)}>
+                  <Text style={katSayisi ? styles.selectText : styles.selectPlaceholder}>{katSayisi || 'Kat Sayısı Seç'}</Text>
+                  <Text style={styles.selectArrow}>▾</Text>
+                </TouchableOpacity>
+              </FormGroup>
+
+              <FormGroup label="Bulunduğu Kat">
+                <TouchableOpacity style={styles.selectBtn} onPress={() => setBulunduguKatModal(true)}>
+                  <Text style={bulunduguKat ? styles.selectText : styles.selectPlaceholder}>{bulunduguKat || 'Bulunduğu Kat Seç'}</Text>
+                  <Text style={styles.selectArrow}>▾</Text>
+                </TouchableOpacity>
+              </FormGroup>
+            </>
+          )}
+
           {/* Müşteriye Gizle */}
           <TouchableOpacity style={styles.gizleRow} onPress={() => setMusteriGizle(v => !v)} activeOpacity={0.7}>
             <View style={{ flex: 1 }}>
@@ -669,6 +697,42 @@ export default function IlanDuzenleScreen() {
               ))}
             </View>
             <TouchableOpacity style={styles.modalKapat} onPress={() => setOdaModal(false)}>
+              <Text style={styles.modalKapatText}>İptal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={katModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Kat Sayısı Seçin</Text>
+            <View style={styles.chipRow}>
+              {KAT_SAYILARI.map(k => (
+                <TouchableOpacity key={k} style={[styles.chip, katSayisi === k && styles.chipActive]} onPress={() => { setKatSayisi(katSayisi === k ? '' : k); setKatModal(false); }}>
+                  <Text style={[styles.chipText, katSayisi === k && styles.chipTextActive]}>{k}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.modalKapat} onPress={() => setKatModal(false)}>
+              <Text style={styles.modalKapatText}>İptal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={bulunduguKatModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Bulunduğu Kat Seçin</Text>
+            <View style={styles.chipRow}>
+              {BULUNDUGU_KATLAR.map(k => (
+                <TouchableOpacity key={k} style={[styles.chip, bulunduguKat === k && styles.chipActive]} onPress={() => { setBulunduguKat(bulunduguKat === k ? '' : k); setBulunduguKatModal(false); }}>
+                  <Text style={[styles.chipText, bulunduguKat === k && styles.chipTextActive]}>{k}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.modalKapat} onPress={() => setBulunduguKatModal(false)}>
               <Text style={styles.modalKapatText}>İptal</Text>
             </TouchableOpacity>
           </View>

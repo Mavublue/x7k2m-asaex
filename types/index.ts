@@ -16,6 +16,8 @@ export interface Ilan {
   bina_yasi: string | null;
   brut_metrekare: number | null;
   banyo_sayisi: number | null;
+  kat_sayisi: string | null;
+  bulundugu_kat: string | null;
   fotograflar: string[] | null;
   gizli_fotograflar: string[] | null;
   lat: number | null;
