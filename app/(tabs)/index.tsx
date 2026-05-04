@@ -395,7 +395,7 @@ export default function DashboardScreen() {
                     renderItem={({ item }) => {
                       const isOkundu = okundu.has(item.id);
                       return (
-                        <View style={[styles.bdItem, isOkundu && { opacity: 0.6 }]}>
+                        <View style={[styles.bdItem, !isOkundu && styles.bdItemYeni]}>
                           <TouchableOpacity style={[styles.bdIcon, {
                             backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
                           }]} onPress={() => bildirimDetayAc(item)}>
@@ -404,7 +404,7 @@ export default function DashboardScreen() {
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
-                            <Text style={[styles.bdBaslik, isOkundu && { textDecorationLine: 'line-through', fontWeight: '500' }]} numberOfLines={1}>{item.baslik}</Text>
+                            <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }]} numberOfLines={1}>{item.baslik}</Text>
                             <Text style={styles.bdAlt}>{item.alt}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -651,7 +651,8 @@ const styles = StyleSheet.create({
   bdKapat: { fontSize: 20, color: Colors.onSurfaceVariant, width: 32, textAlign: 'right' },
   bdBos: { padding: Spacing.xl * 2, alignItems: 'center' },
   bdBosText: { color: Colors.onSurfaceVariant, fontSize: 14 },
-  bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md },
+  bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: Radius.lg, padding: Spacing.md },
+  bdItemYeni: { backgroundColor: 'rgba(229,57,53,0.06)' },
   bdIcon: { width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
