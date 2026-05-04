@@ -25,6 +25,7 @@ export default function DashboardScreen() {
   const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
+  const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const takipY = useRef(0);
   const ilkFocus = useRef(true);
@@ -408,14 +409,9 @@ export default function DashboardScreen() {
                             <Text style={styles.bdAlt}>{item.alt}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={[styles.bdOkunduBtn, isOkundu ? styles.bdOkunduBtnAktif : styles.bdOkunduBtnPasif]}
-                            onPress={() => toggleOkundu(item.id)}>
-                            <Text style={[styles.bdOkunduText, { color: isOkundu ? '#6b7280' : '#3aaa6e' }]}>
-                              {isOkundu ? '↺' : '✓'}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.bdSilBtn} onPress={() => bildirimSil(item.id)}>
-                            <Text style={styles.bdSilText}>✕</Text>
+                            style={styles.bdMenuBtn}
+                            onPress={() => setMenuAcikId(menuAcikId === item.id ? null : item.id)}>
+                            <Text style={styles.bdMenuText}>⋯</Text>
                           </TouchableOpacity>
                         </View>
                       );
@@ -473,6 +469,20 @@ export default function DashboardScreen() {
             )}
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={menuAcikId !== null} transparent animationType="fade" onRequestClose={() => setMenuAcikId(null)}>
+        <TouchableOpacity style={styles.bdMenuOverlay} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
+          <View style={styles.bdMenuPopup}>
+            <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
+              <Text style={styles.bdMenuItemText}>{menuAcikId && okundu.has(menuAcikId) ? 'Okunmadı yap' : 'Okundu yap'}</Text>
+            </TouchableOpacity>
+            <View style={styles.bdMenuSep} />
+            <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) bildirimSil(menuAcikId); setMenuAcikId(null); }}>
+              <Text style={[styles.bdMenuItemText, { color: '#E53935' }]}>Sil</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
     </SafeAreaView>
@@ -656,12 +666,13 @@ const styles = StyleSheet.create({
   bdIcon: { width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
-  bdSilBtn: { width: 28, height: 28, borderRadius: Radius.full, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center' },
-  bdSilText: { fontSize: 12, color: '#E53935', fontWeight: '700' },
-  bdOkunduBtn: { minWidth: 32, height: 28, paddingHorizontal: 8, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  bdOkunduBtnAktif: { backgroundColor: '#e5e7eb' },
-  bdOkunduBtnPasif: { backgroundColor: 'rgba(58,170,110,0.12)' },
-  bdOkunduText: { fontSize: 14, fontWeight: '700' },
+  bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  bdMenuText: { fontSize: 22, color: '#6b7280', fontWeight: '700', lineHeight: 24 },
+  bdMenuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' },
+  bdMenuPopup: { backgroundColor: '#fff', borderRadius: 12, minWidth: 220, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  bdMenuItem: { paddingVertical: 14, paddingHorizontal: 18 },
+  bdMenuItemText: { fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
+  bdMenuSep: { height: 1, backgroundColor: '#f3f4f6' },
   bdDetayItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md, overflow: 'hidden' },
   bdDetayFoto: { width: 52, height: 52, borderRadius: Radius.md },
 });
