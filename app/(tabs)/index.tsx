@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -20,9 +19,10 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
-  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string}[]>([]);
-  const [sildirimler, setSildirimler] = useState<Set<string>>(new Set());
-  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string}|null>(null);
+  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}[]>([]);
+  const [okundu, setOkundu] = useState<Set<string>>(new Set());
+  const [silindi, setSilindi] = useState<Set<string>>(new Set());
+  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -30,18 +30,33 @@ export default function DashboardScreen() {
   const ilkFocus = useRef(true);
 
   useEffect(() => {
-    SecureStore.getItemAsync('sildirimler').then(val => {
-      if (val) setSildirimler(new Set(JSON.parse(val)));
-      fetchBildirimler();
-    });
+    fetchDurum();
+    fetchBildirimler();
     fetchData();
   }, []);
 
   useFocusEffect(useCallback(() => {
     fetchData();
     if (ilkFocus.current) { ilkFocus.current = false; return; }
+    fetchDurum();
     fetchBildirimler();
   }, []));
+
+  async function fetchDurum() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('bildirim_okundu').select('bildirim_id, silindi').eq('user_id', user.id);
+    if (data) {
+      const o = new Set<string>();
+      const s = new Set<string>();
+      data.forEach((r: any) => {
+        if (r.silindi) s.add(r.bildirim_id);
+        else o.add(r.bildirim_id);
+      });
+      setOkundu(o);
+      setSilindi(s);
+    }
+  }
 
   function eslesenMi(m: any, i: any): boolean {
     if (!m.butce_min && !m.butce_max && !m.tercih_tip && !m.tercih_konum) return false;
@@ -70,11 +85,11 @@ export default function DashboardScreen() {
   }
 
   async function fetchBildirimler() {
-    const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string}[] = [];
+    const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}[] = [];
     const bugun = new Date().toISOString().split('T')[0];
 
-    const { data: tumMusteriler, error: mErr } = await supabase.from('musteriler').select('id, ad, soyad, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip');
-    const { data: tumIlanlar, error: iErr } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori');
+    const { data: tumMusteriler, error: mErr } = await supabase.from('musteriler').select('id, ad, soyad, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi');
+    const { data: tumIlanlar, error: iErr } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, olusturma_tarihi');
 
     if (mErr || iErr) {
       console.log('Bildirim hata:', mErr?.message, iErr?.message);
@@ -90,26 +105,26 @@ export default function DashboardScreen() {
     for (const m of musteriler) {
       if (m.takip_tarihi && m.takip_tarihi <= bugun) {
         const [y, mo, d] = m.takip_tarihi.split('-');
-        liste.push({ id: `takip-${m.id}`, tip: 'takip', baslik: `${m.ad} ${m.soyad}`, alt: `Takip tarihi: ${d}.${mo}.${y}`, hedefId: m.id });
+        liste.push({ id: `takip-${m.id}`, tip: 'takip', baslik: `${m.ad} ${m.soyad}`, alt: `Takip tarihi: ${d}.${mo}.${y}`, hedefId: m.id, tarih: m.olusturma_tarihi ?? m.takip_tarihi });
       }
     }
 
     // Müşteri → ilan eşleşmesi
     for (const m of musteriler) {
       const eslesen = ilanlar.filter(i => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: `${m.ad} ${m.soyad}`, alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id });
+      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: `${m.ad} ${m.soyad}`, alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id, tarih: m.olusturma_tarihi ?? '' });
     }
 
     // İlan → müşteri eşleşmesi
     for (const i of ilanlar) {
       const eslesen = musteriler.filter(m => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `ilan-${i.id}`, tip: 'ilan', baslik: i.baslik, alt: `${eslesen.length} uygun müşteri eşleşiyor`, hedefId: i.id });
+      if (eslesen.length > 0) liste.push({ id: `ilan-${i.id}`, tip: 'ilan', baslik: i.baslik, alt: `${eslesen.length} uygun müşteri eşleşiyor`, hedefId: i.id, tarih: i.olusturma_tarihi ?? '' });
     }
 
     setBildirimler(liste);
   }
 
-  async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string}) {
+  async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string}) {
     setDetayBildirim(b);
     setDetayListe([]);
     setDetayYukleniyor(true);
@@ -145,12 +160,28 @@ export default function DashboardScreen() {
     setDetayYukleniyor(false);
   }
 
-  function bildirimSil(id: string) {
-    setSildirimler(prev => {
-      const next = new Set([...prev, id]);
-      SecureStore.setItemAsync('sildirimler', JSON.stringify([...next]));
+  async function toggleOkundu(id: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const isOkundu = okundu.has(id);
+    setOkundu(prev => {
+      const next = new Set(prev);
+      if (isOkundu) next.delete(id); else next.add(id);
       return next;
     });
+    if (isOkundu) {
+      await supabase.from('bildirim_okundu').delete().eq('user_id', user.id).eq('bildirim_id', id);
+    } else {
+      await supabase.from('bildirim_okundu').upsert({ user_id: user.id, bildirim_id: id, silindi: false }, { onConflict: 'user_id,bildirim_id' });
+    }
+  }
+
+  async function bildirimSil(id: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setSilindi(prev => new Set([...prev, id]));
+    setOkundu(prev => { const n = new Set(prev); n.delete(id); return n; });
+    await supabase.from('bildirim_okundu').upsert({ user_id: user.id, bildirim_id: id, silindi: true }, { onConflict: 'user_id,bildirim_id' });
   }
 
   async function onRefresh() {
@@ -233,9 +264,9 @@ export default function DashboardScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TouchableOpacity style={styles.bildirimWrap} onPress={() => setBildirimModal(true)}>
               <Text style={styles.bildirimIcon}>🔔</Text>
-              {bildirimler.filter(b => !sildirimler.has(b.id)).length > 0 && (
+              {bildirimler.filter(b => !silindi.has(b.id) && !okundu.has(b.id)).length > 0 && (
                 <View style={styles.bildirimBadge}>
-                  <Text style={styles.bildirimBadgeText}>{bildirimler.filter(b => !sildirimler.has(b.id)).length}</Text>
+                  <Text style={styles.bildirimBadgeText}>{bildirimler.filter(b => !silindi.has(b.id) && !okundu.has(b.id)).length}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -349,35 +380,49 @@ export default function DashboardScreen() {
 
             {!detayBildirim ? (
               // Bildirim listesi
-              bildirimler.filter(b => !sildirimler.has(b.id)).length === 0 ? (
-                <View style={styles.bdBos}>
-                  <Text style={styles.bdBosText}>Yeni bildirim yok</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={bildirimler.filter(b => !sildirimler.has(b.id))}
-                  keyExtractor={b => b.id}
-                  contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
-                  renderItem={({ item }) => (
-                    <View style={styles.bdItem}>
-                      <TouchableOpacity style={[styles.bdIcon, {
-                        backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
-                      }]} onPress={() => bildirimDetayAc(item)}>
-                        <Text style={{ fontSize: 16 }}>
-                          {item.tip === 'takip' ? '⚠️' : item.tip === 'musteri' ? '👤' : '🏠'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
-                        <Text style={styles.bdBaslik} numberOfLines={1}>{item.baslik}</Text>
-                        <Text style={styles.bdAlt}>{item.alt}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.bdSilBtn} onPress={() => bildirimSil(item.id)}>
-                        <Text style={styles.bdSilText}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                />
-              )
+              (() => {
+                const gorunenler = bildirimler.filter(b => !silindi.has(b.id));
+                const sirali = [...gorunenler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
+                return sirali.length === 0 ? (
+                  <View style={styles.bdBos}>
+                    <Text style={styles.bdBosText}>Bildirim yok</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={sirali}
+                    keyExtractor={b => b.id}
+                    contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
+                    renderItem={({ item }) => {
+                      const isOkundu = okundu.has(item.id);
+                      return (
+                        <View style={[styles.bdItem, isOkundu && { opacity: 0.6 }]}>
+                          <TouchableOpacity style={[styles.bdIcon, {
+                            backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
+                          }]} onPress={() => bildirimDetayAc(item)}>
+                            <Text style={{ fontSize: 16 }}>
+                              {item.tip === 'takip' ? '⚠️' : item.tip === 'musteri' ? '👤' : '🏠'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
+                            <Text style={[styles.bdBaslik, isOkundu && { textDecorationLine: 'line-through', fontWeight: '500' }]} numberOfLines={1}>{item.baslik}</Text>
+                            <Text style={styles.bdAlt}>{item.alt}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.bdOkunduBtn, isOkundu ? styles.bdOkunduBtnAktif : styles.bdOkunduBtnPasif]}
+                            onPress={() => toggleOkundu(item.id)}>
+                            <Text style={[styles.bdOkunduText, { color: isOkundu ? '#6b7280' : '#3aaa6e' }]}>
+                              {isOkundu ? '↺' : '✓'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.bdSilBtn} onPress={() => bildirimSil(item.id)}>
+                            <Text style={styles.bdSilText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    }}
+                  />
+                );
+              })()
             ) : (
               // Detay: eşleşen liste
               detayYukleniyor ? (
@@ -606,12 +651,16 @@ const styles = StyleSheet.create({
   bdKapat: { fontSize: 20, color: Colors.onSurfaceVariant, width: 32, textAlign: 'right' },
   bdBos: { padding: Spacing.xl * 2, alignItems: 'center' },
   bdBosText: { color: Colors.onSurfaceVariant, fontSize: 14 },
-  bdItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md },
+  bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md },
   bdIcon: { width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
-  bdSilBtn: { width: 28, height: 28, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
-  bdSilText: { fontSize: 12, color: Colors.onSurfaceVariant },
+  bdSilBtn: { width: 28, height: 28, borderRadius: Radius.full, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center' },
+  bdSilText: { fontSize: 12, color: '#E53935', fontWeight: '700' },
+  bdOkunduBtn: { minWidth: 32, height: 28, paddingHorizontal: 8, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  bdOkunduBtnAktif: { backgroundColor: '#e5e7eb' },
+  bdOkunduBtnPasif: { backgroundColor: 'rgba(58,170,110,0.12)' },
+  bdOkunduText: { fontSize: 14, fontWeight: '700' },
   bdDetayItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md, overflow: 'hidden' },
   bdDetayFoto: { width: 52, height: 52, borderRadius: Radius.md },
 });
