@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 import { Colors, Radius, Spacing } from '../constants/theme';
-import { TELEFON_KODLARI_SIRALI, bulKod } from '../constants/telefonKodlari';
+import { TELEFON_KODLARI_SIRALI, bulKod, bayrakToIso } from '../constants/telefonKodlari';
 
 interface Props {
   kod: string;
@@ -17,9 +17,12 @@ export default function TelefonInput({ kod, numara, onChange, placeholder, sadec
 
   const secili = bulKod(kod);
   const filtreli = arama
-    ? TELEFON_KODLARI_SIRALI.filter(t =>
-        t.ulke.toLowerCase().includes(arama.toLowerCase()) || t.kod.includes(arama)
-      )
+    ? (() => {
+        const q = arama.toLowerCase();
+        return TELEFON_KODLARI_SIRALI.filter(t =>
+          t.ulke.toLowerCase().includes(q) || t.kod.includes(arama) || bayrakToIso(t.bayrak).includes(q)
+        );
+      })()
     : TELEFON_KODLARI_SIRALI;
 
   return (

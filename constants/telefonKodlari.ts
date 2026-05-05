@@ -235,6 +235,17 @@ export function bulKod(kod: string): TelefonKodu {
   return TELEFON_KODLARI.find(t => t.kod === kod) ?? TELEFON_KODLARI[0];
 }
 
+export function bayrakToIso(bayrak: string): string {
+  try {
+    const cps = [...bayrak].map(c => c.codePointAt(0) ?? 0);
+    if (cps.length !== 2) return '';
+    const a = cps[0] - 0x1F1E6;
+    const b = cps[1] - 0x1F1E6;
+    if (a < 0 || a > 25 || b < 0 || b > 25) return '';
+    return String.fromCharCode(65 + a, 65 + b).toLowerCase();
+  } catch { return ''; }
+}
+
 export function ayirTelefon(tam: string | null | undefined, varsayilan: string = VARSAYILAN_TELEFON_KODU): { kod: string; numara: string } {
   if (!tam) return { kod: varsayilan, numara: '' };
   const trimmed = tam.trim();
