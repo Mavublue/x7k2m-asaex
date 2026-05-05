@@ -163,15 +163,24 @@ export default function IlanDetayScreen() {
       }
     }
     if (m.tercih_konum) {
-      const [il, ilce, mah] = m.tercih_konum.split(' / ').map((p: string) => p.trim());
-      if (mah) {
-        if (il && ilan!.konum?.toLowerCase() !== il.toLowerCase()) return false;
-        if (ilce && ilan!.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-        if (!ilan!.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
-      } else {
-        if (il && ilan!.konum?.toLowerCase() !== il.toLowerCase()) return false;
-        if (ilce && ilan!.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-      }
+      const konumlar = m.tercih_konum.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+      const eslesti = konumlar.some((konum: string) => {
+        const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
+        if (mah) {
+          if (il && ilan!.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (ilce && ilan!.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          if (!ilan!.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
+          return true;
+        }
+        if (ilce) {
+          if (il && ilan!.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (ilan!.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          return true;
+        }
+        if (il) return ilan!.konum?.toLowerCase() === il.toLowerCase();
+        return false;
+      });
+      if (!eslesti) return false;
     }
     return true;
   }

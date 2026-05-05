@@ -72,15 +72,24 @@ export default function DashboardScreen() {
       }
     }
     if (m.tercih_konum) {
-      const [il, ilce, mah] = m.tercih_konum.split(' / ').map((p: string) => p.trim());
-      if (mah) {
-        if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-        if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-        if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
-      } else {
-        if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-        if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-      }
+      const konumlar = m.tercih_konum.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+      const eslesti = konumlar.some((konum: string) => {
+        const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
+        if (mah) {
+          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
+          return true;
+        }
+        if (ilce) {
+          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          return true;
+        }
+        if (il) return i.konum?.toLowerCase() === il.toLowerCase();
+        return false;
+      });
+      if (!eslesti) return false;
     }
     return true;
   }
@@ -146,14 +155,33 @@ export default function DashboardScreen() {
           const tipler = m.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
           if (tipler.length) q = q.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
         }
+        let konumListesi: string[] = [];
         if (m.tercih_konum) {
-          const [il, ilce, mah] = m.tercih_konum.split(' / ').map((p: string) => p.trim());
-          if (il) q = q.ilike('konum', il);
-          if (ilce) q = q.ilike('ilce', ilce);
-          if (mah) q = q.ilike('mahalle', `%${mah}%`);
+          konumListesi = m.tercih_konum.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+          const iller = Array.from(new Set(konumListesi.map((k: string) => k.split(' / ')[0].trim()).filter(Boolean)));
+          if (iller.length) q = q.or(iller.map((il: string) => `konum.ilike.${il}`).join(','));
         }
         const { data } = await q;
-        setDetayListe(data ?? []);
+        let filtered = data ?? [];
+        if (konumListesi.length) {
+          filtered = filtered.filter((i: any) => konumListesi.some((konum: string) => {
+            const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
+            if (mah) {
+              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+              if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+              if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
+              return true;
+            }
+            if (ilce) {
+              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+              if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+              return true;
+            }
+            if (il) return i.konum?.toLowerCase() === il.toLowerCase();
+            return false;
+          }));
+        }
+        setDetayListe(filtered);
       }
     } else if (b.tip === 'ilan') {
       const { data: ilan } = await supabase.from('ilanlar').select('fiyat, konum, ilce, mahalle, kategori').eq('id', b.hedefId).single();

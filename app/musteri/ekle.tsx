@@ -38,11 +38,52 @@ export default function MusteriEkleScreen() {
   const [telNumara, setTelNumara] = useState('');
   const [butceMin, setButceMin] = useState('');
   const [butceMax, setButceMax] = useState('');
-  const [filterIl, setFilterIl] = useState<string[]>([]);
-  const [filterIlce, setFilterIlce] = useState<string[]>([]);
-  const [filterMahalle, setFilterMahalle] = useState<string[]>([]);
+  const [tercihKonumlar, setTercihKonumlar] = useState<string[]>([]);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [konumSearch, setKonumSearch] = useState('');
+
+  const ilIsaretli = (il: string) => tercihKonumlar.some(k => k === il || k.startsWith(il + ' / '));
+  const ilceIsaretli = (il: string, ilce: string) => {
+    const key = `${il} / ${ilce}`;
+    return tercihKonumlar.some(k => k === key || k.startsWith(key + ' / '));
+  };
+  const mahIsaretli = (il: string, ilce: string, mah: string) =>
+    tercihKonumlar.includes(`${il} / ${ilce} / ${mah}`);
+
+  function toggleIl(il: string) {
+    if (ilIsaretli(il)) {
+      setTercihKonumlar(prev => prev.filter(k => k !== il && !k.startsWith(il + ' / ')));
+    } else {
+      setTercihKonumlar(prev => [...prev, il]);
+    }
+  }
+  function toggleIlce(il: string, ilce: string) {
+    const key = `${il} / ${ilce}`;
+    if (ilceIsaretli(il, ilce)) {
+      setTercihKonumlar(prev => prev.filter(k => k !== key && !k.startsWith(key + ' / ')));
+    } else {
+      setTercihKonumlar(prev => [...prev.filter(k => k !== il), key]);
+    }
+  }
+  function toggleMah(il: string, ilce: string, mah: string) {
+    const key = `${il} / ${ilce} / ${mah}`;
+    if (mahIsaretli(il, ilce, mah)) {
+      setTercihKonumlar(prev => prev.filter(k => k !== key));
+    } else {
+      setTercihKonumlar(prev => [...prev.filter(k => k !== `${il} / ${ilce}`), key]);
+    }
+  }
+
+  const seciliIller = Array.from(new Set(tercihKonumlar.map(k => k.split(' / ')[0])))
+    .sort((a, b) => a.localeCompare(b, 'tr'));
+  const seciliIlceler: { il: string; ilce: string }[] = Array.from(
+    new Set(tercihKonumlar.filter(k => k.split(' / ').length >= 2).map(k => {
+      const [il, ilce] = k.split(' / '); return `${il}|${ilce}`;
+    }))
+  ).map(s => { const [il, ilce] = s.split('|'); return { il, ilce }; });
+  const ilSayisi = seciliIller.length;
+  const ilceSayisi = tercihKonumlar.filter(k => k.split(' / ').length === 2).length;
+  const mahSayisi = tercihKonumlar.filter(k => k.split(' / ').length === 3).length;
   const [tercihTipler, setTercihTipler] = useState<string[]>([]);
   const [minOda, setMinOda] = useState('');
   const [ozelIstekler, setOzelIstekler] = useState<string[]>([]);
@@ -60,33 +101,29 @@ export default function MusteriEkleScreen() {
   if (filterPage === 'il') {
     filteredBoxList = ILLER_LISTESI
       .filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
-      .map(i => ({ type: 'item', label: i, key: i }));
+      .map(i => ({ type: 'item', kind: 'il', label: i, il: i, key: i }));
   } else if (filterPage === 'ilce') {
-    filterIl.forEach(il => {
+    seciliIller.forEach(il => {
       const ilceler = (ILLER[il] ?? []).filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()));
       if (ilceler.length > 0) {
         filteredBoxList.push({ type: 'header', label: il });
         ilceler.sort((a,b) => a.localeCompare(b,'tr')).forEach(ilce => {
-          filteredBoxList.push({ type: 'item', label: ilce, key: ilce });
+          filteredBoxList.push({ type: 'item', kind: 'ilce', label: ilce, il, ilce, key: `${il}/${ilce}` });
         });
       }
     });
   } else if (filterPage === 'mahalle') {
-    filterIl.forEach(il => {
-      filterIlce.forEach(ilce => {
-        if ((ILLER[il] ?? []).includes(ilce)) {
-          const gruplar = getMahalleGruplar(il, ilce)
-            .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) }))
-            .filter(g => g.mahalleler.length > 0);
-          if (gruplar.length > 0) {
-            filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
-            gruplar.forEach(g => {
-              if (g.semt) filteredBoxList.push({ type: 'header', label: `  ${g.semt}` });
-              g.mahalleler.forEach(mah => filteredBoxList.push({ type: 'item', label: mah, key: mah }));
-            });
-          }
-        }
-      });
+    seciliIlceler.forEach(({ il, ilce }) => {
+      const gruplar = getMahalleGruplar(il, ilce)
+        .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) }))
+        .filter(g => g.mahalleler.length > 0);
+      if (gruplar.length > 0) {
+        filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
+        gruplar.forEach(g => {
+          if (g.semt) filteredBoxList.push({ type: 'header', label: `  ${g.semt}` });
+          g.mahalleler.forEach(mah => filteredBoxList.push({ type: 'item', kind: 'mah', label: mah, il, ilce, mah, key: `${il}/${ilce}/${mah}` }));
+        });
+      }
     });
   }
 
@@ -108,11 +145,7 @@ export default function MusteriEkleScreen() {
   async function handleKaydet() {
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     setLoading(true);
-    let kArr = [];
-    if (filterIl.length) kArr.push(filterIl.join(', '));
-    if (filterIlce.length) kArr.push(filterIlce.join(', '));
-    if (filterMahalle.length) kArr.push(filterMahalle.join(', '));
-    const tercih_konum_val = kArr.length > 0 ? kArr.join(' | ') : null;
+    const tercih_konum_val = tercihKonumlar.length ? tercihKonumlar.join(' | ') : null;
 
     const { data: inserted, error } = await supabase.from('musteriler').insert({
       ad, soyad: soyad || null,
@@ -241,14 +274,14 @@ export default function MusteriEkleScreen() {
             <View style={{ flexDirection: 'column', gap: 12 }}>
               {/* İl Kutusu */}
               <TouchableOpacity
-                style={[styles.konumBox, filterIl.length > 0 && styles.konumBoxAktif]}
+                style={[styles.konumBox, ilSayisi > 0 && styles.konumBoxAktif]}
                 onPress={() => { setKonumSearch(''); setFilterPage('il'); }}
               >
-                <Text style={[styles.konumBoxText, filterIl.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
-                  {filterIl.length > 0 ? `${filterIl.length} İl Seçildi` : 'İl Seçin'}
+                <Text style={[styles.konumBoxText, ilSayisi > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
+                  {ilSayisi > 0 ? `${ilSayisi} İl Seçildi` : 'İl Seçin'}
                 </Text>
-                {filterIl.length > 0
-                  ? <TouchableOpacity onPress={() => { setFilterIl([]); setFilterIlce([]); setFilterMahalle([]); }} style={{ paddingLeft: 10, paddingVertical: 4 }}>
+                {ilSayisi > 0
+                  ? <TouchableOpacity onPress={() => setTercihKonumlar([])} style={{ paddingLeft: 10, paddingVertical: 4 }}>
                       <Text style={styles.konumBoxSil}>✕ Temizle</Text>
                     </TouchableOpacity>
                   : <Text style={styles.konumBoxChevron}>▾</Text>
@@ -257,35 +290,35 @@ export default function MusteriEkleScreen() {
 
               {/* İlçe Kutusu */}
               <TouchableOpacity
-                style={[styles.konumBox, filterIlce.length > 0 && styles.konumBoxAktif, filterIl.length === 0 && styles.konumBoxDisabled]}
-                onPress={() => { if (filterIl.length === 0) return; setKonumSearch(''); setFilterPage('ilce'); }}
-                activeOpacity={filterIl.length > 0 ? 0.7 : 1}
+                style={[styles.konumBox, ilceSayisi > 0 && styles.konumBoxAktif, ilSayisi === 0 && styles.konumBoxDisabled]}
+                onPress={() => { if (ilSayisi === 0) return; setKonumSearch(''); setFilterPage('ilce'); }}
+                activeOpacity={ilSayisi > 0 ? 0.7 : 1}
               >
-                <Text style={[styles.konumBoxText, filterIlce.length > 0 && styles.konumBoxTextAktif, filterIl.length === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
-                  {filterIlce.length > 0 ? `${filterIlce.length} İlçe Seçildi` : 'İlçe Seçin'}
+                <Text style={[styles.konumBoxText, ilceSayisi > 0 && styles.konumBoxTextAktif, ilSayisi === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
+                  {ilceSayisi > 0 ? `${ilceSayisi} İlçe Seçildi` : 'İlçe Seçin'}
                 </Text>
-                {filterIlce.length > 0
-                  ? <TouchableOpacity onPress={() => { setFilterIlce([]); setFilterMahalle([]); }} style={{ paddingLeft: 10, paddingVertical: 4 }}>
+                {ilceSayisi > 0
+                  ? <TouchableOpacity onPress={() => setTercihKonumlar(prev => prev.filter(k => k.split(' / ').length === 1))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
                       <Text style={styles.konumBoxSil}>✕ Temizle</Text>
                     </TouchableOpacity>
-                  : <Text style={[styles.konumBoxChevron, filterIl.length === 0 && { color: Colors.outlineVariant }]}>▾</Text>
+                  : <Text style={[styles.konumBoxChevron, ilSayisi === 0 && { color: Colors.outlineVariant }]}>▾</Text>
                 }
               </TouchableOpacity>
 
               {/* Mahalle Kutusu */}
               <TouchableOpacity
-                style={[styles.konumBox, filterMahalle.length > 0 && styles.konumBoxAktif, filterIlce.length === 0 && styles.konumBoxDisabled]}
-                onPress={() => { if (filterIlce.length === 0) return; setKonumSearch(''); setFilterPage('mahalle'); }}
-                activeOpacity={filterIlce.length > 0 ? 0.7 : 1}
+                style={[styles.konumBox, mahSayisi > 0 && styles.konumBoxAktif, seciliIlceler.length === 0 && styles.konumBoxDisabled]}
+                onPress={() => { if (seciliIlceler.length === 0) return; setKonumSearch(''); setFilterPage('mahalle'); }}
+                activeOpacity={seciliIlceler.length > 0 ? 0.7 : 1}
               >
-                <Text style={[styles.konumBoxText, filterMahalle.length > 0 && styles.konumBoxTextAktif, filterIlce.length === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
-                  {filterMahalle.length > 0 ? `${filterMahalle.length} Mahalle Seçildi` : 'Mahalle Seçin'}
+                <Text style={[styles.konumBoxText, mahSayisi > 0 && styles.konumBoxTextAktif, seciliIlceler.length === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
+                  {mahSayisi > 0 ? `${mahSayisi} Mahalle Seçildi` : 'Mahalle Seçin'}
                 </Text>
-                {filterMahalle.length > 0
-                  ? <TouchableOpacity onPress={() => setFilterMahalle([])} style={{ paddingLeft: 10, paddingVertical: 4 }}>
+                {mahSayisi > 0
+                  ? <TouchableOpacity onPress={() => setTercihKonumlar(prev => prev.filter(k => k.split(' / ').length !== 3))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
                       <Text style={styles.konumBoxSil}>✕ Temizle</Text>
                     </TouchableOpacity>
-                  : <Text style={[styles.konumBoxChevron, filterIlce.length === 0 && { color: Colors.outlineVariant }]}>▾</Text>
+                  : <Text style={[styles.konumBoxChevron, seciliIlceler.length === 0 && { color: Colors.outlineVariant }]}>▾</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -442,30 +475,23 @@ export default function MusteriEkleScreen() {
                     if (item.type === 'header') {
                       return <Text style={styles.listeGrupBaslik}>{item.label}</Text>;
                     }
-                    const val = item.key;
                     const secili =
-                      filterPage === 'il' ? filterIl.includes(val) :
-                      filterPage === 'ilce' ? filterIlce.includes(val) :
-                      filterMahalle.includes(val);
+                      item.kind === 'il' ? ilIsaretli(item.il) :
+                      item.kind === 'ilce' ? ilceIsaretli(item.il, item.ilce) :
+                      mahIsaretli(item.il, item.ilce, item.mah);
                     return (
                       <TouchableOpacity
                         style={[styles.modalItem, secili && { backgroundColor: Colors.primaryFixed }]}
                         onPress={() => {
-                          if (filterPage === 'il') {
-                            setFilterIl(f => secili ? f.filter(x => x !== val) : [...f, val]);
-                            setFilterIlce([]); setFilterMahalle([]);
-                          } else if (filterPage === 'ilce') {
-                            setFilterIlce(f => secili ? f.filter(x => x !== val) : [...f, val]);
-                            setFilterMahalle([]);
-                          } else {
-                            setFilterMahalle(f => secili ? f.filter(x => x !== val) : [...f, val]);
-                          }
+                          if (item.kind === 'il') toggleIl(item.il);
+                          else if (item.kind === 'ilce') toggleIlce(item.il, item.ilce);
+                          else toggleMah(item.il, item.ilce, item.mah);
                         }}
                       >
                         <View style={[styles.checkbox, secili && styles.checkboxAktif, { marginRight: 10 }]}>
                           {secili && <Text style={styles.checkboxTick}>✓</Text>}
                         </View>
-                        <Text style={[styles.modalItemText, secili && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{val}</Text>
+                        <Text style={[styles.modalItemText, secili && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{item.label}</Text>
                       </TouchableOpacity>
                     );
                   }}

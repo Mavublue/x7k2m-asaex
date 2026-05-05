@@ -113,7 +113,7 @@ export default function MusteriDetayScreen() {
       setTelKod(sp.kod); setTelNumara(sp.numara.replace(/\D/g, ''));
       setButceMin(data.butce_min ? formatButce(String(data.butce_min)) : '');
       setButceMax(data.butce_max ? formatButce(String(data.butce_max)) : '');
-      setKonumlar((data.tercih_konum ?? '').split('|').filter(Boolean));
+      setKonumlar((data.tercih_konum ?? '').split(/\s*\|\s*/).filter(Boolean));
       setTercihTipler(data.tercih_tip ? data.tercih_tip.split(',') : []);
       setMinOda(data.min_oda ?? '');
       setTakipTarihi(data.takip_tarihi ? tarihFormat(data.takip_tarihi) : '');
@@ -151,24 +151,39 @@ export default function MusteriDetayScreen() {
         const tipler = data.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
         if (tipler.length > 0) query = query.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
       }
+      let konumListesi: string[] = [];
       if (data.tercih_konum) {
-        const konumListesi = data.tercih_konum.split('|').filter(Boolean);
-        if (konumListesi.length === 1) {
-          const [il, ilce, mah] = konumListesi[0].split(' / ').map((p: string) => p.trim());
-          if (il) query = query.ilike('konum', il);
-          if (ilce) query = query.ilike('ilce', ilce);
-          if (mah) query = query.ilike('mahalle', `%${mah}%`);
-        } else if (konumListesi.length > 1) {
-          const iller = konumListesi.map(k => k.split(' / ')[0].trim()).filter(Boolean);
-          const orStr = iller.map(il => `konum.ilike.${il}`).join(',');
+        konumListesi = data.tercih_konum.split(/\s*\|\s*/).filter(Boolean);
+        const iller = Array.from(new Set(konumListesi.map((k: string) => k.split(' / ')[0].trim()).filter(Boolean)));
+        if (iller.length) {
+          const orStr = iller.map((il: string) => `konum.ilike.${il}`).join(',');
           query = query.or(orStr);
         }
       }
       if (!data.butce_min && !data.butce_max && !data.tercih_tip && !data.tercih_konum) {
         setEslesen([]);
       } else {
-        const { data: ilanlar } = await query.limit(20);
-        setEslesen(ilanlar ?? []);
+        const { data: ilanlar } = await query.limit(50);
+        let filtered = ilanlar ?? [];
+        if (konumListesi.length) {
+          filtered = filtered.filter((i: any) => konumListesi.some((konum: string) => {
+            const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
+            if (mah) {
+              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+              if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+              if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
+              return true;
+            }
+            if (ilce) {
+              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+              if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+              return true;
+            }
+            if (il) return i.konum?.toLowerCase() === il.toLowerCase();
+            return false;
+          }));
+        }
+        setEslesen(filtered.slice(0, 20));
       }
 
       // Elle eşleştirilenler
@@ -198,7 +213,7 @@ export default function MusteriDetayScreen() {
       telefon: tamTelefon,
       butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
       butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
-      tercih_konum: konumlar.length ? konumlar.join('|') : null,
+      tercih_konum: konumlar.length ? konumlar.join(' | ') : null,
       tercih_tip: tercihTipler.length ? tercihTipler.join(',') : null,
       min_oda: minOda || null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
