@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
 
-type MusteriListe = Musteri & { musteri_iletisim?: { ad: string; telefon: string | null }[] };
+type MusteriListe = Musteri & { musteri_iletisim?: { ad: string; telefon: string | null; tip: string | null }[] };
 import { TURKIYE, IL_LISTESI } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
@@ -58,7 +58,7 @@ export default function MusterilerScreen() {
     setLoading(true);
     const { data } = await supabase
       .from('musteriler')
-      .select('*, musteri_iletisim(ad, telefon)')
+      .select('*, musteri_iletisim(ad, telefon, tip)')
       .order('olusturma_tarihi', { ascending: false });
     if (data) { setMusteriler(data as MusteriListe[]); setFiltered(data as MusteriListe[]); }
     setLoading(false);
@@ -124,7 +124,7 @@ export default function MusterilerScreen() {
             </View>
           ) : (
             <View style={styles.grid}>
-              {filtered.map(m => <MusteriKart key={m.id} musteri={m} />)}
+              {filtered.map(m => <MusteriKart key={m.id} musteri={m} search={search} />)}
             </View>
           )}
         </ScrollView>
@@ -135,8 +135,12 @@ export default function MusterilerScreen() {
   );
 }
 
-function MusteriKart({ musteri }: { musteri: Musteri }) {
+function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: string }) {
   const initials = `${musteri.ad[0]}${musteri.soyad[0]}`.toUpperCase();
+  const q = search.trim().toLowerCase();
+  const matchedEk = q ? (musteri.musteri_iletisim ?? []).filter(k =>
+    k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q)
+  ) : [];
   const durumRenk = {
     Aktif: { bg: '#dcfce7', text: '#166534' },
     Beklemede: { bg: '#fef9c3', text: '#854d0e' },
@@ -171,6 +175,20 @@ function MusteriKart({ musteri }: { musteri: Musteri }) {
 
       {musteri.notlar && (
         <Text style={styles.notlar} numberOfLines={2}>{musteri.notlar}</Text>
+      )}
+
+      {matchedEk.length > 0 && (
+        <View style={{ marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, gap: 4 }}>
+          {matchedEk.map((k, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+              <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: Colors.primaryFixed }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: Colors.primary }}>↳ {k.tip || 'Ek'}</Text>
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }} numberOfLines={1}>{k.ad}</Text>
+              {k.telefon ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text> : null}
+            </View>
+          ))}
+        </View>
       )}
 
       <TouchableOpacity style={styles.eslesBtn} onPress={e => { e.stopPropagation?.(); router.push(`/musteri/${musteri.id}` as any); }}>
