@@ -9,6 +9,8 @@ import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
+import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
+import TelefonInput from '../../components/TelefonInput';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -18,7 +20,7 @@ const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '2
 const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
 const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', 'İptal'];
 
-type EkKisi = { ad: string; telefon: string; tip: string };
+type EkKisi = { ad: string; kod: string; numara: string; tip: string };
 
 function formatButce(val: string) {
   return val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -31,7 +33,9 @@ function isoFormat(tr: string) {
 export default function MusteriEkleScreen() {
   const [ad, setAd] = useState('');
   const [soyad, setSoyad] = useState('');
-  const [telefon, setTelefon] = useState('');
+  const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
+  const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
+  const [telNumara, setTelNumara] = useState('');
   const [butceMin, setButceMin] = useState('');
   const [butceMax, setButceMax] = useState('');
   const [filterIl, setFilterIl] = useState<string[]>([]);
@@ -90,6 +94,15 @@ export default function MusteriEkleScreen() {
     supabase.from('ozellikler').select('*').order('olusturma_tarihi').then(({ data }) => {
       if (data) setTumOzellikler(data);
     });
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
+      if (data?.default_telefon_kodu) {
+        setVarsayilanKod(data.default_telefon_kodu);
+        setTelKod(data.default_telefon_kodu);
+      }
+    })();
   }, []);
 
   async function handleKaydet() {
@@ -103,7 +116,7 @@ export default function MusteriEkleScreen() {
 
     const { data: inserted, error } = await supabase.from('musteriler').insert({
       ad, soyad: soyad || null,
-      telefon: telefon || null,
+      telefon: birlestirTelefon(telKod, telNumara),
       butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
       butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
       tercih_konum: tercih_konum_val,
@@ -121,10 +134,10 @@ export default function MusteriEkleScreen() {
       const { error: jErr } = await supabase.from('musteri_ozellikler').insert(rows);
       if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setLoading(false); return; }
     }
-    const filteredKisiler = ekKisiler.map(k => ({ ad: k.ad.trim(), telefon: k.telefon.trim(), tip: k.tip })).filter(k => k.ad || k.telefon);
+    const filteredKisiler = ekKisiler.map(k => ({ ad: k.ad.trim(), telefon: birlestirTelefon(k.kod, k.numara), tip: k.tip })).filter(k => k.ad || k.telefon);
     if (filteredKisiler.length && inserted) {
       const kRows = filteredKisiler.map((k, i) => ({
-        musteri_id: (inserted as any).id, ad: k.ad || '—', telefon: k.telefon || null, tip: k.tip || null, sira: i,
+        musteri_id: (inserted as any).id, ad: k.ad || '—', telefon: k.telefon, tip: k.tip || null, sira: i,
       }));
       const { error: kErr } = await supabase.from('musteri_iletisim').insert(kRows);
       if (kErr) { Alert.alert('Ek kişi kaydı hatası', kErr.message); setLoading(false); return; }
@@ -168,13 +181,17 @@ export default function MusteriEkleScreen() {
             </View>
           </View>
 
-          <Field label="Telefon" value={telefon} onChangeText={setTelefon} placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Telefon</Text>
+            <TelefonInput kod={telKod} numara={telNumara}
+              onChange={(k, n) => { setTelKod(k); setTelNumara(n); }} />
+          </View>
 
           {/* Ek Kişiler */}
           <View style={styles.inputContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.label}>Ek Kişiler {ekKisiler.length > 0 ? `(${ekKisiler.length})` : ''}</Text>
-              <TouchableOpacity onPress={() => setEkKisiler(p => [...p, { ad: '', telefon: '', tip: 'Eş' }])}
+              <TouchableOpacity onPress={() => setEkKisiler(p => [...p, { ad: '', kod: varsayilanKod, numara: '', tip: 'Eş' }])}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                 <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ Kişi Ekle</Text>
               </TouchableOpacity>
@@ -194,9 +211,10 @@ export default function MusteriEkleScreen() {
                       </TouchableOpacity>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="05xx xxx xx xx" placeholderTextColor={Colors.outlineVariant}
-                        keyboardType="phone-pad" value={k.telefon}
-                        onChangeText={v => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, telefon: v } : x))} />
+                      <View style={{ flex: 1 }}>
+                        <TelefonInput kod={k.kod} numara={k.numara}
+                          onChange={(kk, nn) => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, kod: kk, numara: nn } : x))} />
+                      </View>
                       <TouchableOpacity onPress={() => setTipModal(idx)}
                         style={[styles.input, { width: 110, backgroundColor: '#fff', justifyContent: 'center' }]}>
                         <Text style={{ fontSize: 14, color: Colors.onSurface }}>{k.tip} ▾</Text>

@@ -10,6 +10,8 @@ import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri, Ilan } from '../../types';
 import R2Image from '../../components/R2Image';
 import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
+import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
+import TelefonInput from '../../components/TelefonInput';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -20,7 +22,7 @@ const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
 const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
 
-type EkKisi = { id?: string; ad: string; telefon: string; tip: string };
+type EkKisi = { id?: string; ad: string; kod: string; numara: string; tip: string };
 
 function tarihFormat(iso: string) {
   if (!iso) return '';
@@ -45,7 +47,10 @@ export default function MusteriDetayScreen() {
   // Editable fields
   const [ad, setAd] = useState('');
   const [soyad, setSoyad] = useState('');
-  const [telefon, setTelefon] = useState('');
+  const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
+  const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
+  const [telNumara, setTelNumara] = useState('');
+  const [telefonRaw, setTelefonRaw] = useState('');
   const [butceMin, setButceMin] = useState('');
   const [butceMax, setButceMax] = useState('');
   const [konumlar, setKonumlar] = useState<string[]>([]);
@@ -96,7 +101,16 @@ export default function MusteriDetayScreen() {
       setMusteri(data);
       setAd(data.ad ?? '');
       setSoyad(data.soyad ?? '');
-      setTelefon(data.telefon ?? '');
+      setTelefonRaw(data.telefon ?? '');
+      const { data: { user } } = await supabase.auth.getUser();
+      let dKod = VARSAYILAN_TELEFON_KODU;
+      if (user) {
+        const { data: pr } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
+        if (pr?.default_telefon_kodu) dKod = pr.default_telefon_kodu;
+      }
+      setVarsayilanKod(dKod);
+      const sp = ayirTelefon(data.telefon, dKod);
+      setTelKod(sp.kod); setTelNumara(sp.numara.replace(/\D/g, ''));
       setButceMin(data.butce_min ? formatButce(String(data.butce_min)) : '');
       setButceMax(data.butce_max ? formatButce(String(data.butce_max)) : '');
       setKonumlar((data.tercih_konum ?? '').split('|').filter(Boolean));
@@ -114,7 +128,10 @@ export default function MusteriDetayScreen() {
 
       // Ek kişiler
       const { data: kData } = await supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira');
-      setEkKisiler((kData ?? []).map((k: any) => ({ id: k.id, ad: k.ad ?? '', telefon: k.telefon ?? '', tip: k.tip ?? 'Eş' })));
+      setEkKisiler((kData ?? []).map((k: any) => {
+        const sp2 = ayirTelefon(k.telefon, dKod);
+        return { id: k.id, ad: k.ad ?? '', kod: sp2.kod, numara: sp2.numara.replace(/\D/g, ''), tip: k.tip ?? 'Eş' };
+      }));
 
       // Müşteri özellikleri (junction)
       const { data: jData } = await supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id);
@@ -175,9 +192,10 @@ export default function MusteriDetayScreen() {
   async function handleKaydet() {
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     setSaving(true);
+    const tamTelefon = birlestirTelefon(telKod, telNumara);
     const { error } = await supabase.from('musteriler').update({
       ad, soyad: soyad || null,
-      telefon: telefon || null,
+      telefon: tamTelefon,
       butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
       butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
       tercih_konum: konumlar.length ? konumlar.join('|') : null,
@@ -200,10 +218,10 @@ export default function MusteriDetayScreen() {
     }
 
     await supabase.from('musteri_iletisim').delete().eq('musteri_id', id);
-    const cleanKisiler = ekKisiler.map(k => ({ ad: k.ad.trim(), telefon: k.telefon.trim(), tip: k.tip })).filter(k => k.ad || k.telefon);
+    const cleanKisiler = ekKisiler.map(k => ({ ad: k.ad.trim(), telefon: birlestirTelefon(k.kod, k.numara), tip: k.tip })).filter(k => k.ad || k.telefon);
     if (cleanKisiler.length) {
       const kRows = cleanKisiler.map((k, i) => ({
-        musteri_id: id, ad: k.ad || '—', telefon: k.telefon || null, tip: k.tip || null, sira: i,
+        musteri_id: id, ad: k.ad || '—', telefon: k.telefon, tip: k.tip || null, sira: i,
       }));
       const { error: kErr } = await supabase.from('musteri_iletisim').insert(kRows);
       if (kErr) { Alert.alert('Ek kişi kaydı hatası', kErr.message); setSaving(false); return; }
@@ -368,9 +386,9 @@ export default function MusteriDetayScreen() {
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.profilAd}>{ad} {soyad}</Text>
-              {telefon ? (
-                <TouchableOpacity onPress={() => Linking.openURL(`tel:${telefon}`)}>
-                  <Text style={styles.profilTelefon}>📞 {telefon}</Text>
+              {telefonRaw ? (
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${telefonRaw}`)}>
+                  <Text style={styles.profilTelefon}>📞 {telefonRaw}</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -412,13 +430,17 @@ export default function MusteriDetayScreen() {
                   </View>
                 </View>
               </View>
-              <Field label="Telefon" value={telefon} onChangeText={setTelefon} placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Telefon</Text>
+                <TelefonInput kod={telKod} numara={telNumara}
+                  onChange={(k, n) => { setTelKod(k); setTelNumara(n); }} />
+              </View>
 
               {/* Ek Kişiler */}
               <View style={styles.inputContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={styles.label}>Ek Kişiler {ekKisiler.length > 0 ? `(${ekKisiler.length})` : ''}</Text>
-                  <TouchableOpacity onPress={() => setEkKisiler(p => [...p, { ad: '', telefon: '', tip: 'Eş' }])}
+                  <TouchableOpacity onPress={() => setEkKisiler(p => [...p, { ad: '', kod: varsayilanKod, numara: '', tip: 'Eş' }])}
                     style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                     <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ Kişi Ekle</Text>
                   </TouchableOpacity>
@@ -438,9 +460,10 @@ export default function MusteriDetayScreen() {
                           </TouchableOpacity>
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="05xx xxx xx xx" placeholderTextColor={Colors.outlineVariant}
-                            keyboardType="phone-pad" value={k.telefon}
-                            onChangeText={v => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, telefon: v } : x))} />
+                          <View style={{ flex: 1 }}>
+                            <TelefonInput kod={k.kod} numara={k.numara}
+                              onChange={(kk, nn) => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, kod: kk, numara: nn } : x))} />
+                          </View>
                           <TouchableOpacity onPress={() => setTipModal(idx)}
                             style={[styles.input, { width: 110, backgroundColor: '#fff', justifyContent: 'center' }]}>
                             <Text style={{ fontSize: 14, color: Colors.onSurface }}>{k.tip} ▾</Text>
@@ -603,9 +626,9 @@ export default function MusteriDetayScreen() {
                               </View>
                             ) : null}
                           </View>
-                          {k.telefon ? (
-                            <TouchableOpacity onPress={() => Linking.openURL(`tel:${k.telefon}`)}>
-                              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginTop: 2 }}>📞 {k.telefon}</Text>
+                          {k.numara ? (
+                            <TouchableOpacity onPress={() => Linking.openURL(`tel:${birlestirTelefon(k.kod, k.numara) ?? ''}`)}>
+                              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginTop: 2 }}>📞 {birlestirTelefon(k.kod, k.numara)}</Text>
                             </TouchableOpacity>
                           ) : null}
                         </View>

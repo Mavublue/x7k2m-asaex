@@ -9,11 +9,15 @@ import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { IL_LISTESI as ILLER_LISTESI } from '../../constants/turkiye';
+import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
+import TelefonInput from '../../components/TelefonInput';
 
 export default function ProfilDuzenleScreen() {
   const [ad, setAd] = useState('');
   const [soyad, setSoyad] = useState('');
-  const [telefon, setTelefon] = useState('');
+  const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
+  const [telNumara, setTelNumara] = useState('');
+  const [defaultKod, setDefaultKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [ofisAdi, setOfisAdi] = useState('');
   const [calismaBolgesi, setCalismaBolgesi] = useState('');
   const [watermarkText, setWatermarkText] = useState('');
@@ -32,8 +36,11 @@ export default function ProfilDuzenleScreen() {
         if (data) {
           setAd(data.ad ?? '');
           setSoyad(data.soyad ?? '');
-          const tel = (data.telefon ?? '').replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
-          setTelefon(tel);
+          const dKod = data.default_telefon_kodu ?? VARSAYILAN_TELEFON_KODU;
+          setDefaultKod(dKod);
+          const sp = ayirTelefon(data.telefon, dKod);
+          setTelKod(sp.kod);
+          setTelNumara(sp.numara.replace(/\D/g, ''));
           setOfisAdi(data.ofis_adi ?? '');
           setCalismaBolgesi(data.calisma_bolgesi ?? '');
           setWatermarkText(data.watermark_text ?? '');
@@ -50,9 +57,10 @@ export default function ProfilDuzenleScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const telKayit = telefon ? '+90' + telefon.replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '') : null;
     const { error } = await supabase.from('profiller').upsert({
-      id: user.id, ad, soyad, telefon: telKayit,
+      id: user.id, ad, soyad,
+      telefon: birlestirTelefon(telKod, telNumara),
+      default_telefon_kodu: defaultKod,
       ofis_adi: ofisAdi || null,
       calisma_bolgesi: calismaBolgesi || null,
       watermark_text: watermarkText || null,
@@ -106,20 +114,14 @@ export default function ProfilDuzenleScreen() {
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Telefon</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, overflow: 'hidden' }}>
-              <View style={{ paddingHorizontal: 14, paddingVertical: 12, borderRightWidth: 1, borderRightColor: Colors.outline }}>
-                <Text style={{ fontSize: 15, color: Colors.onSurface, fontWeight: '600' }}>+90</Text>
-              </View>
-              <TextInput
-                style={{ flex: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: Colors.onSurface }}
-                placeholder="5xx xxx xx xx"
-                placeholderTextColor={Colors.outlineVariant}
-                value={telefon}
-                onChangeText={v => setTelefon(v.replace(/\D/g, ''))}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
-            </View>
+            <TelefonInput kod={telKod} numara={telNumara}
+              onChange={(k, n) => { setTelKod(k); setTelNumara(n); }} />
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Varsayılan Ülke Kodu</Text>
+            <TelefonInput kod={defaultKod} numara="" sadeceKod placeholder="Ülke kodu seç"
+              onChange={(k) => setDefaultKod(k)} />
+            <Text style={{ fontSize: 11, color: Colors.outlineVariant, marginTop: 4 }}>Müşteri telefon alanlarında otomatik gelir.</Text>
           </View>
           <Field label="Emlak Ofisi Adı (opsiyonel)" value={ofisAdi} onChangeText={setOfisAdi} placeholder="Yılmaz Gayrimenkul" />
           <Field label="Fotoğraf Filigranı (opsiyonel)" value={watermarkText} onChangeText={v => setWatermarkText(v.replace(/[<>&"']/g, '').slice(0, 40))} placeholder="ahmetemlak.com" />
