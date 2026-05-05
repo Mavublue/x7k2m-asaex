@@ -1,3 +1,5 @@
+import { AsYouType, type CountryCode } from 'libphonenumber-js';
+
 export interface TelefonKodu {
   kod: string;
   ulke: string;
@@ -263,4 +265,16 @@ export function birlestirTelefon(kod: string, numara: string): string | null {
   const temiz = numara.replace(/\D/g, '');
   if (!temiz) return null;
   return kod + temiz;
+}
+
+export function formatNumara(kod: string, numara: string): string {
+  const temiz = numara.replace(/\D/g, '');
+  if (!temiz) return '';
+  const iso = bayrakToIso(bulKod(kod).bayrak).toUpperCase();
+  if (!iso) return temiz;
+  try {
+    const f = new AsYouType(iso as CountryCode);
+    const out = f.input(temiz);
+    return out || temiz;
+  } catch { return temiz; }
 }
