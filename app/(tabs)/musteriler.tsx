@@ -8,6 +8,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
+
+type MusteriListe = Musteri & { musteri_iletisim?: { ad: string; telefon: string | null }[] };
 import { TURKIYE, IL_LISTESI } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
@@ -16,8 +18,8 @@ const ILLER_LISTESI = IL_LISTESI;
 const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal'];
 
 export default function MusterilerScreen() {
-  const [musteriler, setMusteriler] = useState<Musteri[]>([]);
-  const [filtered, setFiltered] = useState<Musteri[]>([]);
+  const [musteriler, setMusteriler] = useState<MusteriListe[]>([]);
+  const [filtered, setFiltered] = useState<MusteriListe[]>([]);
   const [search, setSearch] = useState('');
   const [etiketSearch, setEtiketSearch] = useState('');
   const [activeDurum, setActiveDurum] = useState('Tümü');
@@ -34,7 +36,9 @@ export default function MusterilerScreen() {
       const q = search.toLowerCase();
       result = result.filter(m =>
         `${m.ad} ${m.soyad}`.toLowerCase().includes(q) ||
-        m.tercih_konum?.toLowerCase().includes(q)
+        m.telefon?.includes(q) ||
+        m.tercih_konum?.toLowerCase().includes(q) ||
+        (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q))
       );
     }
     if (etiketSearch) {
@@ -54,9 +58,9 @@ export default function MusterilerScreen() {
     setLoading(true);
     const { data } = await supabase
       .from('musteriler')
-      .select('*')
+      .select('*, musteri_iletisim(ad, telefon)')
       .order('olusturma_tarihi', { ascending: false });
-    if (data) { setMusteriler(data); setFiltered(data); }
+    if (data) { setMusteriler(data as MusteriListe[]); setFiltered(data as MusteriListe[]); }
     setLoading(false);
   }
 
