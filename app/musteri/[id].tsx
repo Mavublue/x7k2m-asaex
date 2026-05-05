@@ -18,6 +18,9 @@ const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', '�
 const EMLAK_TIPLERI = ['Daire', 'Villa', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
+const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
+
+type EkKisi = { id?: string; ad: string; telefon: string; tip: string };
 
 function tarihFormat(iso: string) {
   if (!iso) return '';
@@ -59,6 +62,8 @@ export default function MusteriDetayScreen() {
   const [notlar, setNotlar] = useState('');
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
+  const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
+  const [tipModal, setTipModal] = useState<number | null>(null);
   const [konumModal, setKonumModal] = useState(false);
   const [konumAcik, setKonumAcik] = useState(false);
   const [konumSayfa, setKonumSayfa] = useState<'il' | 'ilce' | 'mahalle'>('il');
@@ -106,6 +111,10 @@ export default function MusteriDetayScreen() {
       // Özellikler listesi
       const { data: ozData } = await supabase.from('ozellikler').select('*').order('olusturma_tarihi');
       if (ozData) setTumOzellikler(ozData);
+
+      // Ek kişiler
+      const { data: kData } = await supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira');
+      setEkKisiler((kData ?? []).map((k: any) => ({ id: k.id, ad: k.ad ?? '', telefon: k.telefon ?? '', tip: k.tip ?? 'Eş' })));
 
       // Müşteri özellikleri (junction)
       const { data: jData } = await supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id);
@@ -188,6 +197,16 @@ export default function MusteriDetayScreen() {
       const rows = ozelIstekler.map(oid => ({ musteri_id: id, ozellik_id: oid }));
       const { error: jErr } = await supabase.from('musteri_ozellikler').insert(rows);
       if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setSaving(false); return; }
+    }
+
+    await supabase.from('musteri_iletisim').delete().eq('musteri_id', id);
+    const cleanKisiler = ekKisiler.map(k => ({ ad: k.ad.trim(), telefon: k.telefon.trim(), tip: k.tip })).filter(k => k.ad || k.telefon);
+    if (cleanKisiler.length) {
+      const kRows = cleanKisiler.map((k, i) => ({
+        musteri_id: id, ad: k.ad || '—', telefon: k.telefon || null, tip: k.tip || null, sira: i,
+      }));
+      const { error: kErr } = await supabase.from('musteri_iletisim').insert(kRows);
+      if (kErr) { Alert.alert('Ek kişi kaydı hatası', kErr.message); setSaving(false); return; }
     }
 
     setDuzenle(false);
@@ -394,6 +413,45 @@ export default function MusteriDetayScreen() {
                 </View>
               </View>
               <Field label="Telefon" value={telefon} onChangeText={setTelefon} placeholder="05xx xxx xx xx" keyboardType="phone-pad" />
+
+              {/* Ek Kişiler */}
+              <View style={styles.inputContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.label}>Ek Kişiler {ekKisiler.length > 0 ? `(${ekKisiler.length})` : ''}</Text>
+                  <TouchableOpacity onPress={() => setEkKisiler(p => [...p, { ad: '', telefon: '', tip: 'Eş' }])}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
+                    <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ Kişi Ekle</Text>
+                  </TouchableOpacity>
+                </View>
+                {ekKisiler.length === 0 ? (
+                  <Text style={{ fontSize: 12, color: Colors.outlineVariant, marginTop: 4 }}>Eş, oğul, anne gibi başka iletişim kişilerini ekleyebilirsiniz.</Text>
+                ) : (
+                  <View style={{ gap: 8, marginTop: 6 }}>
+                    {ekKisiler.map((k, idx) => (
+                      <View key={idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 10, gap: 8 }}>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Ad Soyad" placeholderTextColor={Colors.outlineVariant}
+                            value={k.ad} onChangeText={v => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, ad: v } : x))} />
+                          <TouchableOpacity onPress={() => setEkKisiler(p => p.filter((_, i) => i !== idx))}
+                            style={{ width: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryFixed, borderRadius: Radius.lg }}>
+                            <Text style={{ fontSize: 18, color: Colors.primary, fontWeight: '700' }}>×</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="05xx xxx xx xx" placeholderTextColor={Colors.outlineVariant}
+                            keyboardType="phone-pad" value={k.telefon}
+                            onChangeText={v => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, telefon: v } : x))} />
+                          <TouchableOpacity onPress={() => setTipModal(idx)}
+                            style={[styles.input, { width: 110, backgroundColor: '#fff', justifyContent: 'center' }]}>
+                            <Text style={{ fontSize: 14, color: Colors.onSurface }}>{k.tip} ▾</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
               <View style={styles.satir}>
                 <View style={{ flex: 1 }}>
                   <Field label="Bütçe Min (₺)" value={butceMin} onChangeText={v => setButceMin(formatButce(v))} placeholder="500.000" keyboardType="numeric" />
@@ -530,6 +588,32 @@ export default function MusteriDetayScreen() {
             </>
           ) : (
             <>
+                {/* Ek Kişiler */}
+                {ekKisiler.length > 0 && (
+                  <View style={[styles.infoBox, { marginBottom: Spacing.sm }]}>
+                    <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Ek Kişiler</Text>
+                    {ekKisiler.map((k, i) => (
+                      <View key={k.id ?? i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: i < ekKisiler.length - 1 ? 1 : 0, borderBottomColor: Colors.surfaceContainerLow }}>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.onSurface }}>{k.ad}</Text>
+                            {k.tip ? (
+                              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, backgroundColor: Colors.primaryFixed }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.primary }}>{k.tip}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          {k.telefon ? (
+                            <TouchableOpacity onPress={() => Linking.openURL(`tel:${k.telefon}`)}>
+                              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginTop: 2 }}>📞 {k.telefon}</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 {/* Bütçe & Konum Bilgisi */}
                   <View style={styles.infoBox}>
                     {(butceMin || butceMax) ? (
@@ -663,6 +747,25 @@ export default function MusteriDetayScreen() {
           )}
 
         </ScrollView>
+
+      {/* Tip Seçim Modalı */}
+      {tipModal !== null && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setTipModal(null)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setTipModal(null)}>
+            <View style={[styles.modalDimmer, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
+            <View style={{ backgroundColor: Colors.surface, marginHorizontal: 32, marginTop: 'auto', marginBottom: 'auto', borderRadius: Radius.lg, paddingVertical: 8, alignSelf: 'center', minWidth: 220 }}>
+              {TIP_LISTESI.map(t => (
+                <TouchableOpacity key={t} onPress={() => {
+                  setEkKisiler(p => p.map((x, i) => i === tipModal ? { ...x, tip: t } : x));
+                  setTipModal(null);
+                }} style={{ paddingVertical: 14, paddingHorizontal: 20 }}>
+                  <Text style={{ fontSize: 15, color: Colors.onSurface, textAlign: 'center' }}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
       {/* İlan Seçim Modali (çoklu) */}
       <Modal visible={ilanModal} animationType="slide" transparent onRequestClose={() => setIlanModal(false)}>

@@ -46,6 +46,16 @@ export interface Musteri {
   olusturma_tarihi: string;
 }
 
+export interface MusteriIletisim {
+  id: string;
+  musteri_id: string;
+  ad: string;
+  telefon: string | null;
+  tip: string | null;
+  sira: number;
+  olusturma_tarihi: string;
+}
+
 export interface Eslesme {
   id: string;
   musteri_id: string;
