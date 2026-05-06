@@ -689,6 +689,96 @@ export default function MusteriDetayScreen() {
                   maxLength={10}
                 />
               </View>
+
+              {/* Notlar (edit modunda da göster) */}
+              <View style={styles.notlarBox}>
+                <View style={styles.notlarHeader}>
+                  <Text style={styles.notlarBaslik}>📝 Notlar {notlar.length > 0 ? `(${notlar.length})` : ''}</Text>
+                  {!notEkle && (
+                    <TouchableOpacity onPress={notEkleAc} style={styles.notEkleBtn}>
+                      <Text style={styles.notEkleBtnText}>+ Not Ekle</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {notEkle && (
+                  <View style={styles.notForm}>
+                    <TextInput
+                      style={[styles.notInput, { minHeight: 60 }]}
+                      placeholder="Not içeriği..."
+                      placeholderTextColor={Colors.outlineVariant}
+                      value={notIcerik}
+                      onChangeText={setNotIcerik}
+                      multiline
+                      textAlignVertical="top"
+                    />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                      <TouchableOpacity onPress={() => setShowPicker('date')} style={[styles.notInput, { flex: 1, minWidth: 160, justifyContent: 'center' }]}>
+                        <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {notTarihGoster(notTarih.toISOString())}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleNotKaydet} style={[styles.notKaydetBtn, !notIcerik.trim() && { opacity: 0.5 }]} disabled={!notIcerik.trim()}>
+                        <Text style={styles.notKaydetBtnText}>{notEditId ? 'Güncelle' : 'Kaydet'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { setNotEkle(false); setNotEditId(null); setNotIcerik(''); }} style={styles.notIptalBtn}>
+                        <Text style={styles.notIptalBtnText}>İptal</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {showPicker && (
+                      <DateTimePicker
+                        value={notTarih}
+                        mode={showPicker}
+                        is24Hour
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={(_, sel) => {
+                          if (Platform.OS === 'android') {
+                            if (showPicker === 'date') {
+                              if (sel) {
+                                const merged = new Date(notTarih);
+                                merged.setFullYear(sel.getFullYear(), sel.getMonth(), sel.getDate());
+                                setNotTarih(merged);
+                                setShowPicker('time');
+                              } else { setShowPicker(null); }
+                            } else {
+                              if (sel) {
+                                const merged = new Date(notTarih);
+                                merged.setHours(sel.getHours(), sel.getMinutes());
+                                setNotTarih(merged);
+                              }
+                              setShowPicker(null);
+                            }
+                          } else if (sel) {
+                            setNotTarih(sel);
+                          }
+                        }}
+                      />
+                    )}
+                    {Platform.OS === 'ios' && showPicker && (
+                      <TouchableOpacity onPress={() => setShowPicker(showPicker === 'date' ? 'time' : null)} style={[styles.notKaydetBtn, { marginTop: 8 }]}>
+                        <Text style={styles.notKaydetBtnText}>{showPicker === 'date' ? 'Saat Seç' : 'Tamam'}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+                {notlar.length === 0 && !notEkle ? (
+                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontStyle: 'italic' }}>Henüz not yok.</Text>
+                ) : (
+                  notlar.map(n => (
+                    <View key={n.id} style={styles.notSatir}>
+                      <View style={styles.notSatirHeader}>
+                        <Text style={styles.notTarih}>{notTarihGoster(n.tarih)}</Text>
+                        <TouchableOpacity onPress={() => Alert.alert('Not', '', [
+                          { text: 'Düzenle', onPress: () => notDuzenleAc(n) },
+                          { text: 'Sil', style: 'destructive', onPress: () => handleNotSil(n.id) },
+                          { text: 'İptal', style: 'cancel' },
+                        ])} style={styles.notIcon}>
+                          <Text style={{ fontSize: 18, color: '#92400e', fontWeight: '700' }}>⋯</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.notIcerik}>{n.icerik}</Text>
+                    </View>
+                  ))
+                )}
+              </View>
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Durum</Text>
                 <View style={styles.durumRow}>
