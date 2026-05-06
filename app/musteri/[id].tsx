@@ -120,17 +120,22 @@ export default function MusteriDetayScreen() {
 
 
   const fetchMusteri = useCallback(async () => {
+    const userKodPromise = (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return VARSAYILAN_TELEFON_KODU;
+      const { data: pr } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
+      return pr?.default_telefon_kodu || VARSAYILAN_TELEFON_KODU;
+    })();
+
     const [
       { data },
-      { data: { user } },
-      { data: ozData },
+      dKod,
       { data: kData },
       { data: nData },
       { data: jData },
     ] = await Promise.all([
       supabase.from('musteriler').select('*').eq('id', id).single(),
-      supabase.auth.getUser(),
-      supabase.from('ozellikler').select('*').order('olusturma_tarihi'),
+      userKodPromise,
       supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira'),
       supabase.from('musteri_notlar').select('*').eq('musteri_id', id).order('tarih', { ascending: false }),
       supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id),
@@ -142,11 +147,6 @@ export default function MusteriDetayScreen() {
       setSoyad(data.soyad ?? '');
       setTelefonRaw(data.telefon ?? '');
 
-      let dKod = VARSAYILAN_TELEFON_KODU;
-      if (user) {
-        const { data: pr } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
-        if (pr?.default_telefon_kodu) dKod = pr.default_telefon_kodu;
-      }
       setVarsayilanKod(dKod);
       const sp = ayirTelefon(data.telefon, dKod);
       setTelKod(sp.kod); setTelNumara(sp.numara.replace(/\D/g, ''));
@@ -159,8 +159,6 @@ export default function MusteriDetayScreen() {
       setBinaYaslari(data.bina_yasi ? data.bina_yasi.split(',') : []);
       setEtiket(data.etiketler ?? '');
       setDurum(data.durum ?? 'Aktif');
-
-      if (ozData) setTumOzellikler(ozData);
 
       setEkKisiler((kData ?? []).map((k: any) => {
         const sp2 = ayirTelefon(k.telefon, dKod);
@@ -180,6 +178,12 @@ export default function MusteriDetayScreen() {
     }
     setLoading(false);
   }, [id]);
+
+  const fetchTumOzellikler = useCallback(async () => {
+    if (tumOzellikler.length > 0) return;
+    const { data } = await supabase.from('ozellikler').select('*').order('olusturma_tarihi');
+    if (data) setTumOzellikler(data);
+  }, [tumOzellikler.length]);
 
   const fetchEslesenIlanlar = useCallback(async () => {
     if (!musteri) return;
@@ -238,7 +242,6 @@ export default function MusteriDetayScreen() {
     setEslesenYukleniyor(false);
   }, [id, musteri]);
 
-  useEffect(() => { fetchMusteri(); }, [id]);
   useFocusEffect(useCallback(() => { fetchMusteri(); }, [fetchMusteri]));
 
   useEffect(() => {
@@ -482,7 +485,7 @@ export default function MusteriDetayScreen() {
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity style={styles.duzenleBtn} onPress={() => setDuzenle(true)}>
+              <TouchableOpacity style={styles.duzenleBtn} onPress={() => { setDuzenle(true); fetchTumOzellikler(); }}>
                 <Text style={styles.duzenleBtnText}>✏️ Düzenle</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.linkBtn} onPress={handleLinkModalAc}>
