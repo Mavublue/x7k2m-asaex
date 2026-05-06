@@ -118,13 +118,30 @@ export default function MusteriDetayScreen() {
 
 
   const fetchMusteri = useCallback(async () => {
-    const { data } = await supabase.from('musteriler').select('*').eq('id', id).single();
+    const [
+      { data },
+      { data: { user } },
+      { data: ozData },
+      { data: kData },
+      { data: nData },
+      { data: jData },
+      { data: eslesme },
+    ] = await Promise.all([
+      supabase.from('musteriler').select('*').eq('id', id).single(),
+      supabase.auth.getUser(),
+      supabase.from('ozellikler').select('*').order('olusturma_tarihi'),
+      supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira'),
+      supabase.from('musteri_notlar').select('*').eq('musteri_id', id).order('tarih', { ascending: false }),
+      supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id),
+      supabase.from('eslesmeler').select('id, ilan_id, ilanlar(*)').eq('musteri_id', id),
+    ]);
+
     if (data) {
       setMusteri(data);
       setAd(data.ad ?? '');
       setSoyad(data.soyad ?? '');
       setTelefonRaw(data.telefon ?? '');
-      const { data: { user } } = await supabase.auth.getUser();
+
       let dKod = VARSAYILAN_TELEFON_KODU;
       if (user) {
         const { data: pr } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
@@ -143,24 +160,15 @@ export default function MusteriDetayScreen() {
       setEtiket(data.etiketler ?? '');
       setDurum(data.durum ?? 'Aktif');
 
-      // Özellikler listesi
-      const { data: ozData } = await supabase.from('ozellikler').select('*').order('olusturma_tarihi');
       if (ozData) setTumOzellikler(ozData);
 
-      // Ek kişiler
-      const { data: kData } = await supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira');
       setEkKisiler((kData ?? []).map((k: any) => {
         const sp2 = ayirTelefon(k.telefon, dKod);
         return { id: k.id, ad: k.ad ?? '', kod: sp2.kod, numara: sp2.numara.replace(/\D/g, ''), tip: k.tip ?? 'Eş' };
       }));
 
-      // Notlar
-      const { data: nData } = await supabase.from('musteri_notlar')
-        .select('*').eq('musteri_id', id).order('tarih', { ascending: false });
       setNotlar((nData ?? []) as MusteriNot[]);
 
-      // Müşteri özellikleri (junction)
-      const { data: jData } = await supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id);
       if (jData) {
         setOzelIstekler(jData.map((r: any) => r.ozellik_id));
         setOzellikAdlari(jData.map((r: any) => r.ozellikler?.ad).filter(Boolean));
@@ -168,6 +176,8 @@ export default function MusteriDetayScreen() {
         setOzelIstekler([]);
         setOzellikAdlari([]);
       }
+
+      setElleEslesen((eslesme ?? []).map((e: any) => ({ id: e.id, ilan: e.ilanlar })));
 
       // Eşleşen ilanlar
       let query = supabase.from('ilanlar').select('*');
@@ -211,13 +221,6 @@ export default function MusteriDetayScreen() {
         }
         setEslesen(filtered.slice(0, 20));
       }
-
-      // Elle eşleştirilenler
-      const { data: eslesme } = await supabase
-        .from('eslesmeler')
-        .select('id, ilan_id, ilanlar(*)')
-        .eq('musteri_id', id);
-      setElleEslesen((eslesme ?? []).map((e: any) => ({ id: e.id, ilan: e.ilanlar })));
     }
     setLoading(false);
   }, [id]);
