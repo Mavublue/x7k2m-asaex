@@ -56,6 +56,8 @@ export default function MusteriDetayScreen() {
   const [musteri, setMusteri] = useState<Musteri | null>(null);
   const [eslesen, setEslesen] = useState<Ilan[]>([]);
   const [elleEslesen, setElleEslesen] = useState<{id: string; ilan: Ilan}[]>([]);
+  const [eslesenYuklendi, setEslesenYuklendi] = useState(false);
+  const [eslesenYukleniyor, setEslesenYukleniyor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [duzenle, setDuzenle] = useState(false);
@@ -125,7 +127,6 @@ export default function MusteriDetayScreen() {
       { data: kData },
       { data: nData },
       { data: jData },
-      { data: eslesme },
     ] = await Promise.all([
       supabase.from('musteriler').select('*').eq('id', id).single(),
       supabase.auth.getUser(),
@@ -133,7 +134,6 @@ export default function MusteriDetayScreen() {
       supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira'),
       supabase.from('musteri_notlar').select('*').eq('musteri_id', id).order('tarih', { ascending: false }),
       supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id),
-      supabase.from('eslesmeler').select('id, ilan_id, ilanlar(*)').eq('musteri_id', id),
     ]);
 
     if (data) {
@@ -177,53 +177,66 @@ export default function MusteriDetayScreen() {
         setOzellikAdlari([]);
       }
 
-      setElleEslesen((eslesme ?? []).map((e: any) => ({ id: e.id, ilan: e.ilanlar })));
-
-      // Eşleşen ilanlar
-      let query = supabase.from('ilanlar').select('*');
-      if (data.butce_min) query = query.gte('fiyat', data.butce_min);
-      if (data.butce_max) query = query.lte('fiyat', data.butce_max);
-      if (data.tercih_tip) {
-        const tipler = data.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
-        if (tipler.length > 0) query = query.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
-      }
-      let konumListesi: string[] = [];
-      if (data.tercih_konum) {
-        konumListesi = data.tercih_konum.split(/\s*\|\s*/).filter(Boolean);
-        const iller = Array.from(new Set(konumListesi.map((k: string) => k.split(' / ')[0].trim()).filter(Boolean)));
-        if (iller.length) {
-          const orStr = iller.map((il: string) => `konum.ilike.${il}`).join(',');
-          query = query.or(orStr);
-        }
-      }
-      if (!data.butce_min && !data.butce_max && !data.tercih_tip && !data.tercih_konum) {
-        setEslesen([]);
-      } else {
-        const { data: ilanlar } = await query.limit(50);
-        let filtered = ilanlar ?? [];
-        if (konumListesi.length) {
-          filtered = filtered.filter((i: any) => konumListesi.some((konum: string) => {
-            const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
-            if (mah) {
-              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-              if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-              if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
-              return true;
-            }
-            if (ilce) {
-              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-              if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-              return true;
-            }
-            if (il) return i.konum?.toLowerCase() === il.toLowerCase();
-            return false;
-          }));
-        }
-        setEslesen(filtered.slice(0, 20));
-      }
     }
     setLoading(false);
   }, [id]);
+
+  const fetchEslesenIlanlar = useCallback(async () => {
+    if (!musteri) return;
+    setEslesenYukleniyor(true);
+    const [{ data: eslesme }, autoIlanlar] = await Promise.all([
+      supabase.from('eslesmeler').select('id, ilan_id, ilanlar(*)').eq('musteri_id', id),
+      (async () => {
+        let query = supabase.from('ilanlar').select('*');
+        if (musteri.butce_min) query = query.gte('fiyat', musteri.butce_min);
+        if (musteri.butce_max) query = query.lte('fiyat', musteri.butce_max);
+        if (musteri.tercih_tip) {
+          const tipler = musteri.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
+          if (tipler.length > 0) query = query.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
+        }
+        let konumListesi: string[] = [];
+        if (musteri.tercih_konum) {
+          konumListesi = musteri.tercih_konum.split(/\s*\|\s*/).filter(Boolean);
+          const iller = Array.from(new Set(konumListesi.map((k: string) => k.split(' / ')[0].trim()).filter(Boolean)));
+          if (iller.length) {
+            const orStr = iller.map((il: string) => `konum.ilike.${il}`).join(',');
+            query = query.or(orStr);
+          }
+        }
+        if (!musteri.butce_min && !musteri.butce_max && !musteri.tercih_tip && !musteri.tercih_konum) {
+          return { ilanlar: [] as any[], konumListesi };
+        }
+        const { data: ilanlar } = await query.limit(50);
+        return { ilanlar: ilanlar ?? [], konumListesi };
+      })(),
+    ]);
+
+    setElleEslesen((eslesme ?? []).map((e: any) => ({ id: e.id, ilan: e.ilanlar })));
+
+    const { ilanlar, konumListesi } = autoIlanlar;
+    let filtered = ilanlar;
+    if (konumListesi.length) {
+      filtered = filtered.filter((i: any) => konumListesi.some((konum: string) => {
+        const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
+        if (mah) {
+          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
+          return true;
+        }
+        if (ilce) {
+          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          return true;
+        }
+        if (il) return i.konum?.toLowerCase() === il.toLowerCase();
+        return false;
+      }));
+    }
+    setEslesen(filtered.slice(0, 20));
+    setEslesenYuklendi(true);
+    setEslesenYukleniyor(false);
+  }, [id, musteri]);
 
   useEffect(() => { fetchMusteri(); }, [id]);
   useFocusEffect(useCallback(() => { fetchMusteri(); }, [fetchMusteri]));
@@ -973,6 +986,21 @@ export default function MusteriDetayScreen() {
                     )}
                   </View>
 
+                  {/* İlan Eşleşmeleri (lazy) */}
+                  {!eslesenYuklendi ? (
+                    <TouchableOpacity
+                      style={styles.eslesGosterBtn}
+                      onPress={fetchEslesenIlanlar}
+                      disabled={eslesenYukleniyor}
+                    >
+                      {eslesenYukleniyor ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.eslesGosterText}>İlan Eşleşmelerini Göster</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <>
                   {/* Elle Eşleştirilenler */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.sm }}>
                     <Text style={styles.sectionTitle}>Elle Eşleştirilenler</Text>
@@ -1037,6 +1065,8 @@ export default function MusteriDetayScreen() {
                     </TouchableOpacity>
                   ))
               )}
+                    </>
+                  )}
             </>
           )}
 
@@ -1399,6 +1429,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   eslesBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 6 },
   eslesBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+
+  eslesGosterBtn: { backgroundColor: Colors.primary, paddingVertical: 14, borderRadius: Radius.md, alignItems: 'center', marginTop: Spacing.md, marginBottom: Spacing.sm },
+  eslesGosterText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   ilanKartWrap: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   ilanKart: {
