@@ -832,16 +832,18 @@ export default function MusteriDetayScreen() {
                     ) : (
                       notlar.map(n => (
                         <View key={n.id} style={styles.notSatir}>
-                          <Text style={styles.notTarih}>{notTarihGoster(n.tarih)}</Text>
-                          <Text style={styles.notIcerik}>{n.icerik}</Text>
-                          <View style={{ flexDirection: 'row', gap: 4 }}>
-                            <TouchableOpacity onPress={() => notDuzenleAc(n)} style={styles.notIcon}>
-                              <Text style={{ fontSize: 14 }}>✏️</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleNotSil(n.id)} style={styles.notIcon}>
-                              <Text style={{ fontSize: 14 }}>🗑</Text>
-                            </TouchableOpacity>
+                          <View style={styles.notSatirHeader}>
+                            <Text style={styles.notTarih}>{notTarihGoster(n.tarih)}</Text>
+                            <View style={{ flexDirection: 'row', gap: 4 }}>
+                              <TouchableOpacity onPress={() => notDuzenleAc(n)} style={styles.notIcon}>
+                                <Text style={{ fontSize: 14 }}>✏️</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => handleNotSil(n.id)} style={styles.notIcon}>
+                                <Text style={{ fontSize: 14 }}>🗑</Text>
+                              </TouchableOpacity>
+                            </View>
                           </View>
+                          <Text style={styles.notIcerik}>{n.icerik}</Text>
                         </View>
                       ))
                     )}
@@ -1361,8 +1363,9 @@ const styles = StyleSheet.create({
   notKaydetBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notIptalBtnText: { color: Colors.onSurfaceVariant, fontSize: 12, fontWeight: '600' },
-  notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  notTarih: { fontSize: 11, fontWeight: '700', color: '#92400e', flexShrink: 0 },
-  notIcerik: { flex: 1, fontSize: 13, color: '#78350f', lineHeight: 18 },
+  notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
+  notSatirHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  notTarih: { fontSize: 11, fontWeight: '700', color: '#92400e' },
+  notIcerik: { fontSize: 13, color: '#78350f', lineHeight: 18 },
   notIcon: { padding: 2 },
 });
