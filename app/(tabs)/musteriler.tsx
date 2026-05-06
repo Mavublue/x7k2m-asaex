@@ -136,7 +136,7 @@ export default function MusterilerScreen() {
 }
 
 function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: string }) {
-  const initials = `${musteri.ad[0]}${musteri.soyad[0]}`.toUpperCase();
+  const initials = `${musteri.ad?.[0] ?? ''}${musteri.soyad?.[0] ?? ''}`.toUpperCase();
   const q = search.trim().toLowerCase();
   const matchedEk = q ? (musteri.musteri_iletisim ?? []).filter(k =>
     k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q)
