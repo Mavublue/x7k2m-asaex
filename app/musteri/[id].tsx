@@ -866,14 +866,13 @@ export default function MusteriDetayScreen() {
                         <View key={n.id} style={styles.notSatir}>
                           <View style={styles.notSatirHeader}>
                             <Text style={styles.notTarih}>{notTarihGoster(n.tarih)}</Text>
-                            <View style={{ flexDirection: 'row', gap: 4 }}>
-                              <TouchableOpacity onPress={() => notDuzenleAc(n)} style={styles.notIcon}>
-                                <Text style={{ fontSize: 14 }}>✏️</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={() => handleNotSil(n.id)} style={styles.notIcon}>
-                                <Text style={{ fontSize: 14 }}>🗑</Text>
-                              </TouchableOpacity>
-                            </View>
+                            <TouchableOpacity onPress={() => Alert.alert('Not', '', [
+                              { text: 'Düzenle', onPress: () => notDuzenleAc(n) },
+                              { text: 'Sil', style: 'destructive', onPress: () => handleNotSil(n.id) },
+                              { text: 'İptal', style: 'cancel' },
+                            ])} style={styles.notIcon}>
+                              <Text style={{ fontSize: 18, color: '#92400e', fontWeight: '700' }}>⋯</Text>
+                            </TouchableOpacity>
                           </View>
                           <Text style={styles.notIcerik}>{n.icerik}</Text>
                         </View>

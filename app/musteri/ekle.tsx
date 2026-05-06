@@ -540,14 +540,13 @@ export default function MusteriEkleScreen() {
                 <View key={idx} style={styles.notSatir}>
                   <View style={styles.notSatirHeader}>
                     <Text style={styles.notTarih}>{notTarihGoster(n.tarih)}</Text>
-                    <View style={{ flexDirection: 'row', gap: 4 }}>
-                      <TouchableOpacity onPress={() => notDuzenleAc(idx)} style={styles.notIcon}>
-                        <Text style={{ fontSize: 14 }}>✏️</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => notSil(idx)} style={styles.notIcon}>
-                        <Text style={{ fontSize: 14 }}>🗑</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity onPress={() => Alert.alert('Not', '', [
+                      { text: 'Düzenle', onPress: () => notDuzenleAc(idx) },
+                      { text: 'Sil', style: 'destructive', onPress: () => notSil(idx) },
+                      { text: 'İptal', style: 'cancel' },
+                    ])} style={styles.notIcon}>
+                      <Text style={{ fontSize: 18, color: '#92400e', fontWeight: '700' }}>⋯</Text>
+                    </TouchableOpacity>
                   </View>
                   <Text style={styles.notIcerik}>{n.icerik}</Text>
                 </View>
