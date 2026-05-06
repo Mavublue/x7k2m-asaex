@@ -12,6 +12,7 @@ import R2Image from '../../components/R2Image';
 import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
 import TelefonInput from '../../components/TelefonInput';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -83,7 +84,8 @@ export default function MusteriDetayScreen() {
   const [notlar, setNotlar] = useState<MusteriNot[]>([]);
   const [notEkle, setNotEkle] = useState(false);
   const [notIcerik, setNotIcerik] = useState('');
-  const [notTarih, setNotTarih] = useState(''); // GG.AA.YYYY SS:DD
+  const [notTarih, setNotTarih] = useState<Date>(new Date());
+  const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
   const [notEditId, setNotEditId] = useState<string | null>(null);
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
@@ -378,14 +380,15 @@ export default function MusteriDetayScreen() {
   function notEkleAc() {
     setNotEditId(null);
     setNotIcerik('');
-    setNotTarih(notTarihGoster(new Date().toISOString()));
+    setNotTarih(new Date());
     setNotEkle(true);
   }
 
   function notDuzenleAc(n: MusteriNot) {
     setNotEditId(n.id);
     setNotIcerik(n.icerik);
-    setNotTarih(notTarihGoster(n.tarih));
+    const d = new Date(n.tarih);
+    setNotTarih(isNaN(d.getTime()) ? new Date() : d);
     setNotEkle(true);
   }
 
@@ -397,8 +400,7 @@ export default function MusteriDetayScreen() {
 
   async function handleNotKaydet() {
     if (!notIcerik.trim()) return;
-    const parsed = notTarihParse(notTarih);
-    const tarihIso = parsed ? parsed.toISOString() : new Date().toISOString();
+    const tarihIso = notTarih.toISOString();
     if (notEditId) {
       const { error } = await supabase.from('musteri_notlar').update({ icerik: notIcerik.trim(), tarih: tarihIso }).eq('id', notEditId);
       if (error) { Alert.alert('Hata', error.message); return; }
@@ -811,13 +813,9 @@ export default function MusteriDetayScreen() {
                           textAlignVertical="top"
                         />
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                          <TextInput
-                            style={[styles.notInput, { flex: 1, minWidth: 160 }]}
-                            placeholder="GG.AA.YYYY SS:DD"
-                            placeholderTextColor={Colors.outlineVariant}
-                            value={notTarih}
-                            onChangeText={setNotTarih}
-                          />
+                          <TouchableOpacity onPress={() => setShowPicker('date')} style={[styles.notInput, { flex: 1, minWidth: 160, justifyContent: 'center' }]}>
+                            <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {notTarihGoster(notTarih.toISOString())}</Text>
+                          </TouchableOpacity>
                           <TouchableOpacity onPress={handleNotKaydet} style={[styles.notKaydetBtn, !notIcerik.trim() && { opacity: 0.5 }]} disabled={!notIcerik.trim()}>
                             <Text style={styles.notKaydetBtnText}>{notEditId ? 'Güncelle' : 'Kaydet'}</Text>
                           </TouchableOpacity>
@@ -825,6 +823,40 @@ export default function MusteriDetayScreen() {
                             <Text style={styles.notIptalBtnText}>İptal</Text>
                           </TouchableOpacity>
                         </View>
+                        {showPicker && (
+                          <DateTimePicker
+                            value={notTarih}
+                            mode={showPicker}
+                            is24Hour
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={(_, sel) => {
+                              if (Platform.OS === 'android') {
+                                if (showPicker === 'date') {
+                                  if (sel) {
+                                    const merged = new Date(notTarih);
+                                    merged.setFullYear(sel.getFullYear(), sel.getMonth(), sel.getDate());
+                                    setNotTarih(merged);
+                                    setShowPicker('time');
+                                  } else { setShowPicker(null); }
+                                } else {
+                                  if (sel) {
+                                    const merged = new Date(notTarih);
+                                    merged.setHours(sel.getHours(), sel.getMinutes());
+                                    setNotTarih(merged);
+                                  }
+                                  setShowPicker(null);
+                                }
+                              } else if (sel) {
+                                setNotTarih(sel);
+                              }
+                            }}
+                          />
+                        )}
+                        {Platform.OS === 'ios' && showPicker && (
+                          <TouchableOpacity onPress={() => setShowPicker(showPicker === 'date' ? 'time' : null)} style={[styles.notKaydetBtn, { marginTop: 8 }]}>
+                            <Text style={styles.notKaydetBtnText}>{showPicker === 'date' ? 'Saat Seç' : 'Tamam'}</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                     {notlar.length === 0 && !notEkle ? (

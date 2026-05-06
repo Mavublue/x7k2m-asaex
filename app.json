@@ -50,7 +50,8 @@
           "photosPermission": "İlan fotoğrafı eklemek için galeri erişimi gerekiyor.",
           "savePhotosPermission": "Fotoğraf kaydetmek için galeri erişimi gerekiyor."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "router": {},
