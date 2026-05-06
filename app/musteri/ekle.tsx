@@ -29,6 +29,18 @@ function isoFormat(tr: string) {
   const p = tr.split('.');
   return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
 }
+function notTarihGoster(iso: string) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function notTarihParse(s: string): Date | null {
+  const m = s.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]), parseInt(m[4]), parseInt(m[5]));
+  return isNaN(d.getTime()) ? null : d;
+}
 
 export default function MusteriEkleScreen() {
   const [ad, setAd] = useState('');
@@ -103,6 +115,11 @@ export default function MusteriEkleScreen() {
     }, 400);
     return () => clearTimeout(handle);
   }, [etiket]);
+  const [yeniNotlar, setYeniNotlar] = useState<{ icerik: string; tarih: string }[]>([]);
+  const [notForm, setNotForm] = useState(false);
+  const [notIcerik, setNotIcerik] = useState('');
+  const [notTarih, setNotTarih] = useState('');
+  const [notEditIdx, setNotEditIdx] = useState<number | null>(null);
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
@@ -154,10 +171,39 @@ export default function MusteriEkleScreen() {
     })();
   }, []);
 
+  function notEkleAc() {
+    setNotEditIdx(null);
+    setNotIcerik('');
+    setNotTarih(notTarihGoster(new Date().toISOString()));
+    setNotForm(true);
+  }
+  function notDuzenleAc(idx: number) {
+    const n = yeniNotlar[idx];
+    setNotEditIdx(idx);
+    setNotIcerik(n.icerik);
+    setNotTarih(notTarihGoster(n.tarih));
+    setNotForm(true);
+  }
+  function notKaydet() {
+    if (!notIcerik.trim()) return;
+    const parsed = notTarihParse(notTarih);
+    if (!parsed) { Alert.alert('Hata', 'Tarih formatı: GG.AA.YYYY SS:DD'); return; }
+    const yeni = { icerik: notIcerik.trim(), tarih: parsed.toISOString() };
+    if (notEditIdx !== null) {
+      setYeniNotlar(prev => prev.map((n, i) => i === notEditIdx ? yeni : n));
+    } else {
+      setYeniNotlar(prev => [yeni, ...prev]);
+    }
+    setNotForm(false); setNotEditIdx(null); setNotIcerik(''); setNotTarih('');
+  }
+  function notSil(idx: number) {
+    setYeniNotlar(prev => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleKaydet() {
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     if (etiketCakisma) {
-      Alert.alert('Etiket Çakışması', `#${etiket} etiketi zaten "${etiketCakisma.ad}${etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}" müşterisinde kullanılıyor.`);
+      Alert.alert('Etiket Çakışması', 'Bu etiket başka müşteride var');
       return;
     }
     setLoading(true);
@@ -189,6 +235,11 @@ export default function MusteriEkleScreen() {
       }));
       const { error: kErr } = await supabase.from('musteri_iletisim').insert(kRows);
       if (kErr) { Alert.alert('Ek kişi kaydı hatası', kErr.message); setLoading(false); return; }
+    }
+    if (yeniNotlar.length && inserted) {
+      const nRows = yeniNotlar.map(n => ({ musteri_id: (inserted as any).id, icerik: n.icerik, tarih: n.tarih }));
+      const { error: nErr } = await supabase.from('musteri_notlar').insert(nRows);
+      if (nErr) { Alert.alert('Not kaydı hatası', nErr.message); setLoading(false); return; }
     }
     router.back();
     setLoading(false);
@@ -230,7 +281,7 @@ export default function MusteriEkleScreen() {
           </View>
           {etiketCakisma && (
             <Text style={{ marginTop: -6, marginBottom: 8, fontSize: 12, color: Colors.primary, fontWeight: '600' }}>
-              ⚠ &ldquo;{etiketCakisma.ad}{etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}&rdquo; bu etikete sahip
+              ⚠ Bu etiket başka müşteride var
             </Text>
           )}
 
@@ -413,6 +464,64 @@ export default function MusteriEkleScreen() {
           {/* Takip Tarihi */}
           <Field label="Takip Tarihi" value={takipTarihi} onChangeText={setTakipTarihi} placeholder="GG.AA.YYYY" keyboardType="numeric" />
 
+          {/* Notlar */}
+          <View style={styles.notlarBox}>
+            <View style={styles.notlarHeader}>
+              <Text style={styles.notlarBaslik}>📝 Notlar {yeniNotlar.length > 0 ? `(${yeniNotlar.length})` : ''}</Text>
+              {!notForm && (
+                <TouchableOpacity onPress={notEkleAc} style={styles.notEkleBtn}>
+                  <Text style={styles.notEkleBtnText}>+ Not Ekle</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {notForm && (
+              <View style={styles.notForm}>
+                <TextInput
+                  style={[styles.notInput, { minHeight: 60 }]}
+                  placeholder="Not içeriği..."
+                  placeholderTextColor={Colors.outlineVariant}
+                  value={notIcerik}
+                  onChangeText={setNotIcerik}
+                  multiline
+                  textAlignVertical="top"
+                />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <TextInput
+                    style={[styles.notInput, { flex: 1, minWidth: 160 }]}
+                    placeholder="GG.AA.YYYY SS:DD"
+                    placeholderTextColor={Colors.outlineVariant}
+                    value={notTarih}
+                    onChangeText={setNotTarih}
+                  />
+                  <TouchableOpacity onPress={notKaydet} style={[styles.notKaydetBtn, !notIcerik.trim() && { opacity: 0.5 }]} disabled={!notIcerik.trim()}>
+                    <Text style={styles.notKaydetBtnText}>{notEditIdx !== null ? 'Güncelle' : 'Kaydet'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setNotForm(false); setNotEditIdx(null); setNotIcerik(''); }} style={styles.notIptalBtn}>
+                    <Text style={styles.notIptalBtnText}>İptal</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            {yeniNotlar.length === 0 && !notForm ? (
+              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontStyle: 'italic' }}>Henüz not yok.</Text>
+            ) : (
+              yeniNotlar.map((n, idx) => (
+                <View key={idx} style={styles.notSatir}>
+                  <Text style={styles.notTarih}>{notTarihGoster(n.tarih)}</Text>
+                  <Text style={styles.notIcerik}>{n.icerik}</Text>
+                  <View style={{ flexDirection: 'row', gap: 4 }}>
+                    <TouchableOpacity onPress={() => notDuzenleAc(idx)} style={styles.notIcon}>
+                      <Text style={{ fontSize: 14 }}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => notSil(idx)} style={styles.notIcon}>
+                      <Text style={{ fontSize: 14 }}>🗑</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+
           {/* Durum */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Durum</Text>
@@ -590,4 +699,19 @@ const styles = StyleSheet.create({
   etiketInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, width: 80 },
   etiketHash: { fontSize: 16, fontWeight: '700', color: Colors.primary, marginRight: 1 },
   etiketInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: Colors.onSurface },
+  notlarBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
+  notlarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#92400e', letterSpacing: 0.3 },
+  notEkleBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
+  notEkleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  notForm: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
+  notInput: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: '#fff' },
+  notKaydetBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  notKaydetBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  notIptalBtnText: { color: Colors.onSurfaceVariant, fontSize: 12, fontWeight: '600' },
+  notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  notTarih: { fontSize: 11, fontWeight: '700', color: '#92400e', flexShrink: 0 },
+  notIcerik: { flex: 1, fontSize: 13, color: '#78350f', lineHeight: 18 },
+  notIcon: { padding: 2 },
 });

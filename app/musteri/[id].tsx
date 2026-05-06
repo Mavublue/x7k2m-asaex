@@ -243,7 +243,7 @@ export default function MusteriDetayScreen() {
   async function handleKaydet() {
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     if (etiketCakisma) {
-      Alert.alert('Etiket Çakışması', `#${etiket} etiketi zaten "${etiketCakisma.ad}${etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}" müşterisinde kullanılıyor.`);
+      Alert.alert('Etiket Çakışması', 'Bu etiket başka müşteride var');
       return;
     }
     setSaving(true);
@@ -533,7 +533,7 @@ export default function MusteriDetayScreen() {
               </View>
               {etiketCakisma && (
                 <Text style={{ marginTop: -6, marginBottom: 8, fontSize: 12, color: Colors.primary, fontWeight: '600' }}>
-                  ⚠ &ldquo;{etiketCakisma.ad}{etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}&rdquo; bu etikete sahip
+                  ⚠ Bu etiket başka müşteride var
                 </Text>
               )}
               <View style={styles.inputContainer}>
