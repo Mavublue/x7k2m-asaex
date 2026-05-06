@@ -79,6 +79,7 @@ export default function MusteriDetayScreen() {
   const [takipTarihi, setTakipTarihi] = useState('');
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [binaYaslari, setBinaYaslari] = useState<string[]>([]);
+  const [etiketCakisma, setEtiketCakisma] = useState<{ ad: string; soyad: string | null } | null>(null);
   const [notlar, setNotlar] = useState<MusteriNot[]>([]);
   const [notEkle, setNotEkle] = useState(false);
   const [notIcerik, setNotIcerik] = useState('');
@@ -222,6 +223,18 @@ export default function MusteriDetayScreen() {
   useEffect(() => { fetchMusteri(); }, [id]);
   useFocusEffect(useCallback(() => { fetchMusteri(); }, [fetchMusteri]));
 
+  useEffect(() => {
+    const e = etiket.trim();
+    if (!e || !duzenle) { setEtiketCakisma(null); return; }
+    const handle = setTimeout(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('musteriler').select('ad, soyad').eq('user_id', user.id).eq('etiketler', e).neq('id', id).limit(1);
+      setEtiketCakisma(data && data.length > 0 ? (data[0] as { ad: string; soyad: string | null }) : null);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [etiket, id, duzenle]);
+
   function formatButce(val: string) {
     const digits = val.replace(/\D/g, '');
     return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -229,6 +242,10 @@ export default function MusteriDetayScreen() {
 
   async function handleKaydet() {
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
+    if (etiketCakisma) {
+      Alert.alert('Etiket Çakışması', `#${etiket} etiketi zaten "${etiketCakisma.ad}${etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}" müşterisinde kullanılıyor.`);
+      return;
+    }
     setSaving(true);
     const tamTelefon = birlestirTelefon(telKod, telNumara);
     const { error } = await supabase.from('musteriler').update({
@@ -500,7 +517,7 @@ export default function MusteriDetayScreen() {
                 </View>
                 <View style={[styles.inputContainer, { width: 80 }]}>
                   <Text style={styles.label}>Etiket</Text>
-                  <View style={styles.etiketInputRow}>
+                  <View style={[styles.etiketInputRow, etiketCakisma && { borderWidth: 1, borderColor: Colors.primary }]}>
                     <Text style={styles.etiketHash}>#</Text>
                     <TextInput
                       style={styles.etiketInput}
@@ -514,6 +531,11 @@ export default function MusteriDetayScreen() {
                   </View>
                 </View>
               </View>
+              {etiketCakisma && (
+                <Text style={{ marginTop: -6, marginBottom: 8, fontSize: 12, color: Colors.primary, fontWeight: '600' }}>
+                  ⚠ &ldquo;{etiketCakisma.ad}{etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}&rdquo; bu etikete sahip
+                </Text>
+              )}
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Telefon</Text>
                 <TelefonInput kod={telKod} numara={telNumara}

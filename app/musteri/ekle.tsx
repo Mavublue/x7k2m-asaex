@@ -90,6 +90,19 @@ export default function MusteriEkleScreen() {
   const [takipTarihi, setTakipTarihi] = useState('');
   const [binaYaslari, setBinaYaslari] = useState<string[]>([]);
   const [etiket, setEtiket] = useState('');
+  const [etiketCakisma, setEtiketCakisma] = useState<{ ad: string; soyad: string | null } | null>(null);
+
+  useEffect(() => {
+    const e = etiket.trim();
+    if (!e) { setEtiketCakisma(null); return; }
+    const handle = setTimeout(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('musteriler').select('ad, soyad').eq('user_id', user.id).eq('etiketler', e).limit(1);
+      setEtiketCakisma(data && data.length > 0 ? (data[0] as { ad: string; soyad: string | null }) : null);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [etiket]);
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
@@ -143,6 +156,10 @@ export default function MusteriEkleScreen() {
 
   async function handleKaydet() {
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
+    if (etiketCakisma) {
+      Alert.alert('Etiket Çakışması', `#${etiket} etiketi zaten "${etiketCakisma.ad}${etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}" müşterisinde kullanılıyor.`);
+      return;
+    }
     setLoading(true);
     const tercih_konum_val = tercihKonumlar.length ? tercihKonumlar.join(' | ') : null;
 
@@ -197,7 +214,7 @@ export default function MusteriEkleScreen() {
             <View style={{ flex: 1 }}><Field label="Soyad" value={soyad} onChangeText={setSoyad} placeholder="Yılmaz" /></View>
             <View style={[styles.inputContainer, { width: 80 }]}>
               <Text style={styles.label}>Etiket</Text>
-              <View style={styles.etiketInputRow}>
+              <View style={[styles.etiketInputRow, etiketCakisma && { borderWidth: 1, borderColor: Colors.primary }]}>
                 <Text style={styles.etiketHash}>#</Text>
                 <TextInput
                   style={styles.etiketInput}
@@ -211,6 +228,11 @@ export default function MusteriEkleScreen() {
               </View>
             </View>
           </View>
+          {etiketCakisma && (
+            <Text style={{ marginTop: -6, marginBottom: 8, fontSize: 12, color: Colors.primary, fontWeight: '600' }}>
+              ⚠ &ldquo;{etiketCakisma.ad}{etiketCakisma.soyad ? ' ' + etiketCakisma.soyad : ''}&rdquo; bu etikete sahip
+            </Text>
+          )}
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Telefon</Text>
