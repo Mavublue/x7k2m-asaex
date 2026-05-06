@@ -98,7 +98,7 @@ export default function DashboardScreen() {
     const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}[] = [];
     const bugun = new Date().toISOString().split('T')[0];
 
-    const { data: tumMusteriler, error: mErr } = await supabase.from('musteriler').select('id, ad, soyad, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi');
+    const { data: tumMusteriler, error: mErr } = await supabase.from('musteriler').select('id, ad, soyad, etiketler, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi');
     const { data: tumIlanlar, error: iErr } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi');
 
     if (mErr || iErr) {
@@ -115,14 +115,14 @@ export default function DashboardScreen() {
     for (const m of musteriler) {
       if (m.takip_tarihi && m.takip_tarihi <= bugun) {
         const [y, mo, d] = m.takip_tarihi.split('-');
-        liste.push({ id: `takip-${m.id}`, tip: 'takip', baslik: [m.ad, m.soyad].filter(Boolean).join(' '), alt: `Takip tarihi: ${d}.${mo}.${y}`, hedefId: m.id, tarih: m.olusturma_tarihi ?? m.takip_tarihi });
+        liste.push({ id: `takip-${m.id}`, tip: 'takip', baslik: [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' '), alt: `Takip tarihi: ${d}.${mo}.${y}`, hedefId: m.id, tarih: m.olusturma_tarihi ?? m.takip_tarihi });
       }
     }
 
     // Müşteri → ilan eşleşmesi
     for (const m of musteriler) {
       const eslesen = ilanlar.filter(i => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: [m.ad, m.soyad].filter(Boolean).join(' '), alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id, tarih: m.olusturma_tarihi ?? '', foto: (eslesen[0] as any)?.fotograflar?.[0] ?? null });
+      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' '), alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id, tarih: m.olusturma_tarihi ?? '', foto: (eslesen[0] as any)?.fotograflar?.[0] ?? null });
     }
 
     // İlan → müşteri eşleşmesi
