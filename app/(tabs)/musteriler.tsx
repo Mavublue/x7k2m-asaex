@@ -173,10 +173,6 @@ function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: strin
         </Text>
       )}
 
-      {musteri.notlar && (
-        <Text style={styles.notlar} numberOfLines={2}>{musteri.notlar}</Text>
-      )}
-
       {matchedEk.length > 0 && (
         <View style={{ marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, gap: 4 }}>
           {matchedEk.map((k, i) => (

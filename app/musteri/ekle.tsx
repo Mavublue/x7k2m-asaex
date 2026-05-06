@@ -89,7 +89,6 @@ export default function MusteriEkleScreen() {
   const [ozelIstekler, setOzelIstekler] = useState<string[]>([]);
   const [takipTarihi, setTakipTarihi] = useState('');
   const [binaYaslari, setBinaYaslari] = useState<string[]>([]);
-  const [notlar, setNotlar] = useState('');
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
@@ -156,7 +155,6 @@ export default function MusteriEkleScreen() {
       tercih_tip: tercihTipler.length ? tercihTipler.join(',') : null,
       min_oda: minOda || null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
-      notlar: notlar || null,
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
       etiketler: etiket.trim() || null,
       durum,
@@ -392,21 +390,6 @@ export default function MusteriEkleScreen() {
 
           {/* Takip Tarihi */}
           <Field label="Takip Tarihi" value={takipTarihi} onChangeText={setTakipTarihi} placeholder="GG.AA.YYYY" keyboardType="numeric" />
-
-          {/* Notlar */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Notlar</Text>
-            <TextInput
-              style={[styles.input, styles.textarea]}
-              placeholder="Müşteri hakkında notlar..."
-              placeholderTextColor={Colors.outlineVariant}
-              value={notlar}
-              onChangeText={setNotlar}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
 
           {/* Durum */}
           <View style={styles.inputContainer}>

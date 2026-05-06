@@ -46,6 +46,14 @@ export interface Musteri {
   olusturma_tarihi: string;
 }
 
+export interface MusteriNot {
+  id: string;
+  musteri_id: string;
+  icerik: string;
+  tarih: string;
+  olusturma_tarihi: string;
+}
+
 export interface MusteriIletisim {
   id: string;
   musteri_id: string;
