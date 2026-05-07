@@ -121,26 +121,12 @@ export default function MusteriDetayScreen() {
 
 
   const fetchMusteri = useCallback(async () => {
-    const userKodPromise = (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return VARSAYILAN_TELEFON_KODU;
-      const { data: pr } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
-      return pr?.default_telefon_kodu || VARSAYILAN_TELEFON_KODU;
-    })();
-
-    const [
-      { data },
-      dKod,
-      { data: kData },
-      { data: nData },
-      { data: jData },
-    ] = await Promise.all([
-      supabase.from('musteriler').select('*').eq('id', id).single(),
-      userKodPromise,
-      supabase.from('musteri_iletisim').select('*').eq('musteri_id', id).order('sira'),
-      supabase.from('musteri_notlar').select('*').eq('musteri_id', id).order('tarih', { ascending: false }),
-      supabase.from('musteri_ozellikler').select('ozellik_id, ozellikler(ad)').eq('musteri_id', id),
-    ]);
+    const { data: rpcData } = await supabase.rpc('get_musteri_detay', { mid: id });
+    const data = rpcData?.musteri ?? null;
+    const dKod = rpcData?.default_telefon_kodu || VARSAYILAN_TELEFON_KODU;
+    const kData = rpcData?.iletisim ?? [];
+    const nData = rpcData?.notlar ?? [];
+    const jData = (rpcData?.ozellikler ?? []).map((o: any) => ({ ozellik_id: o.ozellik_id, ozellikler: { ad: o.ad } }));
 
     if (data) {
       setMusteri(data);
