@@ -88,6 +88,7 @@ export default function MusteriDetayScreen() {
   const [notIcerik, setNotIcerik] = useState('');
   const [notTarih, setNotTarih] = useState<Date>(new Date());
   const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
+  const [showTakipPicker, setShowTakipPicker] = useState(false);
   const [notEditId, setNotEditId] = useState<string | null>(null);
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
@@ -698,15 +699,35 @@ export default function MusteriDetayScreen() {
               )}
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Takip Tarihi</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="GG.AA.YYYY"
-                  placeholderTextColor={Colors.outlineVariant}
-                  value={takipTarihi}
-                  onChangeText={setTakipTarihi}
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
+                <TouchableOpacity onPress={() => setShowTakipPicker(true)} style={styles.dateBtn}>
+                  <Text style={[styles.dateBtnText, !takipTarihi && { color: Colors.onSurfaceVariant }]}>
+                    📅 {takipTarihi || 'Tarih seç'}
+                  </Text>
+                  {takipTarihi ? (
+                    <TouchableOpacity onPress={() => setTakipTarihi('')} hitSlop={10}>
+                      <Text style={{ fontSize: 16, color: Colors.onSurfaceVariant }}>✕</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </TouchableOpacity>
+                {showTakipPicker && (
+                  <DateTimePicker
+                    value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(_, sel) => {
+                      setShowTakipPicker(Platform.OS === 'ios');
+                      if (sel) {
+                        const pad = (n: number) => String(n).padStart(2, '0');
+                        setTakipTarihi(`${pad(sel.getDate())}.${pad(sel.getMonth()+1)}.${sel.getFullYear()}`);
+                      }
+                    }}
+                  />
+                )}
+                {Platform.OS === 'ios' && showTakipPicker && (
+                  <TouchableOpacity onPress={() => setShowTakipPicker(false)} style={[styles.notKaydetBtn, { marginTop: 8, alignSelf: 'flex-start' }]}>
+                    <Text style={styles.notKaydetBtnText}>Tamam</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Notlar (edit modunda da göster) */}
@@ -1462,6 +1483,8 @@ const styles = StyleSheet.create({
   inputContainer: { gap: 6 },
   label: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
   input: { backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 12, fontSize: 15, color: Colors.onSurface },
+  dateBtn: { backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dateBtnText: { fontSize: 15, color: Colors.onSurface },
   textarea: { minHeight: 80, paddingTop: 12 },
   durumRow: { flexDirection: 'row', gap: Spacing.sm },
   durumBtn: { flex: 1, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, paddingVertical: 10, alignItems: 'center' },
