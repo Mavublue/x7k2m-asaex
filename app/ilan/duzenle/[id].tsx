@@ -167,7 +167,10 @@ export default function IlanDuzenleScreen() {
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
   const mahalleGruplar = getMahalleGruplar(il, ilce)
-    .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(mahalleSearch.toLowerCase())) }))
+    .map(g => {
+      const sm = g.semt && g.semt.toLowerCase().includes(mahalleSearch.toLowerCase());
+      return { semt: g.semt, mahalleler: sm ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(mahalleSearch.toLowerCase())) };
+    })
     .filter(g => g.mahalleler.length > 0);
 
   useEffect(() => {

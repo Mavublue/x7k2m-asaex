@@ -172,8 +172,12 @@ export default function IlanlarScreen() {
     gecici.filterIl.forEach(il => {
       gecici.filterIlce.forEach(ilce => {
         if ((ILLER[il] ?? []).includes(ilce)) {
+          const q = konumSearch.toLowerCase();
           const gruplar = getMahalleGruplar(il, ilce)
-            .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) }))
+            .map(g => {
+              const semtMatch = g.semt && g.semt.toLowerCase().includes(q);
+              return { semt: g.semt, mahalleler: semtMatch ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(q)) };
+            })
             .filter(g => g.mahalleler.length > 0);
           if (gruplar.length > 0) {
             filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });

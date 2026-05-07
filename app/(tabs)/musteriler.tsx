@@ -150,14 +150,14 @@ function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: strin
   return (
     <TouchableOpacity style={styles.kart} onPress={() => router.push(`/musteri/${musteri.id}` as any)}>
       <View style={styles.kartHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-          <View style={[styles.durumBadge, { backgroundColor: durumRenk.bg }]}>
-            <Text style={[styles.durumText, { color: durumRenk.text }]}>{musteri.durum}</Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           {musteri.etiketler ? <View style={styles.etiketPill}><Text style={styles.etiketPillText}>#{musteri.etiketler}</Text></View> : null}
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        </View>
+        <View style={[styles.durumBadge, { backgroundColor: durumRenk.bg }]}>
+          <Text style={[styles.durumText, { color: durumRenk.text }]}>{musteri.durum}</Text>
         </View>
       </View>
 
@@ -271,8 +271,8 @@ const styles = StyleSheet.create({
   durumText: { fontSize: 10, fontWeight: '600' },
 
   musteriAd: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
-  etiketPill: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3 },
-  etiketPillText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
+  etiketPill: { backgroundColor: '#1a1b21', borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3 },
+  etiketPillText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   konum: { fontSize: 11, color: Colors.onSurfaceVariant },
   butce: { fontSize: 11, color: Colors.onSurfaceVariant },
   notlar: { fontSize: 11, color: Colors.onSurfaceVariant, lineHeight: 16 },

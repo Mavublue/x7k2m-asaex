@@ -1208,11 +1208,14 @@ export default function MusteriDetayScreen() {
             {konumSayfa === 'mahalle' ? (
               <SectionList
                 sections={getMahalleGruplar(tempIl, tempIlce)
-                  .map(g => ({
-                    title: g.semt ?? '',
-                    showHeader: g.semt !== null,
-                    data: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())),
-                  }))
+                  .map(g => {
+                    const sm = g.semt && g.semt.toLowerCase().includes(konumSearch.toLowerCase());
+                    return {
+                      title: g.semt ?? '',
+                      showHeader: g.semt !== null,
+                      data: sm ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())),
+                    };
+                  })
                   .filter(s => s.data.length > 0)}
                 keyExtractor={(item, index) => `mah-${index}-${item}`}
                 keyboardShouldPersistTaps="handled"

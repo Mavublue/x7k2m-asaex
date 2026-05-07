@@ -146,7 +146,10 @@ export default function MusteriEkleScreen() {
   } else if (filterPage === 'mahalle') {
     seciliIlceler.forEach(({ il, ilce }) => {
       const gruplar = getMahalleGruplar(il, ilce)
-        .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) }))
+        .map(g => {
+          const sm = g.semt && g.semt.toLowerCase().includes(konumSearch.toLowerCase());
+          return { semt: g.semt, mahalleler: sm ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) };
+        })
         .filter(g => g.mahalleler.length > 0);
       if (gruplar.length > 0) {
         filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
