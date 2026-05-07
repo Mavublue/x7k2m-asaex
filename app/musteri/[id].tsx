@@ -152,7 +152,7 @@ export default function MusteriDetayScreen() {
         return { id: k.id, ad: k.ad ?? '', kod: sp2.kod, numara: sp2.numara.replace(/\D/g, ''), tip: k.tip ?? 'Eş' };
       }));
 
-      setNotlar((nData ?? []) as MusteriNot[]);
+      setNotlar(((nData ?? []) as MusteriNot[]).slice().sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime()));
 
       if (jData) {
         setOzelIstekler(jData.map((r: any) => r.ozellik_id));
