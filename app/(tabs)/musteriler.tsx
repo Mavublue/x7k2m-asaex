@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -114,20 +114,24 @@ export default function MusterilerScreen() {
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
-        >
-          {filtered.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>Müşteri bulunamadı</Text>
-            </View>
-          ) : (
-            <View style={styles.grid}>
-              {filtered.map(m => <MusteriKart key={m.id} musteri={m} search={search} />)}
-            </View>
-          )}
+      ) : filtered.length === 0 ? (
+        <ScrollView contentContainerStyle={styles.scroll}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}>
+          <View style={styles.emptyBox}><Text style={styles.emptyText}>Müşteri bulunamadı</Text></View>
         </ScrollView>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={m => m.id}
+          renderItem={({ item }) => <MusteriKart musteri={item} search={search} />}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews
+        />
       )}
 
 
@@ -135,7 +139,7 @@ export default function MusterilerScreen() {
   );
 }
 
-function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: string }) {
+const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: string }) {
   const initials = `${musteri.ad?.[0] ?? ''}${musteri.soyad?.[0] ?? ''}`.toUpperCase();
   const q = search.trim().toLowerCase();
   const matchedEk = q ? (musteri.musteri_iletisim ?? []).filter(k =>
@@ -192,7 +196,7 @@ function MusteriKart({ musteri, search }: { musteri: MusteriListe; search: strin
       </TouchableOpacity>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
