@@ -517,7 +517,7 @@ export default function IlanDetayScreen() {
             <FlatList
               data={musteriler.filter(m => {
                 const q = musteriSearch.toLowerCase();
-                return `${m.ad} ${m.soyad}`.toLowerCase().includes(q) ||
+                return `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(q) ||
                   (m.etiketler && `#${m.etiketler}`.toLowerCase().includes(q));
               })}
               keyExtractor={item => item.id}
@@ -533,10 +533,10 @@ export default function IlanDetayScreen() {
                     }
                     Alert.alert(
                       'Eşleştir',
-                      `${item.ad} ${item.soyad} ile eşleştirilsin mi?`,
+                      `${[item.ad, item.soyad].filter(Boolean).join(' ')} ile eşleştirilsin mi?`,
                       [
                         { text: 'İptal', style: 'cancel' },
-                        { text: 'Eşleştir', onPress: () => handleEsles(item.id, `${item.ad} ${item.soyad}`) },
+                        { text: 'Eşleştir', onPress: () => handleEsles(item.id, [item.ad, item.soyad].filter(Boolean).join(' ')) },
                       ]
                     );
                   }}
@@ -546,7 +546,7 @@ export default function IlanDetayScreen() {
                     <Text style={styles.musteriAvatarText}>{item.ad?.[0]?.toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.musteriAd}>{item.ad} {item.soyad}</Text>
+                    <Text style={styles.musteriAd}>{[item.ad, item.soyad].filter(Boolean).join(' ')}</Text>
                     {item.telefon && <Text style={styles.musteriTelefon}>{item.telefon}</Text>}
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -649,20 +649,20 @@ export default function IlanDetayScreen() {
                   {(linkMusteriAra || linkEtiketAra) && (
                     <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 160, marginBottom: 8 }}>
                       {linkMusteriler.filter(m => {
-                        const isimEsles = !linkMusteriAra || `${m.ad} ${m.soyad}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
+                        const isimEsles = !linkMusteriAra || `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
                         const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
                         return isimEsles && etiketEsles;
                       }).length === 0
                         ? <Text style={{ padding: 12, fontSize: 13, color: Colors.onSurfaceVariant }}>Bulunamadı</Text>
                         : linkMusteriler.filter(m => {
-                            const isimEsles = !linkMusteriAra || `${m.ad} ${m.soyad}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
+                            const isimEsles = !linkMusteriAra || `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
                             const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
                             return isimEsles && etiketEsles;
                           }).map(m => (
-                            <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra(`${m.ad} ${m.soyad}`); setLinkEtiketAra(''); }}
+                            <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra([m.ad, m.soyad].filter(Boolean).join(' ')); setLinkEtiketAra(''); }}
                               style={{ padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.06)' : '#fff' }}>
                               <Text style={{ fontSize: 13, fontWeight: linkSeciliMusteri === m.id ? '600' : '400', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>
-                                {m.ad} {m.soyad}
+                                {[m.ad, m.soyad].filter(Boolean).join(' ')}
                               </Text>
                               {m.etiketler && (
                                 <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', flexShrink: 1, justifyContent: 'flex-end' }}>
@@ -678,7 +678,7 @@ export default function IlanDetayScreen() {
                   )}
                   {linkSeciliMusteri ? (
                     <Text style={{ fontSize: 12, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
-                      ✓ {linkMusteriler.find(m => m.id === linkSeciliMusteri)?.ad} {linkMusteriler.find(m => m.id === linkSeciliMusteri)?.soyad} seçildi
+                      ✓ {(() => { const sm = linkMusteriler.find(m => m.id === linkSeciliMusteri); return [sm?.ad, sm?.soyad].filter(Boolean).join(' '); })()} seçildi
                     </Text>
                   ) : <View style={{ marginBottom: 12 }} />}
 
@@ -766,7 +766,7 @@ export default function IlanDetayScreen() {
                     <Text style={styles.musteriAvatarText}>{item.ad?.[0]?.toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.musteriAd}>{item.ad} {item.soyad}</Text>
+                    <Text style={styles.musteriAd}>{[item.ad, item.soyad].filter(Boolean).join(' ')}</Text>
                     {(item.butce_min || item.butce_max) && (
                       <Text style={styles.musteriTelefon}>
                         {item.butce_min ? `₺${Number(item.butce_min).toLocaleString('tr-TR')}` : '—'}

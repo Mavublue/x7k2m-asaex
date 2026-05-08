@@ -365,7 +365,7 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.takipAd}>{m.ad} {m.soyad}</Text>
+                    <Text style={styles.takipAd}>{[m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
                     <Text style={[styles.takipTarih, { color: gecmis ? '#991b1b' : Colors.primary }]}>
                       {gecmis ? '⚠️ Gecikmiş — ' : '📅 '}{tarih}
                     </Text>
@@ -510,7 +510,7 @@ export default function DashboardScreen() {
                             <Text style={{ fontWeight: '700', color: Colors.primary }}>{item.ad?.[0]?.toUpperCase()}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.bdBaslik}>{item.ad} {item.soyad}</Text>
+                            <Text style={styles.bdBaslik}>{[item.ad, item.soyad].filter(Boolean).join(' ')}</Text>
                             <Text style={styles.bdAlt}>
                               {item.butce_min ? `₺${Number(item.butce_min).toLocaleString('tr-TR')}` : ''}{item.butce_max ? ` – ₺${Number(item.butce_max).toLocaleString('tr-TR')}` : ''}
                             </Text>
@@ -575,7 +575,7 @@ function EslesmeKart({ eslesme }: { eslesme: Eslesme }) {
         </View>
       )}
       <View style={styles.eslesmeInfo}>
-        <Text style={styles.eslesmeMusteriAd}>{musteri?.ad} {musteri?.soyad}</Text>
+        <Text style={styles.eslesmeMusteriAd}>{[musteri?.ad, musteri?.soyad].filter(Boolean).join(' ')}</Text>
         <Text style={styles.eslesmeIlanBaslik} numberOfLines={1}>{ilan?.baslik}</Text>
         {ilan?.fiyat && <Text style={styles.eslesmeIlanFiyat}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>}
       </View>

@@ -35,7 +35,7 @@ export default function MusterilerScreen() {
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(m =>
-        `${m.ad} ${m.soyad}`.toLowerCase().includes(q) ||
+        `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(q) ||
         m.telefon?.includes(q) ||
         m.tercih_konum?.toLowerCase().includes(q) ||
         (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q))
@@ -165,7 +165,7 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
         </View>
       </View>
 
-      <Text style={styles.musteriAd}>{musteri.ad} {musteri.soyad}</Text>
+      <Text style={styles.musteriAd}>{`${musteri.ad ?? ''} ${musteri.soyad ?? ''}`.trim()}</Text>
 
       {musteri.tercih_konum && (
         <Text style={styles.konum} numberOfLines={1} ellipsizeMode="tail">📍 {musteri.tercih_konum.replace(/\|/g, ', ')}</Text>
