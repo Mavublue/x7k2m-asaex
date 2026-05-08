@@ -72,7 +72,19 @@ if(bs.length>1)map.fitBounds(bs,{padding:[30,30]});
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
 
-const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '4+2', '5+1', '5+2', '6+1', '7+'];
+const ODALAR = ['Stüdyo', '1+0', '1+1', '2+0', '2+1', '2+2', '3+0', '3+1', '3+2', '3+3', '4+0', '4+1', '4+2', '4+3', '4+4', '5+0', '5+1', '5+2', '5+3', '5+4', '6+0', '6+1', '6+2', '6+3', '6+4', '7+0', '7+1', '7+2', '7+3', '7+4', '8+0', '8+1', '8+2', '8+3', '8+4', '9+0', '9+1', '9+2', '9+3', '9+4', '10+0', '10+1', '10+2', '10+3', '10+4', '10+'];
+
+const odaToOdaSayisi = (oda: string): number => {
+  if (oda === 'Stüdyo') return 0;
+  const m = oda.match(/^(\d+)/);
+  return m ? parseInt(m[1]) : -1;
+};
+const odaIsExpandable = (o: string) => /^\d+\+\d+$/.test(o);
+const odaUstuListesi = (base: string): string[] => {
+  if (!odaIsExpandable(base)) return [base];
+  const baseN = odaToOdaSayisi(base);
+  return ODALAR.filter(o => odaToOdaSayisi(o) >= baseN);
+};
 const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
 const KAT_SAYISI_DEGERLERI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];
 const BULUNDUGU_KAT_DEGERLERI = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
@@ -125,7 +137,7 @@ export default function IlanlarScreen() {
   const [filtrePaneli, setFiltrePaneli] = useState(false);
   const [filtre, setFiltre] = useState<FiltreState>(BOS_FILTRE);
   const [gecici, setGecici] = useState<FiltreState>(BOS_FILTRE);
-  const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
+  const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle' | 'oda'>('main');
   const [konumSearch, setKonumSearch] = useState('');
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [siralama, setSiralama] = useState<'tarih_yeni' | 'tarih_eski' | 'fiyat_artan' | 'fiyat_azalan'>('tarih_yeni');
@@ -281,12 +293,20 @@ export default function IlanlarScreen() {
   }
 
   function toggleOda(o: string) {
-    setGecici(g => ({
-      ...g,
-      odalar: g.odalar.includes(o)
-        ? g.odalar.filter(x => x !== o)
-        : [...g.odalar, o],
-    }));
+    const sec = gecici.odalar.includes(o);
+    if (sec) {
+      setGecici(g => ({ ...g, odalar: g.odalar.filter(x => x !== o) }));
+      return;
+    }
+    if (!odaIsExpandable(o)) {
+      setGecici(g => ({ ...g, odalar: [...g.odalar, o] }));
+      return;
+    }
+    Alert.alert(o, undefined, [
+      { text: `Sadece ${o}`, onPress: () => setGecici(g => ({ ...g, odalar: g.odalar.includes(o) ? g.odalar : [...g.odalar, o] })) },
+      { text: `${o} ve üstü`, onPress: () => { const ekle = odaUstuListesi(o); setGecici(g => ({ ...g, odalar: Array.from(new Set([...g.odalar, ...ekle])) })); } },
+      { text: 'İptal', style: 'cancel' },
+    ]);
   }
 
   function toggleOzellik(o: string) {
@@ -945,13 +965,20 @@ export default function IlanlarScreen() {
                     </FilterSection>
 
                     <FilterSection title="Oda Sayısı">
-                      <View style={styles.chipRow}>
-                        {ODALAR.map(o => (
-                          <TouchableOpacity key={o} style={[styles.chip, gecici.odalar.includes(o) && styles.chipActive]} onPress={() => toggleOda(o)}>
-                            <Text style={[styles.chipText, gecici.odalar.includes(o) && styles.chipTextActive]}>{o}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+                      <TouchableOpacity
+                        style={[styles.konumBox, gecici.odalar.length > 0 && styles.konumBoxAktif]}
+                        onPress={() => setFilterPage('oda')}
+                      >
+                        <Text style={[styles.konumBoxText, gecici.odalar.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
+                          {gecici.odalar.length > 0 ? `${gecici.odalar.length} Oda Seçildi` : 'Oda Seçin'}
+                        </Text>
+                        {gecici.odalar.length > 0
+                          ? <TouchableOpacity onPress={() => setGecici(g => ({ ...g, odalar: [] }))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
+                              <Text style={styles.konumBoxSil}>✕ Temizle</Text>
+                            </TouchableOpacity>
+                          : <Text style={styles.konumBoxChevron}>▾</Text>
+                        }
+                      </TouchableOpacity>
                     </FilterSection>
 
                     {tumOzellikler.length > 0 && (
@@ -977,8 +1004,41 @@ export default function IlanlarScreen() {
               </>
             )}
 
+            {/* SAYFA: ODA SEÇİMİ */}
+            {filterPage === 'oda' && (
+              <>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity onPress={() => setFilterPage('main')}>
+                    <Text style={styles.modalKapat}>←</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalBaslik}>Oda Seçin</Text>
+                  <TouchableOpacity onPress={() => setFilterPage('main')}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.primary }}>Tamam</Text>
+                  </TouchableOpacity>
+                </View>
+                <FlatList
+                  data={ODALAR}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item: o }) => {
+                    const sec = gecici.odalar.includes(o);
+                    return (
+                      <TouchableOpacity
+                        style={[styles.modalItem, sec && { backgroundColor: Colors.primaryFixed }]}
+                        onPress={() => toggleOda(o)}
+                      >
+                        <View style={[styles.checkbox, sec && styles.checkboxAktif, { marginRight: 10 }]}>
+                          {sec && <Text style={styles.checkboxTick}>✓</Text>}
+                        </View>
+                        <Text style={[styles.modalItemText, sec && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{o}</Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              </>
+            )}
+
             {/* SAYFA: 3 KUTU SEÇİMİ */}
-            {filterPage !== 'main' && (
+            {(filterPage === 'il' || filterPage === 'ilce' || filterPage === 'mahalle') && (
               <>
                 <View style={styles.modalHeader}>
                   <TouchableOpacity onPress={() => setFilterPage('main')}>
