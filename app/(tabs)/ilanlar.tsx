@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Modal, FlatList,
+  TextInput, ActivityIndicator, Modal, FlatList, SectionList,
   KeyboardAvoidingView, Platform, Dimensions, RefreshControl, Alert,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -165,40 +165,35 @@ export default function IlanlarScreen() {
   const [topluKatSayisi, setTopluKatSayisi] = useState<string>('');
   const [topluBulunduguKat, setTopluBulunduguKat] = useState<string>('');
 
-  let filteredBoxList: any[] = [];
+  type Section = { title: string; showHeader: boolean; data: string[]; key: string };
+  let konumSections: Section[] = [];
+  const q = konumSearch.toLowerCase();
   if (filterPage === 'il') {
-    filteredBoxList = ILLER_LISTESI
-      .filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
-      .map(i => ({ type: 'item', label: i, key: i }));
+    konumSections = [{
+      title: '', showHeader: false, key: 'iller',
+      data: ILLER_LISTESI.filter(i => i.toLowerCase().includes(q)),
+    }];
   } else if (filterPage === 'ilce') {
     gecici.filterIl.forEach(il => {
-      const ilceler = (ILLER[il] ?? []).filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()));
-      if (ilceler.length > 0) {
-        filteredBoxList.push({ type: 'header', label: il });
-        ilceler.sort((a,b) => a.localeCompare(b,'tr')).forEach(ilce => {
-          filteredBoxList.push({ type: 'item', label: ilce, key: ilce });
-        });
-      }
+      const ilceler = (ILLER[il] ?? []).slice().sort((a,b) => a.localeCompare(b,'tr')).filter(i => i.toLowerCase().includes(q));
+      if (ilceler.length > 0) konumSections.push({ title: il, showHeader: gecici.filterIl.length > 1, data: ilceler, key: il });
     });
   } else if (filterPage === 'mahalle') {
+    const cokIlce = gecici.filterIl.length > 1 || gecici.filterIlce.length > 1;
     gecici.filterIl.forEach(il => {
       gecici.filterIlce.forEach(ilce => {
-        if ((ILLER[il] ?? []).includes(ilce)) {
-          const q = konumSearch.toLowerCase();
-          const gruplar = getMahalleGruplar(il, ilce)
-            .map(g => {
-              const semtMatch = g.semt && g.semt.toLowerCase().includes(q);
-              return { semt: g.semt, mahalleler: semtMatch ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(q)) };
-            })
-            .filter(g => g.mahalleler.length > 0);
-          if (gruplar.length > 0) {
-            filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
-            gruplar.forEach(g => {
-              if (g.semt) filteredBoxList.push({ type: 'header', label: `  ${g.semt}` });
-              g.mahalleler.forEach(mah => filteredBoxList.push({ type: 'item', label: mah, key: mah }));
-            });
-          }
-        }
+        if (!(ILLER[il] ?? []).includes(ilce)) return;
+        const gruplar = getMahalleGruplar(il, ilce)
+          .map(g => {
+            const semtMatch = g.semt && g.semt.toLowerCase().includes(q);
+            return { semt: g.semt, mahalleler: semtMatch ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(q)) };
+          })
+          .filter(g => g.mahalleler.length > 0);
+        gruplar.forEach((g, gi) => {
+          const baseTitle = cokIlce ? `${il} - ${ilce}` : '';
+          const title = g.semt ? (baseTitle ? `${baseTitle} • ${g.semt}` : g.semt) : baseTitle;
+          konumSections.push({ title, showHeader: !!title, data: g.mahalleler, key: `${il}|${ilce}|${g.semt ?? `__${gi}`}` });
+        });
       });
     });
   }
@@ -1064,51 +1059,53 @@ export default function IlanlarScreen() {
                 </View>
                 <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                   <TextInput style={styles.modalSearch} placeholder="Ara..." placeholderTextColor={Colors.outlineVariant} value={konumSearch} onChangeText={setKonumSearch} />
-                  <FlatList
-                    data={filteredBoxList}
-                  keyExtractor={(item, i) => `${filterPage}-${i}-${item.type === 'item' ? item.key : item.label}`}
-                  keyboardShouldPersistTaps="handled"
-                  renderItem={({ item }) => {
-                    if (item.type === 'header') {
-                      return <Text style={styles.listeGrupBaslik}>{item.label}</Text>;
-                    }
-                    const val = item.key;
-                    const secili =
-                      filterPage === 'il' ? gecici.filterIl.includes(val) :
-                      filterPage === 'ilce' ? gecici.filterIlce.includes(val) :
-                      gecici.filterMahalle.includes(val);
-                    return (
-                      <TouchableOpacity
-                        style={[styles.modalItem, secili && { backgroundColor: Colors.primaryFixed }]}
-                        onPress={() => {
-                          if (filterPage === 'il') {
-                            setGecici(g => ({
-                              ...g,
-                              filterIl: secili ? g.filterIl.filter(x => x !== val) : [...g.filterIl, val],
-                              filterIlce: [], filterMahalle: []
-                            }));
-                          } else if (filterPage === 'ilce') {
-                            setGecici(g => ({
-                              ...g,
-                              filterIlce: secili ? g.filterIlce.filter(x => x !== val) : [...g.filterIlce, val],
-                              filterMahalle: []
-                            }));
-                          } else {
-                            setGecici(g => ({
-                              ...g,
-                              filterMahalle: secili ? g.filterMahalle.filter(x => x !== val) : [...g.filterMahalle, val]
-                            }));
-                          }
-                        }}
-                      >
-                        <View style={[styles.checkbox, secili && styles.checkboxAktif, { marginRight: 10 }]}>
-                          {secili && <Text style={styles.checkboxTick}>✓</Text>}
-                        </View>
-                        <Text style={[styles.modalItemText, secili && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{val}</Text>
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
+                  <SectionList
+                    sections={konumSections}
+                    keyExtractor={(item, i) => `${filterPage}-${item}-${i}`}
+                    keyboardShouldPersistTaps="handled"
+                    stickySectionHeadersEnabled
+                    renderSectionHeader={({ section }: any) => section.showHeader ? (
+                      <Text style={styles.listeGrupBaslik}>{section.title}</Text>
+                    ) : null}
+                    ListEmptyComponent={<Text style={{ padding: 20, fontSize: 13, color: Colors.outline, textAlign: 'center' }}>Sonuç yok</Text>}
+                    renderItem={({ item }) => {
+                      const val = item;
+                      const secili =
+                        filterPage === 'il' ? gecici.filterIl.includes(val) :
+                        filterPage === 'ilce' ? gecici.filterIlce.includes(val) :
+                        gecici.filterMahalle.includes(val);
+                      return (
+                        <TouchableOpacity
+                          style={[styles.modalItem, secili && { backgroundColor: Colors.primaryFixed }]}
+                          onPress={() => {
+                            if (filterPage === 'il') {
+                              setGecici(g => ({
+                                ...g,
+                                filterIl: secili ? g.filterIl.filter(x => x !== val) : [...g.filterIl, val],
+                                filterIlce: [], filterMahalle: []
+                              }));
+                            } else if (filterPage === 'ilce') {
+                              setGecici(g => ({
+                                ...g,
+                                filterIlce: secili ? g.filterIlce.filter(x => x !== val) : [...g.filterIlce, val],
+                                filterMahalle: []
+                              }));
+                            } else {
+                              setGecici(g => ({
+                                ...g,
+                                filterMahalle: secili ? g.filterMahalle.filter(x => x !== val) : [...g.filterMahalle, val]
+                              }));
+                            }
+                          }}
+                        >
+                          <View style={[styles.checkbox, secili && styles.checkboxAktif, { marginRight: 10 }]}>
+                            {secili && <Text style={styles.checkboxTick}>✓</Text>}
+                          </View>
+                          <Text style={[styles.modalItemText, secili && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{val}</Text>
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
                 </KeyboardAvoidingView>
               </>
             )}
