@@ -1022,16 +1022,23 @@ export default function IlanlarScreen() {
                     const ustuList = expandable ? odaUstuListesi(o) : [];
                     const ustuTumu = expandable && ustuList.length > 1 && ustuList.every(x => gecici.odalar.includes(x));
                     return (
-                      <View style={[styles.modalItem, sec && { backgroundColor: Colors.primaryFixed }, { paddingRight: 0 }]}>
-                        <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }} onPress={() => toggleOda(o)}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, gap: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                        <TouchableOpacity
+                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 8, borderRadius: 6, backgroundColor: sec ? Colors.primaryFixed : 'transparent' }}
+                          onPress={() => toggleOda(o)}
+                        >
                           <View style={[styles.checkbox, sec && styles.checkboxAktif, { marginRight: 10 }]}>
                             {sec && <Text style={styles.checkboxTick}>✓</Text>}
                           </View>
                           <Text style={[styles.modalItemText, sec && { color: Colors.primary, fontWeight: '600' }]}>{o}</Text>
                         </TouchableOpacity>
                         {expandable && ustuList.length > 1 && (
-                          <TouchableOpacity onPress={() => toggleOdaUstu(o)} style={{ paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 1, borderLeftColor: Colors.outlineVariant }}>
-                            <Text style={{ fontSize: 12, fontWeight: ustuTumu ? '700' : '500', color: ustuTumu ? Colors.primary : Colors.outline }}>{o} ve üstü</Text>
+                          <TouchableOpacity
+                            onPress={() => toggleOdaUstu(o)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: ustuTumu ? Colors.primary : Colors.outlineVariant, backgroundColor: ustuTumu ? Colors.primary : '#f3f4f6' }}
+                          >
+                            <Text style={{ fontSize: 10, color: ustuTumu ? '#fff' : Colors.outline }}>↑</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: ustuTumu ? '#fff' : Colors.outline }}>{o} ve üstü</Text>
                           </TouchableOpacity>
                         )}
                       </View>
