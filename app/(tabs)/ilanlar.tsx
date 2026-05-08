@@ -294,19 +294,16 @@ export default function IlanlarScreen() {
 
   function toggleOda(o: string) {
     const sec = gecici.odalar.includes(o);
-    if (sec) {
-      setGecici(g => ({ ...g, odalar: g.odalar.filter(x => x !== o) }));
-      return;
-    }
-    if (!odaIsExpandable(o)) {
-      setGecici(g => ({ ...g, odalar: [...g.odalar, o] }));
-      return;
-    }
-    Alert.alert(o, undefined, [
-      { text: `Sadece ${o}`, onPress: () => setGecici(g => ({ ...g, odalar: g.odalar.includes(o) ? g.odalar : [...g.odalar, o] })) },
-      { text: `${o} ve üstü`, onPress: () => { const ekle = odaUstuListesi(o); setGecici(g => ({ ...g, odalar: Array.from(new Set([...g.odalar, ...ekle])) })); } },
-      { text: 'İptal', style: 'cancel' },
-    ]);
+    setGecici(g => ({ ...g, odalar: sec ? g.odalar.filter(x => x !== o) : [...g.odalar, o] }));
+  }
+  function toggleOdaUstu(o: string) {
+    const ekle = odaUstuListesi(o);
+    if (ekle.length <= 1) return;
+    const tumu = ekle.every(x => gecici.odalar.includes(x));
+    setGecici(g => ({
+      ...g,
+      odalar: tumu ? g.odalar.filter(x => !ekle.includes(x)) : Array.from(new Set([...g.odalar, ...ekle])),
+    }));
   }
 
   function toggleOzellik(o: string) {
@@ -1021,16 +1018,23 @@ export default function IlanlarScreen() {
                   keyExtractor={(item) => item}
                   renderItem={({ item: o }) => {
                     const sec = gecici.odalar.includes(o);
+                    const expandable = odaIsExpandable(o);
+                    const ustuList = expandable ? odaUstuListesi(o) : [];
+                    const ustuTumu = expandable && ustuList.length > 1 && ustuList.every(x => gecici.odalar.includes(x));
                     return (
-                      <TouchableOpacity
-                        style={[styles.modalItem, sec && { backgroundColor: Colors.primaryFixed }]}
-                        onPress={() => toggleOda(o)}
-                      >
-                        <View style={[styles.checkbox, sec && styles.checkboxAktif, { marginRight: 10 }]}>
-                          {sec && <Text style={styles.checkboxTick}>✓</Text>}
-                        </View>
-                        <Text style={[styles.modalItemText, sec && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{o}</Text>
-                      </TouchableOpacity>
+                      <View style={[styles.modalItem, sec && { backgroundColor: Colors.primaryFixed }, { paddingRight: 0 }]}>
+                        <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }} onPress={() => toggleOda(o)}>
+                          <View style={[styles.checkbox, sec && styles.checkboxAktif, { marginRight: 10 }]}>
+                            {sec && <Text style={styles.checkboxTick}>✓</Text>}
+                          </View>
+                          <Text style={[styles.modalItemText, sec && { color: Colors.primary, fontWeight: '600' }]}>{o}</Text>
+                        </TouchableOpacity>
+                        {expandable && ustuList.length > 1 && (
+                          <TouchableOpacity onPress={() => toggleOdaUstu(o)} style={{ paddingHorizontal: 14, paddingVertical: 12, borderLeftWidth: 1, borderLeftColor: Colors.outlineVariant }}>
+                            <Text style={{ fontSize: 12, fontWeight: ustuTumu ? '700' : '500', color: ustuTumu ? Colors.primary : Colors.outline }}>{o} ve üstü</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     );
                   }}
                 />
