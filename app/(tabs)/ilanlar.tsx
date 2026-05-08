@@ -86,6 +86,7 @@ const odaUstuListesi = (base: string): string[] => {
   return ODALAR.filter(o => odaToOdaSayisi(o) >= baseN);
 };
 const KATEGORILER = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
+const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
 const KAT_SAYISI_DEGERLERI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];
 const BULUNDUGU_KAT_DEGERLERI = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
 
@@ -100,13 +101,16 @@ type FiltreState = {
   fiyatMin: string;
   fiyatMax: string;
   odalar: string[];
+  binaYaslari: string[];
+  katSayilari: string[];
+  bulunduguKatlar: string[];
   ozellikler: string[];
 };
 
 const BOS_FILTRE: FiltreState = {
   tip: 'Tümü', durum: 'Aktif', musteriGizle: 'Tümü',
   kategoriler: [], filterIl: [], filterIlce: [], filterMahalle: [],
-  fiyatMin: '', fiyatMax: '', odalar: [], ozellikler: [],
+  fiyatMin: '', fiyatMax: '', odalar: [], binaYaslari: [], katSayilari: [], bulunduguKatlar: [], ozellikler: [],
 };
 
 function aktifFiltreSayisi(f: FiltreState) {
@@ -118,6 +122,9 @@ function aktifFiltreSayisi(f: FiltreState) {
   if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) n++;
   if (f.fiyatMin || f.fiyatMax) n++;
   if (f.odalar.length) n++;
+  if (f.binaYaslari.length) n++;
+  if (f.katSayilari.length) n++;
+  if (f.bulunduguKatlar.length) n++;
   if (f.ozellikler.length) n++;
   return n;
 }
@@ -254,6 +261,9 @@ export default function IlanlarScreen() {
     if (f.fiyatMin) r = r.filter(i => i.fiyat >= parseInt(f.fiyatMin.replace(/\./g, '')));
     if (f.fiyatMax) r = r.filter(i => i.fiyat <= parseInt(f.fiyatMax.replace(/\./g, '')));
     if (f.odalar.length) r = r.filter(i => i.oda_sayisi && f.odalar.includes(i.oda_sayisi));
+    if (f.binaYaslari.length) r = r.filter(i => i.bina_yasi && f.binaYaslari.includes(i.bina_yasi));
+    if (f.katSayilari.length) r = r.filter(i => i.kat_sayisi && f.katSayilari.includes(i.kat_sayisi));
+    if (f.bulunduguKatlar.length) r = r.filter(i => i.bulundugu_kat && f.bulunduguKatlar.includes(i.bulundugu_kat));
     if (f.ozellikler.length) r = r.filter(i => {
       const ilanOz: string[] = (i as any).ozellik_ids ?? [];
       return f.ozellikler.every(o => ilanOz.includes(o));
@@ -538,6 +548,21 @@ export default function IlanlarScreen() {
           {filtre.odalar.map(o => (
             <TouchableOpacity key={o} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, odalar: f.odalar.filter(x => x !== o) }))}>
               <Text style={styles.etiketText}>{o} ✕</Text>
+            </TouchableOpacity>
+          ))}
+          {filtre.binaYaslari.map(b => (
+            <TouchableOpacity key={`by-${b}`} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, binaYaslari: f.binaYaslari.filter(x => x !== b) }))}>
+              <Text style={styles.etiketText}>Yaş: {b} ✕</Text>
+            </TouchableOpacity>
+          ))}
+          {filtre.katSayilari.map(k => (
+            <TouchableOpacity key={`ks-${k}`} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, katSayilari: f.katSayilari.filter(x => x !== k) }))}>
+              <Text style={styles.etiketText}>Kat Sayısı: {k} ✕</Text>
+            </TouchableOpacity>
+          ))}
+          {filtre.bulunduguKatlar.map(k => (
+            <TouchableOpacity key={`bk-${k}`} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, bulunduguKatlar: f.bulunduguKatlar.filter(x => x !== k) }))}>
+              <Text style={styles.etiketText}>Kat: {k} ✕</Text>
             </TouchableOpacity>
           ))}
           {filtre.ozellikler.map(oz => {
@@ -991,6 +1016,39 @@ export default function IlanlarScreen() {
                           : <Text style={styles.konumBoxChevron}>▾</Text>
                         }
                       </TouchableOpacity>
+                    </FilterSection>
+
+                    <FilterSection title="Bina Yaşı">
+                      <View style={styles.chipRow}>
+                        {BINA_YASLARI.map(b => (
+                          <TouchableOpacity key={b} style={[styles.chip, gecici.binaYaslari.includes(b) && styles.chipActive]}
+                            onPress={() => setGecici(g => ({ ...g, binaYaslari: g.binaYaslari.includes(b) ? g.binaYaslari.filter(x => x !== b) : [...g.binaYaslari, b] }))}>
+                            <Text style={[styles.chipText, gecici.binaYaslari.includes(b) && styles.chipTextActive]}>{b}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </FilterSection>
+
+                    <FilterSection title="Kat Sayısı">
+                      <View style={styles.chipRow}>
+                        {KAT_SAYISI_DEGERLERI.map(k => (
+                          <TouchableOpacity key={k} style={[styles.chip, gecici.katSayilari.includes(k) && styles.chipActive]}
+                            onPress={() => setGecici(g => ({ ...g, katSayilari: g.katSayilari.includes(k) ? g.katSayilari.filter(x => x !== k) : [...g.katSayilari, k] }))}>
+                            <Text style={[styles.chipText, gecici.katSayilari.includes(k) && styles.chipTextActive]}>{k}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </FilterSection>
+
+                    <FilterSection title="Bulunduğu Kat">
+                      <View style={styles.chipRow}>
+                        {BULUNDUGU_KAT_DEGERLERI.map(k => (
+                          <TouchableOpacity key={k} style={[styles.chip, gecici.bulunduguKatlar.includes(k) && styles.chipActive]}
+                            onPress={() => setGecici(g => ({ ...g, bulunduguKatlar: g.bulunduguKatlar.includes(k) ? g.bulunduguKatlar.filter(x => x !== k) : [...g.bulunduguKatlar, k] }))}>
+                            <Text style={[styles.chipText, gecici.bulunduguKatlar.includes(k) && styles.chipTextActive]}>{k}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     </FilterSection>
 
                     {tumOzellikler.length > 0 && (
