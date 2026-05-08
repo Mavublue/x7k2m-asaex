@@ -247,7 +247,7 @@ export default function IlanlarScreen() {
       r = r.filter(ilan => {
         if (f.filterIl.length > 0 && !f.filterIl.includes(ilan.konum)) return false;
         if (f.filterIlce.length > 0 && (!ilan.ilce || !f.filterIlce.includes(ilan.ilce))) return false;
-        if (f.filterMahalle.length > 0 && !f.filterMahalle.some(m => (ilan.mahalle ?? '').toLowerCase().includes(m.toLowerCase()))) return false;
+        if (f.filterMahalle.length > 0 && !f.filterMahalle.some(m => (ilan.mahalle ?? '').toLowerCase() === m.toLowerCase())) return false;
         return true;
       });
     }
