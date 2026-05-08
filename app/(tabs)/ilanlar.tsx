@@ -475,21 +475,41 @@ export default function IlanlarScreen() {
               <Text style={styles.etiketText}>🔍 {search} ✕</Text>
             </TouchableOpacity>
           ) : null}
-          {filtre.filterIl.map((il, i) => (
-            <TouchableOpacity key={`il-${i}`} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, filterIl: f.filterIl.filter(x => x !== il) }))}>
-              <Text style={styles.etiketText}>📍 {il} ✕</Text>
-            </TouchableOpacity>
-          ))}
-          {filtre.filterIlce.map((ilce, i) => (
-            <TouchableOpacity key={`ilce-${i}`} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, filterIlce: f.filterIlce.filter(x => x !== ilce) }))}>
-              <Text style={styles.etiketText}>📍 {ilce} ✕</Text>
-            </TouchableOpacity>
-          ))}
-          {filtre.filterMahalle.map((mah, i) => (
-            <TouchableOpacity key={`mah-${i}`} style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, filterMahalle: f.filterMahalle.filter(x => x !== mah) }))}>
-              <Text style={styles.etiketText}>📍 {mah} ✕</Text>
-            </TouchableOpacity>
-          ))}
+          {(() => {
+            const chips: { key: string; label: string; onRemove: () => void }[] = [];
+            filtre.filterIl.forEach(il => {
+              const ilceler = filtre.filterIlce.filter(ilce => (ILLER[il] ?? []).includes(ilce));
+              if (ilceler.length === 0) {
+                chips.push({
+                  key: `il-${il}`, label: `📍 ${il}`,
+                  onRemove: () => setFiltre(f => ({ ...f, filterIl: f.filterIl.filter(x => x !== il), filterIlce: [], filterMahalle: [] })),
+                });
+                return;
+              }
+              ilceler.forEach(ilce => {
+                const gruplar = getMahalleGruplar(il, ilce);
+                const mahallelerInIlce = filtre.filterMahalle.filter(m => gruplar.some(g => g.mahalleler.includes(m)));
+                if (mahallelerInIlce.length === 0) {
+                  chips.push({
+                    key: `ilce-${il}-${ilce}`, label: `📍 ${il} / ${ilce}`,
+                    onRemove: () => setFiltre(f => ({ ...f, filterIlce: f.filterIlce.filter(x => x !== ilce), filterMahalle: f.filterMahalle.filter(x => !gruplar.some(g => g.mahalleler.includes(x))) })),
+                  });
+                } else {
+                  mahallelerInIlce.forEach(m => {
+                    chips.push({
+                      key: `mah-${il}-${ilce}-${m}`, label: `📍 ${il} / ${ilce} / ${m}`,
+                      onRemove: () => setFiltre(f => ({ ...f, filterMahalle: f.filterMahalle.filter(x => x !== m) })),
+                    });
+                  });
+                }
+              });
+            });
+            return chips.map(c => (
+              <TouchableOpacity key={c.key} style={styles.etiket} onPress={c.onRemove}>
+                <Text style={styles.etiketText}>{c.label} ✕</Text>
+              </TouchableOpacity>
+            ));
+          })()}
           {(filtre.fiyatMin || filtre.fiyatMax) ? (
             <TouchableOpacity style={styles.etiket} onPress={() => setFiltre(f => ({ ...f, fiyatMin: '', fiyatMax: '' }))}>
               <Text style={styles.etiketText}>₺ {filtre.fiyatMin || '0'} – {filtre.fiyatMax || '∞'} ✕</Text>
