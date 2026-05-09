@@ -105,6 +105,7 @@ export default function MusteriEkleScreen() {
   const [binaYaslari, setBinaYaslari] = useState<string[]>([]);
   const [etiket, setEtiket] = useState('');
   const [etiketCakisma, setEtiketCakisma] = useState<{ ad: string; soyad: string | null } | null>(null);
+  const [etiketDolduruluyor, setEtiketDolduruluyor] = useState(false);
 
   useEffect(() => {
     const e = etiket.trim();
@@ -117,6 +118,25 @@ export default function MusteriEkleScreen() {
     }, 400);
     return () => clearTimeout(handle);
   }, [etiket]);
+
+  async function enKucukBosEtiket() {
+    setEtiketDolduruluyor(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('musteriler').select('etiketler').eq('user_id', user.id).not('etiketler', 'is', null);
+      const kullanilan = new Set<number>();
+      (data ?? []).forEach((r: { etiketler: string | null }) => {
+        const n = parseInt((r.etiketler ?? '').trim(), 10);
+        if (Number.isInteger(n) && n > 0) kullanilan.add(n);
+      });
+      let n = 1;
+      while (kullanilan.has(n)) n++;
+      setEtiket(String(n));
+    } finally {
+      setEtiketDolduruluyor(false);
+    }
+  }
   const [yeniNotlar, setYeniNotlar] = useState<{ icerik: string; tarih: string }[]>([]);
   const [notForm, setNotForm] = useState(false);
   const [notIcerik, setNotIcerik] = useState('');
@@ -268,9 +288,9 @@ export default function MusteriEkleScreen() {
           <View style={styles.satir}>
             <View style={{ flex: 1 }}><Field label="Ad *" value={ad} onChangeText={setAd} placeholder="Ahmet" /></View>
             <View style={{ flex: 1 }}><Field label="Soyad" value={soyad} onChangeText={setSoyad} placeholder="Yılmaz" /></View>
-            <View style={[styles.inputContainer, { width: 80 }]}>
+            <View style={[styles.inputContainer, { width: 110 }]}>
               <Text style={styles.label}>Etiket</Text>
-              <View style={[styles.etiketInputRow, etiketCakisma && { borderWidth: 1, borderColor: Colors.primary }]}>
+              <View style={[styles.etiketInputRow, { width: 110 }, etiketCakisma && { borderWidth: 1, borderColor: Colors.primary }]}>
                 <Text style={styles.etiketHash}>#</Text>
                 <TextInput
                   style={styles.etiketInput}
@@ -281,6 +301,10 @@ export default function MusteriEkleScreen() {
                   autoCapitalize="none"
                   returnKeyType="done"
                 />
+                <TouchableOpacity onPress={enKucukBosEtiket} disabled={etiketDolduruluyor}
+                  style={{ paddingHorizontal: 6, paddingVertical: 6, marginLeft: 2 }}>
+                  <Text style={{ fontSize: 16, opacity: etiketDolduruluyor ? 0.4 : 1 }}>✨</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
