@@ -55,6 +55,7 @@ function buildMapHtml(ilanlar: Ilan[]) {
 <script>
 var map=L.map('map',{zoomControl:false}).setView(${merkez},${zoom});
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
+map.on('click',function(){window.ReactNativeWebView.postMessage(JSON.stringify({close:true}));});
 var cluster=L.markerClusterGroup({maxClusterRadius:40});
 var ms=${JSON.stringify(markers)},bs=[];
 ms.forEach(function(m){
@@ -618,7 +619,9 @@ export default function IlanlarScreen() {
               style={{ flex: 1 }}
               onMessage={e => {
                 try {
-                  const { id, px, py } = JSON.parse(e.nativeEvent.data);
+                  const data = JSON.parse(e.nativeEvent.data);
+                  if (data.close) { setSeciliIlan(null); setPopupPos(null); return; }
+                  const { id, px, py } = data;
                   const bulunan = filtered.find(i => i.id === id);
                   if (bulunan) { setSeciliIlan(bulunan); setPopupPos({ x: px, y: py }); }
                 } catch {}
