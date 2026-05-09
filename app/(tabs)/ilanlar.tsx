@@ -622,7 +622,6 @@ export default function IlanlarScreen() {
                   const data = JSON.parse(e.nativeEvent.data);
                   if (data.close) { setSeciliIlan(null); setPopupPos(null); return; }
                   const { id, px, py } = data;
-                  if (secimModu) { secimToggle(id); return; }
                   const bulunan = filtered.find(i => i.id === id);
                   if (bulunan) { setSeciliIlan(bulunan); setPopupPos({ x: px, y: py }); }
                 } catch {}
@@ -662,10 +661,11 @@ export default function IlanlarScreen() {
             const rawTop = popupPos.y - POPUP_H - 18;
             const top = rawTop > 60 ? rawTop : popupPos.y + 18;
             const left = Math.max(8, Math.min(SCREEN_W - POPUP_W - 8, popupPos.x - POPUP_W / 2));
+            const popupSecili = seciliIds.has(seciliIlan.id);
             return (
               <TouchableOpacity
-                style={[styles.mapPopup, { top, left, width: POPUP_W }]}
-                onPress={() => router.push(`/ilan/${seciliIlan.id}` as any)}
+                style={[styles.mapPopup, { top, left, width: POPUP_W }, secimModu && popupSecili && { borderWidth: 3, borderColor: Colors.primary }]}
+                onPress={() => secimModu ? secimToggle(seciliIlan.id) : router.push(`/ilan/${seciliIlan.id}` as any)}
                 activeOpacity={0.92}
               >
                 {seciliIlan.fotograflar?.[0] ? (
@@ -683,6 +683,11 @@ export default function IlanlarScreen() {
                     <View style={styles.popupKategori}><Text style={styles.popupKategoriText}>{seciliIlan.kategori}</Text></View>
                   </View>
                 </View>
+                {secimModu && (
+                  <View style={{ position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: popupSecili ? Colors.primary : 'rgba(255,255,255,0.9)', borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                    {popupSecili && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✓</Text>}
+                  </View>
+                )}
                 <TouchableOpacity style={styles.popupKapat} onPress={() => { setSeciliIlan(null); setPopupPos(null); }}>
                   <Text style={styles.popupKapatText}>✕</Text>
                 </TouchableOpacity>
