@@ -44,6 +44,7 @@ export interface Musteri {
   avatar_url: string | null;
   durum: 'Aktif' | 'Beklemede' | 'İptal';
   olusturma_tarihi: string;
+  guncelleme_tarihi: string;
 }
 
 export interface MusteriNot {

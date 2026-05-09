@@ -17,12 +17,29 @@ const ILLER_LISTESI = IL_LISTESI;
 
 const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal'];
 
+type Siralama = 'etiket_artan' | 'etiket_azalan' | 'eklenme_yeni' | 'eklenme_eski' | 'guncelleme_yeni' | 'guncelleme_eski';
+const SIRALAMA_LABEL: Record<Siralama, string> = {
+  etiket_artan: 'Etiket ↑',
+  etiket_azalan: 'Etiket ↓',
+  eklenme_yeni: 'Eklenme (yeni)',
+  eklenme_eski: 'Eklenme (eski)',
+  guncelleme_yeni: 'Değişiklik (yeni)',
+  guncelleme_eski: 'Değişiklik (eski)',
+};
+function etiketSayi(e: string | null): number {
+  if (!e) return Number.POSITIVE_INFINITY;
+  const n = parseInt(e.trim(), 10);
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
 export default function MusterilerScreen() {
   const [musteriler, setMusteriler] = useState<MusteriListe[]>([]);
   const [filtered, setFiltered] = useState<MusteriListe[]>([]);
   const [search, setSearch] = useState('');
   const [etiketSearch, setEtiketSearch] = useState('');
   const [activeDurum, setActiveDurum] = useState('Tümü');
+  const [siralama, setSiralama] = useState<Siralama>('eklenme_yeni');
+  const [siralamaAcik, setSiralamaAcik] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -45,8 +62,23 @@ export default function MusterilerScreen() {
       const eq = etiketSearch.replace('#', '').toLowerCase();
       result = result.filter(m => m.etiketler?.toLowerCase().includes(eq));
     }
+    result = [...result].sort((a, b) => {
+      if (siralama === 'etiket_artan') return etiketSayi(a.etiketler) - etiketSayi(b.etiketler);
+      if (siralama === 'etiket_azalan') {
+        const av = etiketSayi(a.etiketler), bv = etiketSayi(b.etiketler);
+        const aFin = Number.isFinite(av), bFin = Number.isFinite(bv);
+        if (aFin && !bFin) return -1;
+        if (!aFin && bFin) return 1;
+        return bv - av;
+      }
+      if (siralama === 'eklenme_yeni') return (b.olusturma_tarihi ?? '').localeCompare(a.olusturma_tarihi ?? '');
+      if (siralama === 'eklenme_eski') return (a.olusturma_tarihi ?? '').localeCompare(b.olusturma_tarihi ?? '');
+      if (siralama === 'guncelleme_yeni') return (b.guncelleme_tarihi ?? '').localeCompare(a.guncelleme_tarihi ?? '');
+      if (siralama === 'guncelleme_eski') return (a.guncelleme_tarihi ?? '').localeCompare(b.guncelleme_tarihi ?? '');
+      return 0;
+    });
     setFiltered(result);
-  }, [search, etiketSearch, activeDurum, musteriler]);
+  }, [search, etiketSearch, activeDurum, musteriler, siralama]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -99,18 +131,36 @@ export default function MusterilerScreen() {
       </View>
 
 
-      {/* Durum sekmeleri */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabs}>
-        {durumlar.map(d => (
-          <TouchableOpacity
-            key={d}
-            style={[styles.tab, activeDurum === d && styles.tabActive]}
-            onPress={() => setActiveDurum(d)}
-          >
-            <Text style={[styles.tabText, activeDurum === d && styles.tabTextActive]}>{d}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Durum sekmeleri + Sıralama */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 6, gap: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} style={{ flex: 1 }}>
+          {durumlar.map(d => (
+            <TouchableOpacity
+              key={d}
+              style={[styles.tab, activeDurum === d && styles.tabActive]}
+              onPress={() => setActiveDurum(d)}
+            >
+              <Text style={[styles.tabText, activeDurum === d && styles.tabTextActive]}>{d}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <TouchableOpacity onPress={() => setSiralamaAcik(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={{ fontSize: 13, color: Colors.onSurface, fontWeight: '600' }}>⇅ {SIRALAMA_LABEL[siralama]}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={siralamaAcik} transparent animationType="fade" onRequestClose={() => setSiralamaAcik(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setSiralamaAcik(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 30 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, paddingVertical: 8 }}>
+            {(Object.keys(SIRALAMA_LABEL) as Siralama[]).map(k => (
+              <TouchableOpacity key={k} onPress={() => { setSiralama(k); setSiralamaAcik(false); }} style={{ paddingVertical: 14, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 15, color: Colors.onSurface, fontWeight: siralama === k ? '700' : '500' }}>{SIRALAMA_LABEL[k]}</Text>
+                {siralama === k && <Text style={{ fontSize: 16, color: Colors.primary }}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
