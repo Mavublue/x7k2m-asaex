@@ -162,6 +162,7 @@ export default function IlanlarScreen() {
   const [paylasSaat, setPaylasSaat] = useState('168');
   const [paylasEtiketAra, setPaylasEtiketAra] = useState('');
   const [paylasHaric, setPaylasHaric] = useState<Set<string>>(new Set());
+  const [paylasIlanlar, setPaylasIlanlar] = useState<Ilan[]>([]);
   // Toplu seçim
   const [secimModu, setSecimModu] = useState(false);
   const [seciliIds, setSeciliIds] = useState<Set<string>>(new Set());
@@ -323,9 +324,10 @@ export default function IlanlarScreen() {
   function filtreUygula() { setFiltre(gecici); setFiltrePaneli(false); }
   function filtreSifirla() { setGecici(BOS_FILTRE); }
 
-  function handleListePaylas() {
+  function handleListePaylas(kaynak: 'filtre' | 'secim' = 'filtre') {
     setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); setKopyalandi(false); setPaylasEtiketAra('');
     setPaylasHaric(new Set());
+    setPaylasIlanlar(kaynak === 'secim' ? ilanlar.filter(i => seciliIds.has(i.id)) : filtered);
     supabase.from('musteriler').select('id, ad, soyad, etiketler').eq('durum', 'Aktif').order('ad')
       .then(({ data }) => { if (data) setPaylasMusteriler(data); });
     setPaylasModal(true);
@@ -337,7 +339,7 @@ export default function IlanlarScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setPaylasYukleniyor(false); return; }
 
-    const ilanIds = filtered.filter(i => !paylasHaric.has(i.id)).map(i => i.id);
+    const ilanIds = paylasIlanlar.filter(i => !paylasHaric.has(i.id)).map(i => i.id);
     if (!ilanIds.length) { Alert.alert('Uyarı', 'En az bir ilan seçmelisin'); setPaylasYukleniyor(false); return; }
     const token = Array.from({ length: 8 }, () => Math.random().toString(36)[2]).join('');
     const saatSayisi = parseInt(paylasSaat);
@@ -594,7 +596,7 @@ export default function IlanlarScreen() {
             <TouchableOpacity style={[styles.paylasBtnSmall, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
               <Text style={[styles.paylasBtnSmallText, secimModu && { color: '#fff' }]}>{secimModu ? '✕' : '☑'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.paylasBtnSmall} onPress={handleListePaylas}>
+            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => handleListePaylas('filtre')}>
               <Text style={styles.paylasBtnSmallText}>🔗</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/ilan/ekle')}>
@@ -704,7 +706,7 @@ export default function IlanlarScreen() {
 
       {/* Liste / Harita Toggle veya Toplu Aksiyon Bar */}
       {secimModu ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingTop: 8, paddingBottom: Spacing.sm, backgroundColor: Colors.surfaceContainerLowest, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, backgroundColor: Colors.surfaceContainerLowest, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow }} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingTop: 8, paddingBottom: Spacing.sm }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, marginRight: 4 }}>{seciliIds.size} seçili</Text>
           <TouchableOpacity onPress={tumunuSec} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{seciliIds.size === filtered.length ? 'Hiçbiri' : 'Tümü'}</Text>
@@ -721,10 +723,13 @@ export default function IlanlarScreen() {
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setOzellikSecili(new Set()); setOzellikModal('cikar'); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>− Özellik</Text>
           </TouchableOpacity>
-          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={topluSil} style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#E53935', borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4, marginLeft: 'auto' }}>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => handleListePaylas('secim')} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>🔗 Paylaş</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={topluSil} style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#E53935', borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>🗑 Sil</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       ) : (
         <View style={[styles.toggleBar, { paddingBottom: Spacing.sm }]}>
           <TouchableOpacity
@@ -1216,19 +1221,19 @@ export default function IlanlarScreen() {
                     {/* İlan seçimi */}
                     <View style={{ gap: Spacing.sm }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={styles.filterSectionTitle}>İlanlar ({filtered.length - paylasHaric.size} / {filtered.length})</Text>
+                        <Text style={styles.filterSectionTitle}>İlanlar ({paylasIlanlar.length - paylasHaric.size} / {paylasIlanlar.length})</Text>
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                           <TouchableOpacity onPress={() => setPaylasHaric(new Set())}>
                             <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>Tümü</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => setPaylasHaric(new Set(filtered.map(i => i.id)))}>
+                          <TouchableOpacity onPress={() => setPaylasHaric(new Set(paylasIlanlar.map(i => i.id)))}>
                             <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontWeight: '600' }}>Hiçbiri</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
                       <View style={{ borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.surfaceContainerLow, maxHeight: 220 }}>
                         <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                          {filtered.map(i => {
+                          {paylasIlanlar.map(i => {
                             const haric = paylasHaric.has(i.id);
                             return (
                               <TouchableOpacity key={i.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: Spacing.md, backgroundColor: haric ? Colors.surfaceContainerLow : Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}
@@ -1320,9 +1325,9 @@ export default function IlanlarScreen() {
                     </View>
 
                     <TouchableOpacity
-                      style={[styles.uygulaBtn, (!paylasMusteri || paylasYukleniyor || filtered.length - paylasHaric.size === 0) && { opacity: 0.5 }]}
+                      style={[styles.uygulaBtn, (!paylasMusteri || paylasYukleniyor || paylasIlanlar.length - paylasHaric.size === 0) && { opacity: 0.5 }]}
                       onPress={handlePaylasOlustur}
-                      disabled={!paylasMusteri || paylasYukleniyor || filtered.length - paylasHaric.size === 0}
+                      disabled={!paylasMusteri || paylasYukleniyor || paylasIlanlar.length - paylasHaric.size === 0}
                     >
                       <Text style={styles.uygulaBtnText}>{paylasYukleniyor ? 'Oluşturuluyor...' : 'Link Oluştur'}</Text>
                     </TouchableOpacity>
