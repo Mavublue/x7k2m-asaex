@@ -622,6 +622,7 @@ export default function IlanlarScreen() {
                   const data = JSON.parse(e.nativeEvent.data);
                   if (data.close) { setSeciliIlan(null); setPopupPos(null); return; }
                   const { id, px, py } = data;
+                  if (secimModu) { secimToggle(id); return; }
                   const bulunan = filtered.find(i => i.id === id);
                   if (bulunan) { setSeciliIlan(bulunan); setPopupPos({ x: px, y: py }); }
                 } catch {}
