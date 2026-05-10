@@ -1,7 +1,9 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { registerPushToken } from '../lib/pushNotifications';
 import { Session } from '@supabase/supabase-js';
@@ -47,6 +49,36 @@ export default function RootLayout() {
       }
     }
   }, [session, loading]);
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
+      const data = response.notification.request.content.data as any;
+      if (data?.tip !== 'gorev_onerisi') return;
+
+      const { musteri_id, musteri_ad, gorev_baslik, gorev_tarih } = data;
+
+      Alert.alert(
+        'Görev Önerisi',
+        `${musteri_ad} için görev eklensin mi?\n\n"${gorev_baslik}"${gorev_tarih ? `\nTarih: ${new Date(gorev_tarih).toLocaleDateString('tr-TR')}` : ''}`,
+        [
+          { text: 'Hayır', style: 'cancel' },
+          {
+            text: 'Evet, Ekle',
+            onPress: async () => {
+              await supabase.from('musteri_gorevler').insert({
+                musteri_id,
+                baslik: gorev_baslik,
+                hedef_tarih: gorev_tarih ? new Date(gorev_tarih).toISOString() : null,
+                aciklama: 'Nottan önerildi',
+              });
+              router.push(`/musteri/${musteri_id}` as any);
+            },
+          },
+        ]
+      );
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <>

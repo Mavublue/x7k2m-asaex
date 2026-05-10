@@ -432,11 +432,6 @@ export default function MusteriDetayScreen() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
           body: JSON.stringify({ musteri_id: id, not_icerik: icerik }),
-        }).then(async (res) => {
-          if (res.ok) {
-            const d = await res.json();
-            if (d.gorev) refreshGorevler();
-          }
         }).catch(() => {});
       }
     }
