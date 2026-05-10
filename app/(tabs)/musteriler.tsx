@@ -201,49 +201,58 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
     İptal: { bg: '#fee2e2', text: '#991b1b' },
   }[musteri.durum] ?? { bg: Colors.surfaceContainerLow, text: Colors.onSurfaceVariant };
 
+  const avatarColors = [
+    '#6750A4', '#4e5ba6', '#0077b6', '#2d6a4f', '#b5451b', '#7b2d8b',
+  ];
+  const avatarBg = avatarColors[(musteri.ad?.charCodeAt(0) ?? 0) % avatarColors.length];
+
   return (
-    <TouchableOpacity style={styles.kart} onPress={() => router.push(`/musteri/${musteri.id}` as any)}>
-      <View style={styles.kartHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-          {musteri.etiketler ? <View style={styles.etiketPill}><Text style={styles.etiketPillText}>#{musteri.etiketler}</Text></View> : null}
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+    <TouchableOpacity style={styles.kart} onPress={() => router.push(`/musteri/${musteri.id}` as any)} activeOpacity={0.85}>
+      <View style={styles.kartRow}>
+        <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
+          <Text style={styles.avatarText}>{initials || '?'}</Text>
         </View>
-        <View style={[styles.durumBadge, { backgroundColor: durumRenk.bg }]}>
-          <Text style={[styles.durumText, { color: durumRenk.text }]}>{musteri.durum}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <Text style={styles.musteriAd} numberOfLines={1}>{`${musteri.ad ?? ''} ${musteri.soyad ?? ''}`.trim()}</Text>
+          </View>
+          {musteri.telefon ? (
+            <Text style={styles.telefon} numberOfLines={1}>📞 {musteri.telefon}</Text>
+          ) : null}
+          {musteri.tercih_konum ? (
+            <Text style={styles.konum} numberOfLines={1}>📍 {musteri.tercih_konum.replace(/\s*\|\s*/g, ', ')}</Text>
+          ) : null}
+          {(musteri.butce_min || musteri.butce_max) ? (
+            <Text style={styles.butce}>
+              💰 {musteri.butce_min ? `₺${musteri.butce_min.toLocaleString('tr-TR')}` : '?'} – {musteri.butce_max ? `₺${musteri.butce_max.toLocaleString('tr-TR')}` : '?'}
+            </Text>
+          ) : null}
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+          <View style={[styles.durumBadge, { backgroundColor: durumRenk.bg }]}>
+            <Text style={[styles.durumText, { color: durumRenk.text }]}>{musteri.durum}</Text>
+          </View>
+          {musteri.etiketler ? (
+            <View style={styles.etiketPill}>
+              <Text style={styles.etiketPillText}>#{musteri.etiketler}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
-      <Text style={styles.musteriAd}>{`${musteri.ad ?? ''} ${musteri.soyad ?? ''}`.trim()}</Text>
-
-      {musteri.tercih_konum && (
-        <Text style={styles.konum} numberOfLines={1} ellipsizeMode="tail">📍 {musteri.tercih_konum.replace(/\|/g, ', ')}</Text>
-      )}
-
-      {(musteri.butce_min || musteri.butce_max) && (
-        <Text style={styles.butce}>
-          💰 ₺{musteri.butce_min?.toLocaleString('tr-TR') ?? '?'} – ₺{musteri.butce_max?.toLocaleString('tr-TR') ?? '?'}
-        </Text>
-      )}
-
       {matchedEk.length > 0 && (
-        <View style={{ marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, gap: 4 }}>
+        <View style={styles.ekKisiler}>
           {matchedEk.map((k, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-              <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: Colors.primaryFixed }}>
-                <Text style={{ fontSize: 9, fontWeight: '700', color: Colors.primary }}>↳ {k.tip || 'Ek'}</Text>
+            <View key={i} style={styles.ekKisiRow}>
+              <View style={styles.ekKisiTip}>
+                <Text style={styles.ekKisiTipText}>↳ {k.tip || 'Ek'}</Text>
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }} numberOfLines={1}>{k.ad}</Text>
-              {k.telefon ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text> : null}
+              <Text style={styles.ekKisiAd} numberOfLines={1}>{k.ad}</Text>
+              {k.telefon ? <Text style={styles.ekKisiTel}>📞 {k.telefon}</Text> : null}
             </View>
           ))}
         </View>
       )}
-
-      <TouchableOpacity style={styles.eslesBtn} onPress={e => { e.stopPropagation?.(); router.push(`/musteri/${musteri.id}` as any); }}>
-        <Text style={styles.esleBtnText}>Eşleşen İlanlar</Text>
-      </TouchableOpacity>
     </TouchableOpacity>
   );
 });
@@ -251,7 +260,7 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: Spacing.xl, paddingTop: 0, paddingBottom: 32 },
+  scroll: { paddingTop: Spacing.sm, paddingBottom: 32 },
 
   header: {
     flexDirection: 'row',
@@ -300,45 +309,42 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
 
   kart: {
-    width: '48%',
     backgroundColor: Colors.surfaceContainerLowest,
     borderRadius: Radius.xl,
-    padding: Spacing.md,
-    shadowColor: Colors.primary,
+    padding: Spacing.lg,
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.sm,
+    shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-    gap: 6,
   },
-  kartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  kartRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 46,
+    height: 46,
     borderRadius: Radius.full,
-    backgroundColor: Colors.primaryFixed,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  avatarText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   durumBadge: { borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3 },
   durumText: { fontSize: 10, fontWeight: '600' },
-
-  musteriAd: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
-  etiketPill: { backgroundColor: '#1a1b21', borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3 },
-  etiketPillText: { fontSize: 10, fontWeight: '700', color: '#fff' },
-  konum: { fontSize: 11, color: Colors.onSurfaceVariant },
-  butce: { fontSize: 11, color: Colors.onSurfaceVariant },
+  musteriAd: { fontSize: 15, fontWeight: '700', color: Colors.onSurface, flex: 1 },
+  telefon: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 1 },
+  etiketPill: { backgroundColor: Colors.surfaceContainerHigh, borderRadius: Radius.full, paddingHorizontal: 7, paddingVertical: 2 },
+  etiketPillText: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant },
+  konum: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  butce: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   notlar: { fontSize: 11, color: Colors.onSurfaceVariant, lineHeight: 16 },
-
-  eslesBtn: {
-    backgroundColor: Colors.primaryFixed,
-    borderRadius: Radius.full,
-    paddingVertical: 7,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  esleBtnText: { color: Colors.primary, fontSize: 11, fontWeight: '600' },
+  ekKisiler: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, gap: 4 },
+  ekKisiRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  ekKisiTip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: Colors.primaryFixed },
+  ekKisiTipText: { fontSize: 9, fontWeight: '700', color: Colors.primary },
+  ekKisiAd: { fontSize: 11, fontWeight: '600', color: Colors.onSurface },
+  ekKisiTel: { fontSize: 10, color: Colors.onSurfaceVariant },
 
   emptyBox: {
     backgroundColor: Colors.surfaceContainerLow,
