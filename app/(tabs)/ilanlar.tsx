@@ -651,6 +651,9 @@ export default function IlanlarScreen() {
                 </View>
               )}
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.floatingYeni, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
+              <Text style={[styles.floatingYeniText, secimModu && { color: '#fff' }]}>{secimModu ? '✕' : '☑'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.floatingYeni} onPress={() => router.push('/ilan/ekle')}>
               <Text style={styles.floatingYeniText}>+</Text>
             </TouchableOpacity>

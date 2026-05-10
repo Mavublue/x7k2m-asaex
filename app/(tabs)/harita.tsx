@@ -185,7 +185,7 @@ export default function HaritaScreen() {
           const top = rawTop > 60 ? rawTop : popupPos.y + 18;
           const left = Math.max(8, Math.min(SCREEN_W - POPUP_W - 8, popupPos.x - POPUP_W / 2));
           return (
-            <TouchableOpacity style={[styles.popup, { top, left, width: POPUP_W }]} onPress={() => router.push(`/ilan/${secili.id}` as any)} activeOpacity={0.9}>
+            <View style={[styles.popup, { top, left, width: POPUP_W }]}>
               {secili.fotograflar?.[0] ? (
                 <Image source={{ uri: secili.fotograflar[0] }} style={styles.popupFoto} resizeMode="cover" />
               ) : (
@@ -196,15 +196,17 @@ export default function HaritaScreen() {
               <View style={styles.popupInfo}>
                 <Text style={styles.popupBaslik} numberOfLines={1}>{secili.baslik}</Text>
                 <Text style={styles.popupKonum} numberOfLines={1}>📍 {secili.konum}{secili.ilce ? `, ${secili.ilce}` : ''}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <Text style={styles.popupFiyat}>₺{secili.fiyat.toLocaleString('tr-TR')}</Text>
-                  <View style={styles.popupKategori}><Text style={styles.popupKategoriText}>{secili.kategori}</Text></View>
+                <Text style={styles.popupFiyat}>₺{secili.fiyat.toLocaleString('tr-TR')}</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+                  <TouchableOpacity style={styles.popupSecBtn} onPress={() => router.push(`/ilan/${secili.id}` as any)}>
+                    <Text style={styles.popupSecBtnText}>Görüntüle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.popupKapatBtn} onPress={() => { setSecili(null); setPopupPos(null); }}>
+                    <Text style={styles.popupKapatBtnText}>Kapat</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <TouchableOpacity style={styles.popupKapat} onPress={() => { setSecili(null); setPopupPos(null); }}>
-                <Text style={styles.popupKapatText}>✕</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
           );
         })()}
       </View>
@@ -280,11 +282,11 @@ const styles = StyleSheet.create({
   popupInfo: { flex: 1, padding: Spacing.md },
   popupBaslik: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
   popupKonum: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
-  popupFiyat: { fontSize: 15, fontWeight: '700', color: Colors.primary },
-  popupKategori: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 7, paddingVertical: 2 },
-  popupKategoriText: { fontSize: 10, color: Colors.primary, fontWeight: '600' },
-  popupKapat: { padding: Spacing.md },
-  popupKapatText: { fontSize: 16, color: Colors.onSurfaceVariant },
+  popupFiyat: { fontSize: 15, fontWeight: '700', color: Colors.primary, marginTop: 4 },
+  popupSecBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingVertical: 6, alignItems: 'center' },
+  popupSecBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  popupKapatBtn: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: Radius.sm, alignItems: 'center' },
+  popupKapatBtnText: { fontSize: 12, color: Colors.onSurfaceVariant },
 
   bottomPanel: {
     backgroundColor: Colors.surfaceContainerLowest,
