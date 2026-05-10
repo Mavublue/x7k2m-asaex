@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
 Notifications.setNotificationHandler({
@@ -14,16 +14,14 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerPushToken() {
-  if (!Device.isDevice) { console.log('[push] simulator, atlandı'); return; }
+  if (!Device.isDevice) return;
 
   const { status: existing } = await Notifications.getPermissionsAsync();
-  console.log('[push] mevcut izin:', existing);
   let finalStatus = existing;
   if (existing !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
-  console.log('[push] final izin:', finalStatus);
   if (finalStatus !== 'granted') return;
 
   if (Platform.OS === 'android') {
@@ -37,14 +35,12 @@ export async function registerPushToken() {
     const result = await Notifications.getExpoPushTokenAsync({
       projectId: 'e4ab4d85-4bc6-42fe-8d95-217137887489',
     });
-    if (!result.data) { Alert.alert('Push', 'Token alınamadı'); return; }
-
-    const { error } = await supabase.from('push_tokenler').upsert(
+    if (!result.data) return;
+    await supabase.from('push_tokenler').upsert(
       { token: result.data, platform: Platform.OS },
       { onConflict: 'user_id,token' }
     );
-    Alert.alert('Push', error ? `Hata: ${error.message}` : 'Token kaydedildi ✓');
-  } catch (e: any) {
-    Alert.alert('Push Hata', String(e?.message ?? e));
+  } catch {
+    // Push notification Apple Developer hesabı gerektirir
   }
 }
