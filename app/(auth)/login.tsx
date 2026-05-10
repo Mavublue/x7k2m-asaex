@@ -42,6 +42,7 @@ export default function LoginScreen() {
         id: data.user.id,
         ad, soyad, telefon,
         ofis_adi: ofisAdi || null,
+        watermark_text: `${ad} ${soyad}`.trim(),
       });
     }
     Alert.alert('Başarılı', 'Hesabınız oluşturuldu.');
