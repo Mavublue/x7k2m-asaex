@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { supabase } from './supabase';
 
 Notifications.setNotificationHandler({
@@ -37,15 +37,14 @@ export async function registerPushToken() {
     const result = await Notifications.getExpoPushTokenAsync({
       projectId: 'e4ab4d85-4bc6-42fe-8d95-217137887489',
     });
-    console.log('[push] token:', result.data);
-    if (!result.data) return;
+    if (!result.data) { Alert.alert('Push', 'Token alınamadı'); return; }
 
     const { error } = await supabase.from('push_tokenler').upsert(
       { token: result.data, platform: Platform.OS },
       { onConflict: 'user_id,token' }
     );
-    console.log('[push] DB kayıt hatası:', error);
-  } catch (e) {
-    console.log('[push] hata:', e);
+    Alert.alert('Push', error ? `Hata: ${error.message}` : 'Token kaydedildi ✓');
+  } catch (e: any) {
+    Alert.alert('Push Hata', String(e?.message ?? e));
   }
 }
