@@ -418,12 +418,27 @@ export default function MusteriDetayScreen() {
   async function handleNotKaydet() {
     if (!notIcerik.trim()) return;
     const tarihIso = notTarih.toISOString();
+    const icerik = notIcerik.trim();
     if (notEditId) {
-      const { error } = await supabase.from('musteri_notlar').update({ icerik: notIcerik.trim(), tarih: tarihIso }).eq('id', notEditId);
+      const { error } = await supabase.from('musteri_notlar').update({ icerik, tarih: tarihIso }).eq('id', notEditId);
       if (error) { Alert.alert('Hata', error.message); return; }
     } else {
-      const { error } = await supabase.from('musteri_notlar').insert({ musteri_id: id, icerik: notIcerik.trim(), tarih: tarihIso });
+      const { error } = await supabase.from('musteri_notlar').insert({ musteri_id: id, icerik, tarih: tarihIso });
       if (error) { Alert.alert('Hata', error.message); return; }
+      // Yeni not → taahhüt analizi (arka planda, hata olsa bile devam)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/not-analiz`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ musteri_id: id, not_icerik: icerik }),
+        }).then(async (res) => {
+          if (res.ok) {
+            const d = await res.json();
+            if (d.gorev) refreshGorevler();
+          }
+        }).catch(() => {});
+      }
     }
     setNotEkle(false);
     setNotEditId(null);
