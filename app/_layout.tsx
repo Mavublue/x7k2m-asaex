@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import { registerPushToken } from '../lib/pushNotifications';
 import { Session } from '@supabase/supabase-js';
 
 export default function RootLayout() {
@@ -27,7 +28,9 @@ export default function RootLayout() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (!session) {
+      if (session) {
+        registerPushToken();
+      } else {
         router.replace('/(auth)/login');
       }
     });

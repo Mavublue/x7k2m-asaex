@@ -55,6 +55,18 @@ export interface MusteriNot {
   olusturma_tarihi: string;
 }
 
+export interface MusteriGorev {
+  id: string;
+  musteri_id: string;
+  baslik: string;
+  aciklama: string | null;
+  hedef_tarih: string | null;
+  tamamlandi: boolean;
+  tamamlanma_tarihi: string | null;
+  olusturma_tarihi: string;
+  guncelleme_tarihi: string;
+}
+
 export interface MusteriIletisim {
   id: string;
   musteri_id: string;

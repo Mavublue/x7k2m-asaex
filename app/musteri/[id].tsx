@@ -7,7 +7,7 @@ import {
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
-import { Musteri, Ilan, MusteriNot } from '../../types';
+import { Musteri, Ilan, MusteriNot, MusteriGorev } from '../../types';
 import R2Image from '../../components/R2Image';
 import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
@@ -90,6 +90,13 @@ export default function MusteriDetayScreen() {
   const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
   const [showTakipPicker, setShowTakipPicker] = useState(false);
   const [notEditId, setNotEditId] = useState<string | null>(null);
+  const [gorevler, setGorevler] = useState<MusteriGorev[]>([]);
+  const [gorevEkle, setGorevEkle] = useState(false);
+  const [gorevBaslik, setGorevBaslik] = useState('');
+  const [gorevAciklama, setGorevAciklama] = useState('');
+  const [gorevHedefTarih, setGorevHedefTarih] = useState<Date | null>(null);
+  const [gorevEditId, setGorevEditId] = useState<string | null>(null);
+  const [showGorevPicker, setShowGorevPicker] = useState(false);
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
@@ -153,6 +160,10 @@ export default function MusteriDetayScreen() {
       }));
 
       setNotlar(((nData ?? []) as MusteriNot[]).slice().sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime()));
+
+      const { data: gData } = await supabase.from('musteri_gorevler')
+        .select('*').eq('musteri_id', id).order('tamamlandi').order('hedef_tarih', { ascending: true, nullsFirst: false });
+      setGorevler((gData ?? []) as MusteriGorev[]);
 
       if (jData) {
         setOzelIstekler(jData.map((r: any) => r.ozellik_id));
@@ -426,6 +437,66 @@ export default function MusteriDetayScreen() {
       { text: 'Sil', style: 'destructive', onPress: async () => {
         await supabase.from('musteri_notlar').delete().eq('id', notId);
         setNotlar(prev => prev.filter(n => n.id !== notId));
+      }},
+    ]);
+  }
+
+  async function refreshGorevler() {
+    const { data } = await supabase.from('musteri_gorevler')
+      .select('*').eq('musteri_id', id).order('tamamlandi').order('hedef_tarih', { ascending: true, nullsFirst: false });
+    setGorevler((data ?? []) as MusteriGorev[]);
+  }
+
+  function gorevEkleAc() {
+    setGorevEditId(null);
+    setGorevBaslik('');
+    setGorevAciklama('');
+    setGorevHedefTarih(null);
+    setGorevEkle(true);
+  }
+
+  function gorevDuzenleAc(g: MusteriGorev) {
+    setGorevEditId(g.id);
+    setGorevBaslik(g.baslik);
+    setGorevAciklama(g.aciklama ?? '');
+    setGorevHedefTarih(g.hedef_tarih ? new Date(g.hedef_tarih) : null);
+    setGorevEkle(true);
+  }
+
+  async function handleGorevKaydet() {
+    if (!gorevBaslik.trim()) return;
+    const payload = {
+      musteri_id: id,
+      baslik: gorevBaslik.trim(),
+      aciklama: gorevAciklama.trim() || null,
+      hedef_tarih: gorevHedefTarih ? gorevHedefTarih.toISOString() : null,
+    };
+    if (gorevEditId) {
+      const { error } = await supabase.from('musteri_gorevler').update(payload).eq('id', gorevEditId);
+      if (error) { Alert.alert('Hata', error.message); return; }
+    } else {
+      const { error } = await supabase.from('musteri_gorevler').insert(payload);
+      if (error) { Alert.alert('Hata', error.message); return; }
+    }
+    setGorevEkle(false);
+    setGorevEditId(null);
+    setGorevBaslik('');
+    setGorevAciklama('');
+    setGorevHedefTarih(null);
+    refreshGorevler();
+  }
+
+  async function handleGorevTamamla(g: MusteriGorev) {
+    await supabase.from('musteri_gorevler').update({ tamamlandi: !g.tamamlandi }).eq('id', g.id);
+    setGorevler(prev => prev.map(x => x.id === g.id ? { ...x, tamamlandi: !x.tamamlandi } : x));
+  }
+
+  async function handleGorevSil(gorevId: string) {
+    Alert.alert('Görevi Sil', 'Bu görev silinsin mi?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: async () => {
+        await supabase.from('musteri_gorevler').delete().eq('id', gorevId);
+        setGorevler(prev => prev.filter(g => g.id !== gorevId));
       }},
     ]);
   }
@@ -805,6 +876,27 @@ export default function MusteriDetayScreen() {
                 )}
               </View>
 
+              {/* Görevler (edit modunda da göster) */}
+              <GorevlerBox
+                gorevler={gorevler}
+                gorevEkle={gorevEkle}
+                gorevBaslik={gorevBaslik}
+                gorevAciklama={gorevAciklama}
+                gorevHedefTarih={gorevHedefTarih}
+                gorevEditId={gorevEditId}
+                showGorevPicker={showGorevPicker}
+                setGorevBaslik={setGorevBaslik}
+                setGorevAciklama={setGorevAciklama}
+                setGorevHedefTarih={setGorevHedefTarih}
+                setShowGorevPicker={setShowGorevPicker}
+                onEkleAc={gorevEkleAc}
+                onKaydet={handleGorevKaydet}
+                onIptal={() => { setGorevEkle(false); setGorevEditId(null); setGorevBaslik(''); setGorevAciklama(''); setGorevHedefTarih(null); }}
+                onTamamla={handleGorevTamamla}
+                onDuzenle={gorevDuzenleAc}
+                onSil={handleGorevSil}
+              />
+
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Durum</Text>
                 <View style={styles.durumRow}>
@@ -995,6 +1087,27 @@ export default function MusteriDetayScreen() {
                       ))
                     )}
                   </View>
+
+                  {/* Görevler */}
+                  <GorevlerBox
+                    gorevler={gorevler}
+                    gorevEkle={gorevEkle}
+                    gorevBaslik={gorevBaslik}
+                    gorevAciklama={gorevAciklama}
+                    gorevHedefTarih={gorevHedefTarih}
+                    gorevEditId={gorevEditId}
+                    showGorevPicker={showGorevPicker}
+                    setGorevBaslik={setGorevBaslik}
+                    setGorevAciklama={setGorevAciklama}
+                    setGorevHedefTarih={setGorevHedefTarih}
+                    setShowGorevPicker={setShowGorevPicker}
+                    onEkleAc={gorevEkleAc}
+                    onKaydet={handleGorevKaydet}
+                    onIptal={() => { setGorevEkle(false); setGorevEditId(null); setGorevBaslik(''); setGorevAciklama(''); setGorevHedefTarih(null); }}
+                    onTamamla={handleGorevTamamla}
+                    onDuzenle={gorevDuzenleAc}
+                    onSil={handleGorevSil}
+                  />
 
                   {/* İlan Eşleşmeleri (lazy) */}
                   {!eslesenYuklendi ? (
@@ -1394,6 +1507,151 @@ function Field({ label, value, onChangeText, placeholder, keyboardType, autoCapi
     </View>
   );
 }
+
+function gorevTarihGoster(iso: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function GorevlerBox({
+  gorevler, gorevEkle, gorevBaslik, gorevAciklama, gorevHedefTarih, gorevEditId,
+  showGorevPicker, setGorevBaslik, setGorevAciklama, setGorevHedefTarih, setShowGorevPicker,
+  onEkleAc, onKaydet, onIptal, onTamamla, onDuzenle, onSil,
+}: {
+  gorevler: MusteriGorev[];
+  gorevEkle: boolean;
+  gorevBaslik: string;
+  gorevAciklama: string;
+  gorevHedefTarih: Date | null;
+  gorevEditId: string | null;
+  showGorevPicker: boolean;
+  setGorevBaslik: (v: string) => void;
+  setGorevAciklama: (v: string) => void;
+  setGorevHedefTarih: (v: Date | null) => void;
+  setShowGorevPicker: (v: boolean) => void;
+  onEkleAc: () => void;
+  onKaydet: () => void;
+  onIptal: () => void;
+  onTamamla: (g: MusteriGorev) => void;
+  onDuzenle: (g: MusteriGorev) => void;
+  onSil: (id: string) => void;
+}) {
+  return (
+    <View style={gorevStyles.box}>
+      <View style={gorevStyles.header}>
+        <Text style={gorevStyles.baslik}>✓ Görevler {gorevler.length > 0 ? `(${gorevler.length})` : ''}</Text>
+        {!gorevEkle && (
+          <TouchableOpacity onPress={onEkleAc} style={gorevStyles.ekleBtn}>
+            <Text style={gorevStyles.ekleBtnText}>+ Görev Ekle</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {gorevEkle && (
+        <View style={gorevStyles.form}>
+          <TextInput
+            style={gorevStyles.input}
+            placeholder="Görev başlığı..."
+            placeholderTextColor={Colors.outlineVariant}
+            value={gorevBaslik}
+            onChangeText={setGorevBaslik}
+          />
+          <TextInput
+            style={[gorevStyles.input, { minHeight: 48, marginTop: 6 }]}
+            placeholder="Açıklama (isteğe bağlı)..."
+            placeholderTextColor={Colors.outlineVariant}
+            value={gorevAciklama}
+            onChangeText={setGorevAciklama}
+            multiline
+            textAlignVertical="top"
+          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <TouchableOpacity onPress={() => setShowGorevPicker(true)} style={[gorevStyles.input, { flex: 1, minWidth: 140, justifyContent: 'center' }]}>
+              <Text style={{ fontSize: 13, color: gorevHedefTarih ? Colors.onSurface : Colors.outlineVariant }}>
+                {gorevHedefTarih ? `📅 ${gorevTarihGoster(gorevHedefTarih.toISOString())}` : '📅 Tarih seç'}
+              </Text>
+            </TouchableOpacity>
+            {gorevHedefTarih && (
+              <TouchableOpacity onPress={() => setGorevHedefTarih(null)}>
+                <Text style={{ fontSize: 12, color: Colors.error }}>Temizle</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onKaydet} style={[gorevStyles.kaydetBtn, !gorevBaslik.trim() && { opacity: 0.5 }]} disabled={!gorevBaslik.trim()}>
+              <Text style={gorevStyles.kaydetBtnText}>{gorevEditId ? 'Güncelle' : 'Kaydet'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onIptal} style={gorevStyles.iptalBtn}>
+              <Text style={gorevStyles.iptalBtnText}>İptal</Text>
+            </TouchableOpacity>
+          </View>
+          {showGorevPicker && (
+            <DateTimePicker
+              value={gorevHedefTarih ?? new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, sel) => {
+                setShowGorevPicker(Platform.OS === 'ios');
+                if (sel) setGorevHedefTarih(sel);
+              }}
+            />
+          )}
+          {Platform.OS === 'ios' && showGorevPicker && (
+            <TouchableOpacity onPress={() => setShowGorevPicker(false)} style={[gorevStyles.kaydetBtn, { marginTop: 8, alignSelf: 'flex-start' }]}>
+              <Text style={gorevStyles.kaydetBtnText}>Tamam</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {gorevler.length === 0 && !gorevEkle ? (
+        <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontStyle: 'italic' }}>Henüz görev yok.</Text>
+      ) : (
+        gorevler.map(g => (
+          <View key={g.id} style={[gorevStyles.satir, g.tamamlandi && gorevStyles.satirTamamlandi]}>
+            <TouchableOpacity onPress={() => onTamamla(g)} style={gorevStyles.checkbox}>
+              <Text style={{ fontSize: 16 }}>{g.tamamlandi ? '☑' : '☐'}</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={[gorevStyles.satirBaslik, g.tamamlandi && gorevStyles.satirBaslikTamamlandi]}>{g.baslik}</Text>
+              {g.aciklama ? <Text style={gorevStyles.satirAciklama}>{g.aciklama}</Text> : null}
+              {g.hedef_tarih ? <Text style={gorevStyles.satirTarih}>📅 {gorevTarihGoster(g.hedef_tarih)}</Text> : null}
+            </View>
+            <TouchableOpacity onPress={() => Alert.alert('Görev', '', [
+              { text: 'Düzenle', onPress: () => onDuzenle(g) },
+              { text: 'Sil', style: 'destructive', onPress: () => onSil(g.id) },
+              { text: 'İptal', style: 'cancel' },
+            ])} style={gorevStyles.menuBtn}>
+              <Text style={{ fontSize: 18, color: '#166534', fontWeight: '700' }}>⋯</Text>
+            </TouchableOpacity>
+          </View>
+        ))
+      )}
+    </View>
+  );
+}
+
+const gorevStyles = StyleSheet.create({
+  box: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  baslik: { fontSize: 13, fontWeight: '700', color: '#166534', letterSpacing: 0.3 },
+  ekleBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#16a34a', borderRadius: Radius.sm },
+  ekleBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+  form: { marginBottom: 8 },
+  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#86efac', borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface },
+  kaydetBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#16a34a', borderRadius: Radius.sm },
+  kaydetBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+  iptalBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.sm },
+  iptalBtnText: { fontSize: 12, color: Colors.onSurfaceVariant },
+  satir: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#bbf7d0' },
+  satirTamamlandi: { opacity: 0.6 },
+  checkbox: { paddingTop: 1 },
+  satirBaslik: { fontSize: 13, fontWeight: '600', color: Colors.onSurface },
+  satirBaslikTamamlandi: { textDecorationLine: 'line-through', color: Colors.onSurfaceVariant },
+  satirAciklama: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  satirTarih: { fontSize: 11, color: '#16a34a', marginTop: 3 },
+  menuBtn: { paddingHorizontal: 6 },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
