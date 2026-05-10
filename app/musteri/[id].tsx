@@ -432,6 +432,27 @@ export default function MusteriDetayScreen() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
           body: JSON.stringify({ musteri_id: id, not_icerik: icerik }),
+        }).then(async (res) => {
+          if (!res.ok) return;
+          const d = await res.json();
+          if (d.gorev && d.baslik) {
+            Alert.alert(
+              'Görev Önerisi',
+              `"${d.baslik}"${d.tarih ? `\nTarih: ${new Date(d.tarih).toLocaleDateString('tr-TR')}` : ''}\n\nGörev olarak eklensin mi?`,
+              [
+                { text: 'Hayır', style: 'cancel' },
+                { text: 'Evet', onPress: async () => {
+                  await supabase.from('musteri_gorevler').insert({
+                    musteri_id: id,
+                    baslik: d.baslik,
+                    hedef_tarih: d.tarih ? new Date(d.tarih).toISOString() : null,
+                    aciklama: 'Nottan önerildi',
+                  });
+                  refreshGorevler();
+                }},
+              ]
+            );
+          }
         }).catch(() => {});
       }
     }
