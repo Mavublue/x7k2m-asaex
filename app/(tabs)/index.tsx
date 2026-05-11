@@ -16,6 +16,8 @@ export default function DashboardScreen() {
   const [eslesmeSayisi, setEslesmeSayisi] = useState(0);
   const [yeniEslesmeler, setYeniEslesmeler] = useState<Eslesme[]>([]);
   const [takipMusteriler, setTakipMusteriler] = useState<any[]>([]);
+  const [gorevDashboard, setGorevDashboard] = useState<any[]>([]);
+  const [gorevFiltre, setGorevFiltre] = useState<'bugun' | '7gun'>('bugun');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
@@ -34,10 +36,12 @@ export default function DashboardScreen() {
     fetchDurum();
     fetchBildirimler();
     fetchData();
+    fetchGorevDashboard('bugun');
   }, []);
 
   useFocusEffect(useCallback(() => {
     fetchData();
+    fetchGorevDashboard(gorevFiltre);
     if (ilkFocus.current) { ilkFocus.current = false; return; }
     fetchDurum();
     fetchBildirimler();
@@ -320,6 +324,29 @@ export default function DashboardScreen() {
     setLoading(false);
   }
 
+  async function fetchGorevDashboard(filtre: 'bugun' | '7gun') {
+    const baslangic = new Date();
+    baslangic.setHours(0, 0, 0, 0);
+    const bitis = new Date(baslangic);
+    if (filtre === '7gun') bitis.setDate(bitis.getDate() + 7);
+    else bitis.setDate(bitis.getDate() + 1);
+
+    const { data } = await supabase
+      .from('musteri_gorevler')
+      .select('id, baslik, hedef_tarih, musteri_id, musteriler!inner(ad, soyad)')
+      .eq('tamamlandi', false)
+      .not('hedef_tarih', 'is', null)
+      .gte('hedef_tarih', baslangic.toISOString())
+      .lt('hedef_tarih', bitis.toISOString())
+      .order('hedef_tarih', { ascending: true });
+    setGorevDashboard(data ?? []);
+  }
+
+  async function gorevTamamlaDashboard(gorevId: string) {
+    await supabase.from('musteri_gorevler').update({ tamamlandi: true }).eq('id', gorevId);
+    setGorevDashboard(prev => prev.filter(g => g.id !== gorevId));
+  }
+
   const hizliAksiyonlar = [
     { label: 'İlan Ekle', icon: '＋', route: '/ilan/ekle', color: Colors.primary },
     { label: 'Müşteri', icon: '👤', route: '/(tabs)/musteriler', color: Colors.secondaryContainer },
@@ -376,6 +403,56 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* Görevler */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={[styles.bildirimDot, { backgroundColor: '#16a34a' }]} />
+              <Text style={styles.sectionTitle}>Görevler {gorevDashboard.length > 0 ? `(${gorevDashboard.length})` : ''}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {(['bugun', '7gun'] as const).map(f => (
+                <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevDashboard(f); }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: gorevFiltre === f ? '#16a34a' : Colors.surfaceContainerHigh }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: gorevFiltre === f ? '#fff' : Colors.onSurfaceVariant }}>
+                    {f === 'bugun' ? 'Bugün' : '7 Gün'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          {gorevDashboard.length === 0 ? (
+            <View style={{ padding: 16, backgroundColor: '#f0fdf4', borderRadius: 10, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '500' }}>
+                {gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : '7 günlük görev yok 🎉'}
+              </Text>
+            </View>
+          ) : (
+            gorevDashboard.map(g => {
+              const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
+              const hasTime = d && (d.getHours() !== 0 || d.getMinutes() !== 0);
+              const pad = (n: number) => String(n).padStart(2, '0');
+              const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
+              const m = g.musteriler;
+              return (
+                <TouchableOpacity key={g.id} onPress={() => router.push(`/musteri/${g.musteri_id}` as any)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 3, borderLeftColor: '#16a34a', marginBottom: 6 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>
+                    <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 }}>
+                      {m?.ad} {m?.soyad}{saatStr ? ` · ⏰ ${saatStr}` : ''}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => gorevTamamlaDashboard(g.id)}
+                    style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓ Yapıldı</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
 
         {/* Takip Bildirimleri */}
