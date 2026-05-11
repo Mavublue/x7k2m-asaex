@@ -459,19 +459,21 @@ export default function DashboardScreen() {
 
         {/* Görevler */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={[styles.bildirimDot, { backgroundColor: '#16a34a' }]} />
-              <Text style={styles.sectionTitle}>Görevler</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: '#dbeafe' }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
+          <View style={{ marginBottom: Spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={[styles.bildirimDot, { backgroundColor: '#16a34a' }]} />
+                <Text style={styles.sectionTitle}>Görevler</Text>
+              </View>
+              <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: '#dbeafe' }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
               </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
               {([['gecmis','Gecikmiş'],['bugun','Bugün'],['yarin','Yarın'],['7gun','7 Gün'],['tumu','Tümü']] as ['gecmis'|'bugun'|'yarin'|'7gun'|'tumu', string][]).map(([f, label]) => (
                 <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevDashboard(f); }}
-                  style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : '#16a34a') : Colors.surfaceContainerHigh }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: gorevFiltre === f ? '#fff' : (f === 'gecmis' && gecmisCount > 0 ? '#ef4444' : Colors.onSurfaceVariant) }}>
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : '#16a34a') : Colors.surfaceContainerHigh }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: gorevFiltre === f ? '#fff' : (f === 'gecmis' && gecmisCount > 0 ? '#ef4444' : Colors.onSurfaceVariant) }}>
                     {label}{f === 'gecmis' && gecmisCount > 0 && gorevFiltre !== 'gecmis' ? ` ${gecmisCount}` : ''}
                   </Text>
                 </TouchableOpacity>
