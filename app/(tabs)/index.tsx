@@ -375,8 +375,7 @@ export default function DashboardScreen() {
     if (!editGorev || !editBaslik.trim()) return;
     let hedefTarihIso: string | null = null;
     if (editTarih) {
-      const [y, mo, d] = editTarih.split('-').map(Number);
-      const dt = new Date(y, mo - 1, d);
+      const dt = new Date(editTarih);
       if (editSaat) { const [h, m] = editSaat.split(':').map(Number); dt.setHours(h, m, 0, 0); }
       hedefTarihIso = dt.toISOString();
     }
@@ -394,8 +393,7 @@ export default function DashboardScreen() {
     if (!genelBaslik.trim() || !genelTarih) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const [y, mo, d] = genelTarih.split('-').map(Number);
-    const dt = new Date(y, mo - 1, d);
+    const dt = new Date(genelTarih);
     if (genelSaat) { const [h, m] = genelSaat.split(':').map(Number); dt.setHours(h, m, 0, 0); }
     await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, ...(genelMusteriId ? { musteri_id: genelMusteriId } : {}) });
     setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelMusteriId(null); setGenelMusteriArama(''); setGenelGorevModal(false);
@@ -490,7 +488,7 @@ export default function DashboardScreen() {
           ) : (
             gorevDashboard.map(g => {
               const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
-              const hasTime = d && (d.getHours() !== 0 || d.getMinutes() !== 0);
+              const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
               const pad = (n: number) => String(n).padStart(2, '0');
               const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
               const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
@@ -512,7 +510,7 @@ export default function DashboardScreen() {
                       setEditGorev(g);
                       setEditBaslik(g.baslik);
                       setEditTarih(dt ? dt.toISOString().slice(0,10) : '');
-                      setEditSaat(dt && (dt.getHours()!==0||dt.getMinutes()!==0) ? `${pad(dt.getHours())}:${pad(dt.getMinutes())}` : '');
+                      setEditSaat(dt && (dt.getUTCHours()!==0||dt.getUTCMinutes()!==0) ? `${pad(dt.getHours())}:${pad(dt.getMinutes())}` : '');
                     }} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
                       <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant }}>✏️</Text>
                     </TouchableOpacity>
