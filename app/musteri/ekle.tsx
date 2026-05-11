@@ -49,11 +49,15 @@ export default function MusteriEkleScreen() {
   const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
-  const [butceMin, setButceMin] = useState('');
-  const [butceMax, setButceMax] = useState('');
-  const [tercihKonumlar, setTercihKonumlar] = useState<string[]>([]);
+  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[] };
+  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [] }]);
+  const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [konumSearch, setKonumSearch] = useState('');
+  const tercihKonumlar = activeIstekIdx !== null ? (istekler[activeIstekIdx]?.konumlar ?? []) : [];
+  const setTercihKonumlar = (v: string[] | ((p: string[]) => string[])) => {
+    setIstekler(prev => prev.map((ist, i) => i === activeIstekIdx ? { ...ist, konumlar: typeof v === 'function' ? v(ist.konumlar) : v } : ist));
+  };
 
   const ilIsaretli = (il: string) => tercihKonumlar.some(k => k === il || k.startsWith(il + ' / '));
   const ilceIsaretli = (il: string, ilce: string) => {
@@ -97,7 +101,7 @@ export default function MusteriEkleScreen() {
   const ilSayisi = seciliIller.length;
   const ilceSayisi = tercihKonumlar.filter(k => k.split(' / ').length === 2).length;
   const mahSayisi = tercihKonumlar.filter(k => k.split(' / ').length === 3).length;
-  const [tercihTipler, setTercihTipler] = useState<string[]>([]);
+  const [tercihTipler, setTercihTipler] = useState<string[]>([]); // kept for min_oda/bina_yasi compat
   const [minOda, setMinOda] = useState('');
   const [ozelIstekler, setOzelIstekler] = useState<string[]>([]);
   const [takipTarihi, setTakipTarihi] = useState('');
@@ -232,15 +236,10 @@ export default function MusteriEkleScreen() {
       return;
     }
     setLoading(true);
-    const tercih_konum_val = tercihKonumlar.length ? tercihKonumlar.join(' | ') : null;
 
     const { data: inserted, error } = await supabase.from('musteriler').insert({
       ad, soyad: soyad || null,
       telefon: birlestirTelefon(telKod, telNumara),
-      butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
-      butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
-      tercih_konum: tercih_konum_val,
-      tercih_tip: tercihTipler.length ? tercihTipler.join(',') : null,
       min_oda: minOda || null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
@@ -248,6 +247,21 @@ export default function MusteriEkleScreen() {
       durum,
     }).select('id').single();
     if (error) { Alert.alert('Hata', error.message); setLoading(false); return; }
+    if (inserted) {
+      const iRows = istekler
+        .filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length)
+        .map(i => ({
+          musteri_id: (inserted as any).id,
+          tip: i.tipler.length ? i.tipler.join(',') : null,
+          butce_min: i.butceMin ? parseInt(i.butceMin.replace(/\./g, '')) : null,
+          butce_max: i.butceMax ? parseInt(i.butceMax.replace(/\./g, '')) : null,
+          tercih_konum: i.konumlar.length ? i.konumlar.join(' | ') : null,
+        }));
+      if (iRows.length) {
+        const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
+        if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setLoading(false); return; }
+      }
+    }
     if (ozelIstekler.length && inserted) {
       const rows = ozelIstekler.map(oid => ({ musteri_id: (inserted as any).id, ozellik_id: oid }));
       const { error: jErr } = await supabase.from('musteri_ozellikler').insert(rows);
@@ -359,85 +373,51 @@ export default function MusteriEkleScreen() {
             )}
           </View>
 
-          <View style={styles.satir}>
-            <View style={{ flex: 1 }}>
-              <Field label="Bütçe Min (₺)" value={butceMin} onChangeText={v => setButceMin(formatButce(v))} placeholder="500.000" keyboardType="numeric" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field label="Bütçe Max (₺)" value={butceMax} onChangeText={v => setButceMax(formatButce(v))} placeholder="2.000.000" keyboardType="numeric" />
-            </View>
-          </View>
-
-          {/* Konum */}
+          {/* İstekler */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Tercih Edilen Konum</Text>
-            <View style={{ flexDirection: 'column', gap: 12 }}>
-              {/* İl Kutusu */}
-              <TouchableOpacity
-                style={[styles.konumBox, ilSayisi > 0 && styles.konumBoxAktif]}
-                onPress={() => { setKonumSearch(''); setFilterPage('il'); }}
-              >
-                <Text style={[styles.konumBoxText, ilSayisi > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
-                  {ilSayisi > 0 ? `${ilSayisi} İl Seçildi` : 'İl Seçin'}
-                </Text>
-                {ilSayisi > 0
-                  ? <TouchableOpacity onPress={() => setTercihKonumlar([])} style={{ paddingLeft: 10, paddingVertical: 4 }}>
-                      <Text style={styles.konumBoxSil}>✕ Temizle</Text>
-                    </TouchableOpacity>
-                  : <Text style={styles.konumBoxChevron}>▾</Text>
-                }
-              </TouchableOpacity>
-
-              {/* İlçe Kutusu */}
-              <TouchableOpacity
-                style={[styles.konumBox, ilceSayisi > 0 && styles.konumBoxAktif, ilSayisi === 0 && styles.konumBoxDisabled]}
-                onPress={() => { if (ilSayisi === 0) return; setKonumSearch(''); setFilterPage('ilce'); }}
-                activeOpacity={ilSayisi > 0 ? 0.7 : 1}
-              >
-                <Text style={[styles.konumBoxText, ilceSayisi > 0 && styles.konumBoxTextAktif, ilSayisi === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
-                  {ilceSayisi > 0 ? `${ilceSayisi} İlçe Seçildi` : 'İlçe Seçin'}
-                </Text>
-                {ilceSayisi > 0
-                  ? <TouchableOpacity onPress={() => setTercihKonumlar(prev => prev.filter(k => k.split(' / ').length === 1))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
-                      <Text style={styles.konumBoxSil}>✕ Temizle</Text>
-                    </TouchableOpacity>
-                  : <Text style={[styles.konumBoxChevron, ilSayisi === 0 && { color: Colors.outlineVariant }]}>▾</Text>
-                }
-              </TouchableOpacity>
-
-              {/* Mahalle Kutusu */}
-              <TouchableOpacity
-                style={[styles.konumBox, mahSayisi > 0 && styles.konumBoxAktif, seciliIlceler.length === 0 && styles.konumBoxDisabled]}
-                onPress={() => { if (seciliIlceler.length === 0) return; setKonumSearch(''); setFilterPage('mahalle'); }}
-                activeOpacity={seciliIlceler.length > 0 ? 0.7 : 1}
-              >
-                <Text style={[styles.konumBoxText, mahSayisi > 0 && styles.konumBoxTextAktif, seciliIlceler.length === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
-                  {mahSayisi > 0 ? `${mahSayisi} Mahalle Seçildi` : 'Mahalle Seçin'}
-                </Text>
-                {mahSayisi > 0
-                  ? <TouchableOpacity onPress={() => setTercihKonumlar(prev => prev.filter(k => k.split(' / ').length !== 3))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
-                      <Text style={styles.konumBoxSil}>✕ Temizle</Text>
-                    </TouchableOpacity>
-                  : <Text style={[styles.konumBoxChevron, seciliIlceler.length === 0 && { color: Colors.outlineVariant }]}>▾</Text>
-                }
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
+              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [] }])}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
+                <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
               </TouchableOpacity>
             </View>
-          </View>
-
-          {/* Tercih Tip */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Tercih Edilen Tip</Text>
-            <View style={styles.chipRow}>
-              {EMLAK_TIPLERI.map(t => {
-                const secili = tercihTipler.includes(t);
-                return (
-                  <TouchableOpacity key={t} style={[styles.chip, secili && styles.chipActive]}
-                    onPress={() => setTercihTipler(prev => secili ? prev.filter(x => x !== t) : [...prev, t])}>
-                    <Text style={[styles.chipText, secili && styles.chipTextActive]}>{t}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {istekler.map((istek, idx) => (
+              <View key={idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 12, gap: 10, marginTop: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>İstek {idx + 1}</Text>
+                  {istekler.length > 1 && (
+                    <TouchableOpacity onPress={() => setIstekler(p => p.filter((_, i) => i !== idx))}>
+                      <Text style={{ fontSize: 16, color: Colors.primary, fontWeight: '700' }}>× Kaldır</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.chipRow}>
+                  {EMLAK_TIPLERI.map(t => {
+                    const secili = istek.tipler.includes(t);
+                    return (
+                      <TouchableOpacity key={t} style={[styles.chip, secili && styles.chipActive]}
+                        onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: secili ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t] } : x))}>
+                        <Text style={[styles.chipText, secili && styles.chipTextActive]}>{t}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                    value={istek.butceMin} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMin: formatButce(v) } : x))} />
+                  <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                    value={istek.butceMax} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMax: formatButce(v) } : x))} />
+                </View>
+                <TouchableOpacity style={[styles.konumBox, istek.konumlar.length > 0 && styles.konumBoxAktif]}
+                  onPress={() => { setActiveIstekIdx(idx); setKonumSearch(''); setFilterPage('il'); }}>
+                  <Text style={[styles.konumBoxText, istek.konumlar.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
+                    {istek.konumlar.length > 0 ? `${istek.konumlar.length} konum seçildi` : 'Konum Seç'}
+                  </Text>
+                  <Text style={styles.konumBoxChevron}>▾</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
 
           {/* Min Oda */}
@@ -648,10 +628,10 @@ export default function MusteriEkleScreen() {
       )}
 
       {/* Konum Modalı */}
-      {filterPage !== 'main' && (
+      {activeIstekIdx !== null && filterPage !== 'main' && (
         <Modal visible={true} animationType="slide" transparent>
           <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
-            <TouchableOpacity style={styles.modalDimmer} onPress={() => setFilterPage('main')} />
+            <TouchableOpacity style={styles.modalDimmer} onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); }} />
             <View style={styles.modalPanel}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setFilterPage('main')}>
@@ -660,7 +640,7 @@ export default function MusteriEkleScreen() {
                 <Text style={styles.modalBaslik}>
                   {filterPage === 'il' ? 'İl Seçin' : filterPage === 'ilce' ? 'İlçe Seçin' : 'Mahalle Seçin'}
                 </Text>
-                <TouchableOpacity onPress={() => setFilterPage('main')}>
+                <TouchableOpacity onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.primary }}>Tamam</Text>
                 </TouchableOpacity>
               </View>

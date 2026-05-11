@@ -7,7 +7,7 @@ import {
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
-import { Musteri, Ilan, MusteriNot, MusteriGorev } from '../../types';
+import { Musteri, Ilan, MusteriNot, MusteriGorev, MusteriIstek } from '../../types';
 import R2Image from '../../components/R2Image';
 import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
@@ -69,13 +69,13 @@ export default function MusteriDetayScreen() {
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
   const [telefonRaw, setTelefonRaw] = useState('');
-  const [butceMin, setButceMin] = useState('');
-  const [butceMax, setButceMax] = useState('');
+  type IstekState = { id?: string; tipler: string[]; butceMin: string; butceMax: string; konumlar: string[] };
+  const [istekler, setIstekler] = useState<IstekState[]>([]);
+  const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [konumlar, setKonumlar] = useState<string[]>([]);
   const [tempIl, setTempIl] = useState('');
   const [tempIlce, setTempIlce] = useState('');
   const [tempMahalle, setTempMahalle] = useState('');
-  const [tercihTipler, setTercihTipler] = useState<string[]>([]);
   const [minOda, setMinOda] = useState('');
   const [ozelIstekler, setOzelIstekler] = useState<string[]>([]);
   const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
@@ -110,7 +110,11 @@ export default function MusteriDetayScreen() {
 
   function konumEkle(il: string, ilce?: string, mahalle?: string) {
     const k = [il, ilce, mahalle].filter(Boolean).join(' / ');
-    setKonumlar(prev => prev.includes(k) ? prev : [...prev, k]);
+    setKonumlar(prev => {
+      const next = prev.includes(k) ? prev : [...prev, k];
+      setIstekler(pp => pp.map((ist, i) => i === activeIstekIdx ? { ...ist, konumlar: next } : ist));
+      return next;
+    });
   }
   const [ilanModal, setIlanModal] = useState(false);
   const [tumIlanlar, setTumIlanlar] = useState<Ilan[]>([]);
@@ -148,11 +152,14 @@ export default function MusteriDetayScreen() {
       setVarsayilanKod(dKod);
       const sp = ayirTelefon(data.telefon, dKod);
       setTelKod(sp.kod); setTelNumara(sp.numara.replace(/\D/g, ''));
-      setButceMin(data.butce_min ? formatButce(String(data.butce_min)) : '');
-      setButceMax(data.butce_max ? formatButce(String(data.butce_max)) : '');
-      setKonumlar((data.tercih_konum ?? '').split(/\s*\|\s*/).filter(Boolean));
-      setTercihTipler(data.tercih_tip ? data.tercih_tip.split(',') : []);
       setMinOda(data.min_oda ?? '');
+      setIstekler((rpcData?.istekler ?? []).map((i: any) => ({
+        id: i.id,
+        tipler: i.tip ? i.tip.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+        butceMin: i.butce_min ? formatButce(String(i.butce_min)) : '',
+        butceMax: i.butce_max ? formatButce(String(i.butce_max)) : '',
+        konumlar: i.tercih_konum ? i.tercih_konum.split(/\s*\|\s*/).filter(Boolean) : [],
+      })));
       setTakipTarihi(data.takip_tarihi ? tarihFormat(data.takip_tarihi) : '');
       setBinaYaslari(data.bina_yasi ? data.bina_yasi.split(',') : []);
       setEtiket(data.etiketler ?? '');
@@ -187,62 +194,57 @@ export default function MusteriDetayScreen() {
     if (data) setTumOzellikler(data);
   }, [tumOzellikler.length]);
 
+  function istekEslesiyor(istek: any, ilan: any): boolean {
+    if (!istek.tip && istek.butce_min == null && istek.butce_max == null && !istek.tercih_konum) return false;
+    const f = Number(ilan.fiyat);
+    if (istek.butce_min != null && f < Number(istek.butce_min)) return false;
+    if (istek.butce_max != null && f > Number(istek.butce_max)) return false;
+    if (istek.tip) {
+      const tipler = istek.tip.split(',').map((t: string) => t.trim()).filter(Boolean);
+      if (tipler.length && !tipler.some((t: string) => (ilan.kategori ?? '').toLowerCase().includes(t.toLowerCase()))) return false;
+    }
+    if (istek.tercih_konum) {
+      const konumListesi = istek.tercih_konum.split(/\s*\|\s*/).filter(Boolean);
+      const match = konumListesi.some((konum: string) => {
+        const [kil, kilce, kmah] = konum.split(' / ').map((p: string) => p.trim());
+        if (kmah) {
+          if (kil && ilan.konum?.toLowerCase() !== kil.toLowerCase()) return false;
+          if (kilce && ilan.ilce?.toLowerCase() !== kilce.toLowerCase()) return false;
+          return ilan.mahalle?.toLowerCase().includes(kmah.toLowerCase()) ?? false;
+        }
+        if (kilce) {
+          if (kil && ilan.konum?.toLowerCase() !== kil.toLowerCase()) return false;
+          return ilan.ilce?.toLowerCase() === kilce.toLowerCase();
+        }
+        if (kil) return ilan.konum?.toLowerCase() === kil.toLowerCase();
+        return false;
+      });
+      if (!match) return false;
+    }
+    return true;
+  }
+
   const fetchEslesenIlanlar = useCallback(async () => {
-    if (!musteri) return;
     setEslesenYukleniyor(true);
-    const [{ data: eslesme }, autoIlanlar] = await Promise.all([
+    const [{ data: eslesme }, { data: mIstekler }, { data: ilanlar }] = await Promise.all([
       supabase.from('eslesmeler').select('id, ilan_id, ilanlar(*)').eq('musteri_id', id),
-      (async () => {
-        let query = supabase.from('ilanlar').select('*');
-        if (musteri.butce_min) query = query.gte('fiyat', musteri.butce_min);
-        if (musteri.butce_max) query = query.lte('fiyat', musteri.butce_max);
-        if (musteri.tercih_tip) {
-          const tipler = musteri.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
-          if (tipler.length > 0) query = query.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
-        }
-        let konumListesi: string[] = [];
-        if (musteri.tercih_konum) {
-          konumListesi = musteri.tercih_konum.split(/\s*\|\s*/).filter(Boolean);
-          const iller = Array.from(new Set(konumListesi.map((k: string) => k.split(' / ')[0].trim()).filter(Boolean)));
-          if (iller.length) {
-            const orStr = iller.map((il: string) => `konum.ilike.${il}`).join(',');
-            query = query.or(orStr);
-          }
-        }
-        if (!musteri.butce_min && !musteri.butce_max && !musteri.tercih_tip && !musteri.tercih_konum) {
-          return { ilanlar: [] as any[], konumListesi };
-        }
-        const { data: ilanlar } = await query.limit(50);
-        return { ilanlar: ilanlar ?? [], konumListesi };
-      })(),
+      supabase.from('musteri_istekler').select('*').eq('musteri_id', id),
+      supabase.from('ilanlar').select('*').eq('durum', 'Aktif').limit(200),
     ]);
 
     setElleEslesen((eslesme ?? []).map((e: any) => ({ id: e.id, ilan: e.ilanlar })));
 
-    const { ilanlar, konumListesi } = autoIlanlar;
-    let filtered = ilanlar;
-    if (konumListesi.length) {
-      filtered = filtered.filter((i: any) => konumListesi.some((konum: string) => {
-        const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
-        if (mah) {
-          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-          if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-          if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
-          return true;
-        }
-        if (ilce) {
-          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-          if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-          return true;
-        }
-        if (il) return i.konum?.toLowerCase() === il.toLowerCase();
-        return false;
-      }));
+    if (!mIstekler?.length) {
+      setEslesen([]);
+    } else {
+      const filtered = (ilanlar ?? []).filter((ilan: any) =>
+        (mIstekler ?? []).some((istek: any) => istekEslesiyor(istek, ilan))
+      );
+      setEslesen(filtered.slice(0, 20));
     }
-    setEslesen(filtered.slice(0, 20));
     setEslesenYuklendi(true);
     setEslesenYukleniyor(false);
-  }, [id, musteri]);
+  }, [id]);
 
   useFocusEffect(useCallback(() => { fetchMusteri(); }, [fetchMusteri]));
 
@@ -274,10 +276,6 @@ export default function MusteriDetayScreen() {
     const { error } = await supabase.from('musteriler').update({
       ad, soyad: soyad || null,
       telefon: tamTelefon,
-      butce_min: butceMin ? parseInt(butceMin.replace(/\./g, '')) : null,
-      butce_max: butceMax ? parseInt(butceMax.replace(/\./g, '')) : null,
-      tercih_konum: konumlar.length ? konumlar.join(' | ') : null,
-      tercih_tip: tercihTipler.length ? tercihTipler.join(',') : null,
       min_oda: minOda || null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
@@ -286,6 +284,21 @@ export default function MusteriDetayScreen() {
     }).eq('id', id);
 
     if (error) { Alert.alert('Hata', error.message); setSaving(false); return; }
+
+    await supabase.from('musteri_istekler').delete().eq('musteri_id', id);
+    const validIstekler = istekler.filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length);
+    if (validIstekler.length) {
+      const iRows = validIstekler.map(i => ({
+        musteri_id: id,
+        ...(i.id ? { id: i.id } : {}),
+        tip: i.tipler.length ? i.tipler.join(',') : null,
+        butce_min: i.butceMin ? parseInt(i.butceMin.replace(/\./g, '')) : null,
+        butce_max: i.butceMax ? parseInt(i.butceMax.replace(/\./g, '')) : null,
+        tercih_konum: i.konumlar.length ? i.konumlar.join(' | ') : null,
+      }));
+      const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
+      if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setSaving(false); return; }
+    }
 
     await supabase.from('musteri_ozellikler').delete().eq('musteri_id', id);
     if (ozelIstekler.length) {
@@ -693,47 +706,62 @@ export default function MusteriDetayScreen() {
                 )}
               </View>
 
-              <View style={styles.satir}>
-                <View style={{ flex: 1 }}>
-                  <Field label="Bütçe Min (₺)" value={butceMin} onChangeText={v => setButceMin(formatButce(v))} placeholder="500.000" keyboardType="numeric" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Field label="Bütçe Max (₺)" value={butceMax} onChangeText={v => setButceMax(formatButce(v))} placeholder="2.000.000" keyboardType="numeric" />
-                </View>
-              </View>
+              {/* İstekler */}
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Tercih Edilen Konum</Text>
-                {konumlar.map((k, i) => (
-                  <View key={i} style={styles.konumChip}>
-                    <Text style={styles.konumChipText}>📍 {k}</Text>
-                    <TouchableOpacity onPress={() => setKonumlar(prev => prev.filter((_, j) => j !== i))}>
-                      <Text style={styles.konumChipSil}>✕</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
+                  <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [] }])}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
+                    <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
+                  </TouchableOpacity>
+                </View>
+                {istekler.map((istek, idx) => (
+                  <View key={istek.id ?? idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 12, gap: 10, marginTop: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>İstek {idx + 1}</Text>
+                      {istekler.length > 1 && (
+                        <TouchableOpacity onPress={() => setIstekler(p => p.filter((_, i) => i !== idx))}>
+                          <Text style={{ fontSize: 14, color: Colors.primary, fontWeight: '700' }}>× Kaldır</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={styles.chipRow}>
+                      {EMLAK_TIPLERI.map(t => {
+                        const secili = istek.tipler.includes(t);
+                        return (
+                          <TouchableOpacity key={t} style={[styles.chip, secili && styles.chipActive]}
+                            onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: secili ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t] } : x))}>
+                            <Text style={[styles.chipText, secili && styles.chipTextActive]}>{t}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                        value={istek.butceMin} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMin: formatButce(v) } : x))} />
+                      <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                        value={istek.butceMax} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMax: formatButce(v) } : x))} />
+                    </View>
+                    {istek.konumlar.map((k, ki) => (
+                      <View key={ki} style={styles.konumChip}>
+                        <Text style={styles.konumChipText}>📍 {k}</Text>
+                        <TouchableOpacity onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, konumlar: x.konumlar.filter((_, j) => j !== ki) } : x))}>
+                          <Text style={styles.konumChipSil}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    <TouchableOpacity style={styles.secimBtn} onPress={() => { setActiveIstekIdx(idx); setKonumlar(istek.konumlar); setKonumSearch(''); setKonumSayfa('il'); setKonumModal(true); }}>
+                      <Text style={styles.secimBtnPlaceholder}>+ Konum Ekle</Text>
+                      <Text style={styles.secimChevron}>›</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
-                <TouchableOpacity style={styles.secimBtn} onPress={() => { setTempIl(''); setTempIlce(''); setTempMahalle(''); setKonumSearch(''); setKonumSayfa('il'); setKonumModal(true); }}>
-                  <Text style={styles.secimBtnPlaceholder}>+ Konum Ekle</Text>
-                  <Text style={styles.secimChevron}>›</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Tercih Edilen Tip</Text>
-                <View style={styles.chipRow}>
-                  {EMLAK_TIPLERI.map(t => {
-                    const secili = tercihTipler.includes(t);
-                    return (
-                      <TouchableOpacity
-                        key={t}
-                        style={[styles.chip, secili && styles.chipActive]}
-                        onPress={() => setTercihTipler(prev =>
-                          secili ? prev.filter(x => x !== t) : [...prev, t]
-                        )}
-                      >
-                        <Text style={[styles.chipText, secili && styles.chipTextActive]}>{t}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                {istekler.length === 0 && (
+                  <TouchableOpacity onPress={() => setIstekler([{ tipler: [], butceMin: '', butceMax: '', konumlar: [] }])}
+                    style={{ padding: 12, borderRadius: Radius.lg, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>+ İlk isteği ekle</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Minimum Oda Sayısı</Text>
@@ -977,39 +1005,24 @@ export default function MusteriDetayScreen() {
                   </View>
                 )}
 
-                {/* Bütçe & Konum Bilgisi */}
-                  <View style={styles.infoBox}>
-                    {(butceMin || butceMax) ? (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Bütçe</Text>
-                        <Text style={styles.infoDeger}>
-                          ₺{butceMin || '?'} – ₺{butceMax || '?'}
-                        </Text>
+                {/* İstekler */}
+                {istekler.length > 0 && (
+                  <View style={[styles.infoBox, { gap: 10 }]}>
+                    <Text style={styles.sectionTitle}>İstekler</Text>
+                    {istekler.map((istek, idx) => (
+                      <View key={istek.id ?? idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 12, gap: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant }}>İstek {idx + 1}</Text>
+                        {(istek.butceMin || istek.butceMax) ? (
+                          <Text style={{ fontSize: 13, color: Colors.onSurface }}>💰 ₺{istek.butceMin || '?'} – ₺{istek.butceMax || '?'}</Text>
+                        ) : null}
+                        {istek.tipler.length > 0 ? (
+                          <Text style={{ fontSize: 13, color: Colors.onSurface }}>🏠 {istek.tipler.join(', ')}</Text>
+                        ) : null}
+                        {istek.konumlar.map((k, i) => (
+                          <Text key={i} style={{ fontSize: 13, color: Colors.onSurface }}>📍 {k}</Text>
+                        ))}
                       </View>
-                    ) : null}
-                    {konumlar.length > 0 ? (
-                      <View style={[styles.infoRow, { alignItems: 'flex-start' }]}>
-                        <Text style={[styles.infoLabel, { paddingTop: 2 }]}>Tercih Konum</Text>
-                        <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                          {(konumAcik ? konumlar : konumlar.slice(0, 2)).map((k, i) => (
-                            <Text key={i} style={[styles.infoDeger, { textAlign: 'right' }]}>📍 {k}</Text>
-                          ))}
-                          {konumlar.length > 2 && (
-                            <TouchableOpacity onPress={() => setKonumAcik(p => !p)}>
-                              <Text style={{ fontSize: 12, color: Colors.primary, marginTop: 2 }}>
-                                {konumAcik ? 'Daha az göster' : `+${konumlar.length - 2} daha...`}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    ) : null}
-                    {tercihTipler.length > 0 ? (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Tercih Tip</Text>
-                        <Text style={styles.infoDeger}>{tercihTipler.join(', ')}</Text>
-                      </View>
-                    ) : null}
+                    ))}
                     {minOda ? (
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Min. Oda</Text>
@@ -1035,6 +1048,35 @@ export default function MusteriDetayScreen() {
                       </View>
                     ) : null}
                   </View>
+                )}
+                {istekler.length === 0 && (minOda || binaYaslari.length > 0 || ozellikAdlari.length > 0 || takipTarihi) && (
+                  <View style={styles.infoBox}>
+                    {minOda ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Min. Oda</Text>
+                        <Text style={styles.infoDeger}>{minOda}</Text>
+                      </View>
+                    ) : null}
+                    {binaYaslari.length > 0 ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Bina Yaşı</Text>
+                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{binaYaslari.join(', ')}</Text>
+                      </View>
+                    ) : null}
+                    {ozellikAdlari.length > 0 ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Özel İstekler</Text>
+                        <Text style={[styles.infoDeger, { flex: 1, textAlign: 'right' }]}>{ozellikAdlari.join(', ')}</Text>
+                      </View>
+                    ) : null}
+                    {takipTarihi ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Takip Tarihi</Text>
+                        <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
 
                   {/* Notlar */}
                   <View style={styles.notlarBox}>

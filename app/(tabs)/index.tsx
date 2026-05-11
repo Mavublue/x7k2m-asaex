@@ -81,39 +81,43 @@ export default function DashboardScreen() {
     }
   }
 
-  function eslesenMi(m: any, i: any): boolean {
-    if (!m.butce_min && !m.butce_max && !m.tercih_tip && !m.tercih_konum) return false;
-    const f = Number(i.fiyat);
-    if (m.butce_min != null && f < Number(m.butce_min)) return false;
-    if (m.butce_max != null && f > Number(m.butce_max)) return false;
-    if (m.tercih_tip) {
-      const tipler = m.tercih_tip.split(',').map((t: string) => t.trim());
-      if (tipler.length > 0) {
-        const ilanCats = (i.kategori ?? '').split(',').map((s: string) => s.trim()).filter(Boolean);
-        if (!ilanCats.some((c: string) => tipler.includes(c))) return false;
-      }
+  function istekEslesiyor(istek: any, ilan: any): boolean {
+    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.tercih_konum) return false;
+    const f = Number(ilan.fiyat);
+    if (istek.butce_min != null && f < Number(istek.butce_min)) return false;
+    if (istek.butce_max != null && f > Number(istek.butce_max)) return false;
+    if (istek.tip) {
+      const tipler = istek.tip.split(',').map((t: string) => t.trim());
+      const cats = (ilan.kategori ?? '').split(',').map((s: string) => s.trim()).filter(Boolean);
+      if (!cats.some((c: string) => tipler.includes(c))) return false;
     }
-    if (m.tercih_konum) {
-      const konumlar = m.tercih_konum.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
+    if (istek.tercih_konum) {
+      const konumlar = istek.tercih_konum.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
       const eslesti = konumlar.some((konum: string) => {
         const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
         if (mah) {
-          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-          if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-          if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
+          if (il && ilan.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (ilce && ilan.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          if (!ilan.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
           return true;
         }
         if (ilce) {
-          if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-          if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
+          if (il && ilan.konum?.toLowerCase() !== il.toLowerCase()) return false;
+          if (ilan.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
           return true;
         }
-        if (il) return i.konum?.toLowerCase() === il.toLowerCase();
+        if (il) return ilan.konum?.toLowerCase() === il.toLowerCase();
         return false;
       });
       if (!eslesti) return false;
     }
     return true;
+  }
+
+  function eslesenMi(m: any, ilan: any): boolean {
+    const istekler: any[] = m.musteri_istekler ?? [];
+    if (!istekler.length) return false;
+    return istekler.some(istek => istekEslesiyor(istek, ilan));
   }
 
   async function fetchBildirimler() {
@@ -131,7 +135,7 @@ export default function DashboardScreen() {
       { data: uzunSuredir },
       { data: aiOneriler },
     ] = await Promise.all([
-      supabase.from('musteriler').select('id, ad, soyad, etiketler, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi'),
+      supabase.from('musteriler').select('id, ad, soyad, etiketler, takip_tarihi, olusturma_tarihi, musteri_istekler(tip, butce_min, butce_max, tercih_konum)'),
       supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi'),
       supabase.from('musteri_gorevler').select('id, baslik, hedef_tarih, musteri_id, musteriler(id, ad, soyad, etiketler)').eq('tamamlandi', false).not('hedef_tarih', 'is', null).lte('hedef_tarih', new Date().toISOString()),
       supabase.from('musteriler').select('id, ad, soyad, etiketler, guncelleme_tarihi, olusturma_tarihi').eq('durum', 'Aktif').lt('guncelleme_tarihi', yediGunOnce),
@@ -199,47 +203,17 @@ export default function DashboardScreen() {
       }
     }
     if (b.tip === 'musteri') {
-      const { data: m } = await supabase.from('musteriler').select('butce_min, butce_max, tercih_tip, tercih_konum').eq('id', b.hedefId).single();
-      if (m) {
-        let q = supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip');
-        if (m.butce_min != null) q = q.gte('fiyat', m.butce_min);
-        if (m.butce_max != null) q = q.lte('fiyat', m.butce_max);
-        if (m.tercih_tip) {
-          const tipler = m.tercih_tip.split(',').map((t: string) => t.trim()).filter(Boolean);
-          if (tipler.length) q = q.or(tipler.map((t: string) => `kategori.ilike.%${t}%`).join(','));
-        }
-        let konumListesi: string[] = [];
-        if (m.tercih_konum) {
-          konumListesi = m.tercih_konum.split(/\s*\|\s*/).map((s: string) => s.trim()).filter(Boolean);
-          const iller = Array.from(new Set(konumListesi.map((k: string) => k.split(' / ')[0].trim()).filter(Boolean)));
-          if (iller.length) q = q.or(iller.map((il: string) => `konum.ilike.${il}`).join(','));
-        }
-        const { data } = await q;
-        let filtered = data ?? [];
-        if (konumListesi.length) {
-          filtered = filtered.filter((i: any) => konumListesi.some((konum: string) => {
-            const [il, ilce, mah] = konum.split(' / ').map((p: string) => p.trim());
-            if (mah) {
-              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-              if (ilce && i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-              if (!i.mahalle?.toLowerCase().includes(mah.toLowerCase())) return false;
-              return true;
-            }
-            if (ilce) {
-              if (il && i.konum?.toLowerCase() !== il.toLowerCase()) return false;
-              if (i.ilce?.toLowerCase() !== ilce.toLowerCase()) return false;
-              return true;
-            }
-            if (il) return i.konum?.toLowerCase() === il.toLowerCase();
-            return false;
-          }));
-        }
-        setDetayListe(filtered);
+      const { data: istekler } = await supabase.from('musteri_istekler').select('*').eq('musteri_id', b.hedefId);
+      if (istekler?.length) {
+        const { data } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip').eq('durum', 'Aktif');
+        setDetayListe((data ?? []).filter((ilan: any) => (istekler ?? []).some((istek: any) => istekEslesiyor(istek, ilan))));
+      } else {
+        setDetayListe([]);
       }
     } else if (b.tip === 'ilan') {
       const { data: ilan } = await supabase.from('ilanlar').select('fiyat, konum, ilce, mahalle, kategori').eq('id', b.hedefId).single();
       if (ilan) {
-        const { data: tum } = await supabase.from('musteriler').select('id, ad, soyad, telefon, butce_min, butce_max, tercih_tip, tercih_konum, durum');
+        const { data: tum } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, musteri_istekler(tip, butce_min, butce_max, tercih_konum)');
         setDetayListe((tum ?? []).filter(m => eslesenMi(m, ilan)));
       }
     } else if (b.tip === 'takip') {
@@ -838,7 +812,7 @@ export default function DashboardScreen() {
                           <View style={{ flex: 1 }}>
                             <Text style={styles.bdBaslik}>{[item.ad, item.soyad].filter(Boolean).join(' ')}</Text>
                             <Text style={styles.bdAlt}>
-                              {item.butce_min ? `₺${Number(item.butce_min).toLocaleString('tr-TR')}` : ''}{item.butce_max ? ` – ₺${Number(item.butce_max).toLocaleString('tr-TR')}` : ''}
+                              {(() => { const i0 = item.musteri_istekler?.[0]; return i0?.butce_min || i0?.butce_max ? `₺${i0.butce_min ? Number(i0.butce_min).toLocaleString('tr-TR') : '?'} – ₺${i0.butce_max ? Number(i0.butce_max).toLocaleString('tr-TR') : '?'}` : ''; })()}
                             </Text>
                           </View>
                         </>

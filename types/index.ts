@@ -35,9 +35,6 @@ export interface Musteri {
   soyad: string;
   telefon: string | null;
   email: string | null;
-  butce_min: number | null;
-  butce_max: number | null;
-  tercih_konum: string | null;
   notlar: string | null;
   etiketler: string | null;
   bina_yasi: string | null;
@@ -45,6 +42,16 @@ export interface Musteri {
   durum: 'Aktif' | 'Beklemede' | 'İptal';
   olusturma_tarihi: string;
   guncelleme_tarihi: string;
+}
+
+export interface MusteriIstek {
+  id: string;
+  musteri_id: string;
+  tip: string | null;
+  butce_min: number | null;
+  butce_max: number | null;
+  tercih_konum: string | null;
+  created_at: string;
 }
 
 export interface MusteriNot {
