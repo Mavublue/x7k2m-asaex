@@ -18,6 +18,7 @@ const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
 
 const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', 'İptal'];
+const musteriTipleri = ['Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
 const EMLAK_TIPLERI = ['Daire', 'Villa', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
@@ -101,6 +102,7 @@ export default function MusteriDetayScreen() {
   const [showGorevSaatPicker, setShowGorevSaatPicker] = useState(false);
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
+  const [musteriTipi, setMusteriTipi] = useState('Bireysel');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
   const [konumModal, setKonumModal] = useState(false);
@@ -168,6 +170,7 @@ export default function MusteriDetayScreen() {
       setBinaYaslari(data.bina_yasi ? data.bina_yasi.split(',') : []);
       setEtiket(data.etiketler ?? '');
       setDurum(data.durum ?? 'Aktif');
+      setMusteriTipi(data.musteri_tipi ?? 'Bireysel');
 
       setEkKisiler((kData ?? []).map((k: any) => {
         const sp2 = ayirTelefon(k.telefon, dKod);
@@ -295,6 +298,7 @@ export default function MusteriDetayScreen() {
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
       etiketler: etiket.trim() || null,
       durum,
+      musteri_tipi: musteriTipi,
     }).eq('id', id);
 
     if (error) { Alert.alert('Hata', error.message); setSaving(false); return; }
@@ -645,6 +649,7 @@ export default function MusteriDetayScreen() {
                 }]}>{durum}</Text>
               </View>
               {etiket ? <View style={styles.etiketBadge}><Text style={styles.etiketBadgeText}>#{etiket}</Text></View> : null}
+              {musteriTipi && musteriTipi !== 'Bireysel' ? <View style={{ backgroundColor: '#f3f4f6', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}><Text style={{ fontSize: 11, fontWeight: '700', color: '#374151' }}>{musteriTipi}</Text></View> : null}
             </View>
           </View>
 
@@ -1036,6 +1041,21 @@ export default function MusteriDetayScreen() {
                       onPress={() => setDurum(d)}
                     >
                       <Text style={[styles.durumBtnText, durum === d && styles.durumBtnTextAktif]}>{d}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Müşteri Tipi</Text>
+                <View style={styles.durumRow}>
+                  {musteriTipleri.map(t => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.durumBtn, musteriTipi === t && styles.durumBtnAktif]}
+                      onPress={() => setMusteriTipi(t)}
+                    >
+                      <Text style={[styles.durumBtnText, musteriTipi === t && styles.durumBtnTextAktif]}>{t}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

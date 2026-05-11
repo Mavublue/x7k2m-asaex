@@ -20,6 +20,7 @@ const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
 const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
 const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', 'İptal'];
+const musteriTipleri = ['Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
 
 type EkKisi = { ad: string; kod: string; numara: string; tip: string };
 
@@ -148,6 +149,7 @@ export default function MusteriEkleScreen() {
   const [notEditIdx, setNotEditIdx] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
+  const [musteriTipi, setMusteriTipi] = useState('Bireysel');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -245,6 +247,7 @@ export default function MusteriEkleScreen() {
       bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
       etiketler: etiket.trim() || null,
       durum,
+      musteri_tipi: musteriTipi,
     }).select('id').single();
     if (error) { Alert.alert('Hata', error.message); setLoading(false); return; }
     if (inserted) {
@@ -650,6 +653,18 @@ export default function MusteriEkleScreen() {
               {durumlar.map(d => (
                 <TouchableOpacity key={d} style={[styles.durumBtn, durum === d && styles.durumBtnAktif]} onPress={() => setDurum(d)}>
                   <Text style={[styles.durumBtnText, durum === d && styles.durumBtnTextAktif]}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Müşteri Tipi */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Müşteri Tipi</Text>
+            <View style={[styles.durumRow, { flexWrap: 'wrap' }]}>
+              {musteriTipleri.map(t => (
+                <TouchableOpacity key={t} style={[styles.durumBtn, { flex: 0, paddingHorizontal: 16 }, musteriTipi === t && styles.durumBtnAktif]} onPress={() => setMusteriTipi(t)}>
+                  <Text style={[styles.durumBtnText, musteriTipi === t && styles.durumBtnTextAktif]}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
