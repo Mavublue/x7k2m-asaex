@@ -49,8 +49,8 @@ export default function MusteriEkleScreen() {
   const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
-  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[] };
-  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [] }]);
+  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; ozelIstekler: string[] };
+  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [] }]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [konumSearch, setKonumSearch] = useState('');
@@ -256,6 +256,9 @@ export default function MusteriEkleScreen() {
           butce_min: i.butceMin ? parseInt(i.butceMin.replace(/\./g, '')) : null,
           butce_max: i.butceMax ? parseInt(i.butceMax.replace(/\./g, '')) : null,
           tercih_konum: i.konumlar.length ? i.konumlar.join(' | ') : null,
+          min_oda: i.minOda || null,
+          bina_yasi: i.binaYaslari.length ? i.binaYaslari.join(',') : null,
+          ozellikler: i.ozelIstekler.length ? i.ozelIstekler.join(',') : null,
         }));
       if (iRows.length) {
         const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
@@ -377,7 +380,7 @@ export default function MusteriEkleScreen() {
           <View style={styles.inputContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
-              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [] }])}
+              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [] }])}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                 <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
               </TouchableOpacity>
@@ -416,6 +419,53 @@ export default function MusteriEkleScreen() {
                   </Text>
                   <Text style={styles.konumBoxChevron}>▾</Text>
                 </TouchableOpacity>
+                {/* Min Oda */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Min Oda</Text>
+                  <View style={styles.chipRow}>
+                    {ODALAR.map(o => {
+                      const secili = istek.minOda === o;
+                      return (
+                        <TouchableOpacity key={o} style={[styles.chip, secili && styles.chipActive]}
+                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, minOda: x.minOda === o ? '' : o } : x))}>
+                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{o}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+                {/* Bina Yaşı */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Bina Yaşı</Text>
+                  <View style={styles.chipRow}>
+                    {BINA_YASLARI.map(y => {
+                      const secili = istek.binaYaslari.includes(y);
+                      return (
+                        <TouchableOpacity key={y} style={[styles.chip, secili && styles.chipActive]}
+                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: secili ? x.binaYaslari.filter(b => b !== y) : [...x.binaYaslari, y] } : x))}>
+                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{y}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+                {/* Özel İstekler */}
+                {tumOzellikler.length > 0 && (
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Özel İstekler</Text>
+                    <View style={styles.chipRow}>
+                      {tumOzellikler.map(oz => {
+                        const secili = istek.ozelIstekler.includes(oz.id);
+                        return (
+                          <TouchableOpacity key={oz.id} style={[styles.chip, secili && styles.chipActive]}
+                            onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: secili ? x.ozelIstekler.filter(id => id !== oz.id) : [...x.ozelIstekler, oz.id] } : x))}>
+                            <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
               </View>
             ))}
           </View>

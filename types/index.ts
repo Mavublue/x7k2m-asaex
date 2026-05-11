@@ -51,6 +51,9 @@ export interface MusteriIstek {
   butce_min: number | null;
   butce_max: number | null;
   tercih_konum: string | null;
+  min_oda: string | null;
+  bina_yasi: string | null;
+  ozellikler: string | null;
   created_at: string;
 }
 

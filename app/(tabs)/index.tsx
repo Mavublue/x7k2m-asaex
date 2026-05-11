@@ -81,8 +81,9 @@ export default function DashboardScreen() {
     }
   }
 
+  const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
   function istekEslesiyor(istek: any, ilan: any): boolean {
-    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.tercih_konum) return false;
+    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi) return false;
     const f = Number(ilan.fiyat);
     if (istek.butce_min != null && f < Number(istek.butce_min)) return false;
     if (istek.butce_max != null && f > Number(istek.butce_max)) return false;
@@ -110,6 +111,15 @@ export default function DashboardScreen() {
         return false;
       });
       if (!eslesti) return false;
+    }
+    if (istek.min_oda && ilan.oda_sayisi) {
+      const minIdx = ODALAR_ORDER.indexOf(istek.min_oda);
+      const ilanIdx = ODALAR_ORDER.indexOf(ilan.oda_sayisi);
+      if (minIdx >= 0 && ilanIdx >= 0 && ilanIdx < minIdx) return false;
+    }
+    if (istek.bina_yasi && ilan.bina_yasi) {
+      const list = istek.bina_yasi.split(',').map((s: string) => s.trim());
+      if (list.length && !list.includes(ilan.bina_yasi)) return false;
     }
     return true;
   }
