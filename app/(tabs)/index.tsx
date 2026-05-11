@@ -171,7 +171,14 @@ export default function DashboardScreen() {
     // AI asistan önerileri
     for (const a of aiOneriler ?? []) {
       const temizMesaj = a.mesaj.replace(/[#*_`]/g, '').trim();
-      liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: a.tip === 'oneri' ? '📋 Görev Önerisi' : a.tip === 'sabah' ? '🌅 Sabah Özeti' : a.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti', alt: temizMesaj, hedefId: a.musteri_id ?? '', tarih: a.created_at });
+      if (a.musteri_id) {
+        const m = musteriler.find((x: any) => x.id === a.musteri_id);
+        const musteriLabel = m ? [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ') : '?';
+        liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: musteriLabel, alt: temizMesaj, hedefId: a.musteri_id, tarih: a.created_at });
+      } else {
+        const slotBaslik = a.tip === 'sabah' ? '🌅 Sabah Özeti' : a.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti';
+        liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: slotBaslik, alt: temizMesaj, hedefId: '', tarih: a.created_at });
+      }
     }
 
     // Gecikmiş görevler
@@ -800,7 +807,7 @@ export default function DashboardScreen() {
               // Detay: eşleşen liste
               detayYukleniyor ? (
                 <View style={styles.bdBos}><ActivityIndicator color={Colors.primary} /></View>
-              ) : detayBildirim?.tip === 'asistan' ? (
+              ) : detayBildirim?.tip === 'asistan' && !detayBildirim.hedefId ? (
                 <View style={{ padding: Spacing.xl }}>
                   <Text style={{ fontSize: 14, color: Colors.onSurface, lineHeight: 22 }}>{detayBildirim.alt}</Text>
                 </View>
