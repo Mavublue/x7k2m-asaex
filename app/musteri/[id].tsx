@@ -95,8 +95,10 @@ export default function MusteriDetayScreen() {
   const [gorevBaslik, setGorevBaslik] = useState('');
   const [gorevAciklama, setGorevAciklama] = useState('');
   const [gorevHedefTarih, setGorevHedefTarih] = useState<Date | null>(null);
+  const [gorevHedefSaat, setGorevHedefSaat] = useState<Date | null>(null);
   const [gorevEditId, setGorevEditId] = useState<string | null>(null);
   const [showGorevPicker, setShowGorevPicker] = useState(false);
+  const [showGorevSaatPicker, setShowGorevSaatPicker] = useState(false);
   const [etiket, setEtiket] = useState('');
   const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
@@ -491,17 +493,27 @@ export default function MusteriDetayScreen() {
     setGorevEditId(g.id);
     setGorevBaslik(g.baslik);
     setGorevAciklama(g.aciklama ?? '');
-    setGorevHedefTarih(g.hedef_tarih ? new Date(g.hedef_tarih) : null);
+    const existing = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
+    setGorevHedefTarih(existing);
+    if (existing && (existing.getHours() !== 0 || existing.getMinutes() !== 0)) {
+      setGorevHedefSaat(existing);
+    } else {
+      setGorevHedefSaat(null);
+    }
     setGorevEkle(true);
   }
 
   async function handleGorevKaydet() {
     if (!gorevBaslik.trim()) return;
+    let hedefDate: Date | null = gorevHedefTarih ? new Date(gorevHedefTarih) : null;
+    if (hedefDate && gorevHedefSaat) {
+      hedefDate.setHours(gorevHedefSaat.getHours(), gorevHedefSaat.getMinutes(), 0, 0);
+    }
     const payload = {
       musteri_id: id,
       baslik: gorevBaslik.trim(),
       aciklama: gorevAciklama.trim() || null,
-      hedef_tarih: gorevHedefTarih ? gorevHedefTarih.toISOString() : null,
+      hedef_tarih: hedefDate ? hedefDate.toISOString() : null,
     };
     if (gorevEditId) {
       const { error } = await supabase.from('musteri_gorevler').update(payload).eq('id', gorevEditId);
@@ -515,6 +527,7 @@ export default function MusteriDetayScreen() {
     setGorevBaslik('');
     setGorevAciklama('');
     setGorevHedefTarih(null);
+    setGorevHedefSaat(null);
     refreshGorevler();
   }
 
@@ -915,15 +928,19 @@ export default function MusteriDetayScreen() {
                 gorevBaslik={gorevBaslik}
                 gorevAciklama={gorevAciklama}
                 gorevHedefTarih={gorevHedefTarih}
+                gorevHedefSaat={gorevHedefSaat}
                 gorevEditId={gorevEditId}
                 showGorevPicker={showGorevPicker}
+                showGorevSaatPicker={showGorevSaatPicker}
                 setGorevBaslik={setGorevBaslik}
                 setGorevAciklama={setGorevAciklama}
                 setGorevHedefTarih={setGorevHedefTarih}
+                setGorevHedefSaat={setGorevHedefSaat}
                 setShowGorevPicker={setShowGorevPicker}
+                setShowGorevSaatPicker={setShowGorevSaatPicker}
                 onEkleAc={gorevEkleAc}
                 onKaydet={handleGorevKaydet}
-                onIptal={() => { setGorevEkle(false); setGorevEditId(null); setGorevBaslik(''); setGorevAciklama(''); setGorevHedefTarih(null); }}
+                onIptal={() => { setGorevEkle(false); setGorevEditId(null); setGorevBaslik(''); setGorevAciklama(''); setGorevHedefTarih(null); setGorevHedefSaat(null); }}
                 onTamamla={handleGorevTamamla}
                 onDuzenle={gorevDuzenleAc}
                 onSil={handleGorevSil}
@@ -1544,12 +1561,14 @@ function gorevTarihGoster(iso: string | null) {
   if (!iso) return '';
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  const tarih = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+  return hasTime ? `${tarih} ${pad(d.getHours())}:${pad(d.getMinutes())}` : tarih;
 }
 
 function GorevlerBox({
-  gorevler, gorevEkle, gorevBaslik, gorevAciklama, gorevHedefTarih, gorevEditId,
-  showGorevPicker, setGorevBaslik, setGorevAciklama, setGorevHedefTarih, setShowGorevPicker,
+  gorevler, gorevEkle, gorevBaslik, gorevAciklama, gorevHedefTarih, gorevHedefSaat, gorevEditId,
+  showGorevPicker, showGorevSaatPicker, setGorevBaslik, setGorevAciklama, setGorevHedefTarih, setGorevHedefSaat, setShowGorevPicker, setShowGorevSaatPicker,
   onEkleAc, onKaydet, onIptal, onTamamla, onDuzenle, onSil,
 }: {
   gorevler: MusteriGorev[];
@@ -1557,12 +1576,16 @@ function GorevlerBox({
   gorevBaslik: string;
   gorevAciklama: string;
   gorevHedefTarih: Date | null;
+  gorevHedefSaat: Date | null;
   gorevEditId: string | null;
   showGorevPicker: boolean;
+  showGorevSaatPicker: boolean;
   setGorevBaslik: (v: string) => void;
   setGorevAciklama: (v: string) => void;
   setGorevHedefTarih: (v: Date | null) => void;
+  setGorevHedefSaat: (v: Date | null) => void;
   setShowGorevPicker: (v: boolean) => void;
+  setShowGorevSaatPicker: (v: boolean) => void;
   onEkleAc: () => void;
   onKaydet: () => void;
   onIptal: () => void;
@@ -1600,13 +1623,18 @@ function GorevlerBox({
             textAlignVertical="top"
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            <TouchableOpacity onPress={() => setShowGorevPicker(true)} style={[gorevStyles.input, { flex: 1, minWidth: 140, justifyContent: 'center' }]}>
+            <TouchableOpacity onPress={() => setShowGorevPicker(true)} style={[gorevStyles.input, { flex: 1, minWidth: 120, justifyContent: 'center' }]}>
               <Text style={{ fontSize: 13, color: gorevHedefTarih ? Colors.onSurface : Colors.outlineVariant }}>
-                {gorevHedefTarih ? `📅 ${gorevTarihGoster(gorevHedefTarih.toISOString())}` : '📅 Tarih seç'}
+                {gorevHedefTarih ? `📅 ${gorevTarihGoster(gorevHedefTarih.toISOString()).split(' ')[0]}` : '📅 Tarih'}
               </Text>
             </TouchableOpacity>
-            {gorevHedefTarih && (
-              <TouchableOpacity onPress={() => setGorevHedefTarih(null)}>
+            <TouchableOpacity onPress={() => setShowGorevSaatPicker(true)} style={[gorevStyles.input, { minWidth: 90, justifyContent: 'center' }]}>
+              <Text style={{ fontSize: 13, color: gorevHedefSaat ? Colors.onSurface : Colors.outlineVariant }}>
+                {gorevHedefSaat ? `⏰ ${String(gorevHedefSaat.getHours()).padStart(2,'0')}:${String(gorevHedefSaat.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
+              </Text>
+            </TouchableOpacity>
+            {(gorevHedefTarih || gorevHedefSaat) && (
+              <TouchableOpacity onPress={() => { setGorevHedefTarih(null); setGorevHedefSaat(null); }}>
                 <Text style={{ fontSize: 12, color: Colors.error }}>Temizle</Text>
               </TouchableOpacity>
             )}
@@ -1630,6 +1658,23 @@ function GorevlerBox({
           )}
           {Platform.OS === 'ios' && showGorevPicker && (
             <TouchableOpacity onPress={() => setShowGorevPicker(false)} style={[gorevStyles.kaydetBtn, { marginTop: 8, alignSelf: 'flex-start' }]}>
+              <Text style={gorevStyles.kaydetBtnText}>Tamam</Text>
+            </TouchableOpacity>
+          )}
+          {showGorevSaatPicker && (
+            <DateTimePicker
+              value={gorevHedefSaat ?? new Date()}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              is24Hour
+              onChange={(_, sel) => {
+                setShowGorevSaatPicker(Platform.OS === 'ios');
+                if (sel) setGorevHedefSaat(sel);
+              }}
+            />
+          )}
+          {Platform.OS === 'ios' && showGorevSaatPicker && (
+            <TouchableOpacity onPress={() => setShowGorevSaatPicker(false)} style={[gorevStyles.kaydetBtn, { marginTop: 8, alignSelf: 'flex-start' }]}>
               <Text style={gorevStyles.kaydetBtnText}>Tamam</Text>
             </TouchableOpacity>
           )}
