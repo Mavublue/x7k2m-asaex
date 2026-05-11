@@ -16,6 +16,7 @@ const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
 
 const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal'];
+const musteriTipleri = ['Tümü', 'Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
 
 type Siralama = 'etiket_artan' | 'etiket_azalan' | 'eklenme_yeni' | 'eklenme_eski' | 'guncelleme_yeni' | 'guncelleme_eski';
 const SIRALAMA_LABEL: Record<Siralama, string> = {
@@ -38,6 +39,7 @@ export default function MusterilerScreen() {
   const [search, setSearch] = useState('');
   const [etiketSearch, setEtiketSearch] = useState('');
   const [activeDurum, setActiveDurum] = useState('Tümü');
+  const [activeTip, setActiveTip] = useState('Tümü');
   const [siralama, setSiralama] = useState<Siralama>('eklenme_yeni');
   const [siralamaAcik, setSiralamaAcik] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -49,6 +51,7 @@ export default function MusterilerScreen() {
   useEffect(() => {
     let result = musteriler;
     if (activeDurum !== 'Tümü') result = result.filter(m => m.durum === activeDurum);
+    if (activeTip !== 'Tümü') result = result.filter(m => (m.musteri_tipi ?? 'Bireysel') === activeTip);
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(m =>
@@ -78,7 +81,7 @@ export default function MusterilerScreen() {
       return 0;
     });
     setFiltered(result);
-  }, [search, etiketSearch, activeDurum, musteriler, siralama]);
+  }, [search, etiketSearch, activeDurum, activeTip, musteriler, siralama]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -132,7 +135,7 @@ export default function MusterilerScreen() {
 
 
       {/* Durum sekmeleri + Sıralama */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 6, gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 4, gap: 8 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} style={{ flex: 1 }}>
           {durumlar.map(d => (
             <TouchableOpacity
@@ -148,6 +151,17 @@ export default function MusterilerScreen() {
           <Text style={{ fontSize: 13, color: Colors.onSurface, fontWeight: '600' }}>⇅ {SIRALAMA_LABEL[siralama]}</Text>
         </TouchableOpacity>
       </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: Spacing.md, paddingBottom: 6 }}>
+        {musteriTipleri.map(t => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.tab, activeTip === t && { backgroundColor: '#374151', borderColor: '#374151' }]}
+            onPress={() => setActiveTip(t)}
+          >
+            <Text style={[styles.tabText, activeTip === t && { color: '#fff' }]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       <Modal visible={siralamaAcik} transparent animationType="fade" onRequestClose={() => setSiralamaAcik(false)}>
         <TouchableOpacity activeOpacity={1} onPress={() => setSiralamaAcik(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 30 }}>
