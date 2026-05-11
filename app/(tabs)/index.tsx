@@ -18,7 +18,7 @@ export default function DashboardScreen() {
   const [yeniEslesmeler, setYeniEslesmeler] = useState<Eslesme[]>([]);
   const [takipMusteriler, setTakipMusteriler] = useState<any[]>([]);
   const [gorevDashboard, setGorevDashboard] = useState<any[]>([]);
-  const [gorevFiltre, setGorevFiltre] = useState<'gecmis' | 'bugun' | '7gun' | 'tumu'>('bugun');
+  const [gorevFiltre, setGorevFiltre] = useState<'gecmis' | 'bugun' | 'yarin' | '7gun' | 'tumu'>('bugun');
   const [gecmisCount, setGecmisCount] = useState(0);
   const [silOnayId, setSilOnayId] = useState<string | null>(null);
   const [editGorev, setEditGorev] = useState<any | null>(null);
@@ -345,7 +345,7 @@ export default function DashboardScreen() {
     setLoading(false);
   }
 
-  async function fetchGorevDashboard(filtre: 'gecmis' | 'bugun' | '7gun' | 'tumu') {
+  async function fetchGorevDashboard(filtre: 'gecmis' | 'bugun' | 'yarin' | '7gun' | 'tumu') {
     const baslangic = new Date();
     baslangic.setHours(0, 0, 0, 0);
 
@@ -361,6 +361,10 @@ export default function DashboardScreen() {
     } else if (filtre === 'bugun') {
       const bitis = new Date(baslangic); bitis.setDate(bitis.getDate() + 1);
       q = q.gte('hedef_tarih', baslangic.toISOString()).lt('hedef_tarih', bitis.toISOString());
+    } else if (filtre === 'yarin') {
+      const yBaslangic = new Date(baslangic); yBaslangic.setDate(yBaslangic.getDate() + 1);
+      const yBitis = new Date(yBaslangic); yBitis.setDate(yBitis.getDate() + 1);
+      q = q.gte('hedef_tarih', yBaslangic.toISOString()).lt('hedef_tarih', yBitis.toISOString());
     } else if (filtre === '7gun') {
       const bitis = new Date(baslangic); bitis.setDate(bitis.getDate() + 7);
       q = q.gte('hedef_tarih', baslangic.toISOString()).lt('hedef_tarih', bitis.toISOString());
@@ -480,7 +484,7 @@ export default function DashboardScreen() {
               <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: '#dbeafe' }}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
               </TouchableOpacity>
-              {([['gecmis','Gecikmiş'],['bugun','Bugün'],['7gun','7 Gün'],['tumu','Tümü']] as ['gecmis'|'bugun'|'7gun'|'tumu', string][]).map(([f, label]) => (
+              {([['gecmis','Gecikmiş'],['bugun','Bugün'],['yarin','Yarın'],['7gun','7 Gün'],['tumu','Tümü']] as ['gecmis'|'bugun'|'yarin'|'7gun'|'tumu', string][]).map(([f, label]) => (
                 <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevDashboard(f); }}
                   style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : '#16a34a') : Colors.surfaceContainerHigh }}>
                   <Text style={{ fontSize: 10, fontWeight: '700', color: gorevFiltre === f ? '#fff' : (f === 'gecmis' && gecmisCount > 0 ? '#ef4444' : Colors.onSurfaceVariant) }}>
@@ -493,7 +497,7 @@ export default function DashboardScreen() {
           {gorevDashboard.length === 0 ? (
             <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? '#fff5f5' : '#f0fdf4', borderRadius: 10, alignItems: 'center' }}>
               <Text style={{ fontSize: 13, color: gorevFiltre === 'gecmis' ? '#ef4444' : '#16a34a', fontWeight: '500' }}>
-                {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}
+                {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}
               </Text>
             </View>
           ) : (
