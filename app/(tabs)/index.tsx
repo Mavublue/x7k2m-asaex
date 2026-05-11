@@ -23,6 +23,10 @@ export default function DashboardScreen() {
   const [editBaslik, setEditBaslik] = useState('');
   const [editTarih, setEditTarih] = useState('');
   const [editSaat, setEditSaat] = useState('');
+  const [genelGorevModal, setGenelGorevModal] = useState(false);
+  const [genelBaslik, setGenelBaslik] = useState('');
+  const [genelTarih, setGenelTarih] = useState('');
+  const [genelSaat, setGenelSaat] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
@@ -380,6 +384,18 @@ export default function DashboardScreen() {
     setGorevDashboard(prev => prev.filter(g => g.id !== gorevId));
   }
 
+  async function genelGorevEkle() {
+    if (!genelBaslik.trim() || !genelTarih) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const [y, mo, d] = genelTarih.split('-').map(Number);
+    const dt = new Date(y, mo - 1, d);
+    if (genelSaat) { const [h, m] = genelSaat.split(':').map(Number); dt.setHours(h, m, 0, 0); }
+    await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false });
+    setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelGorevModal(false);
+    fetchGorevDashboard(gorevFiltre);
+  }
+
   const hizliAksiyonlar = [
     { label: 'İlan Ekle', icon: '＋', route: '/ilan/ekle', color: Colors.primary },
     { label: 'Müşteri', icon: '👤', route: '/(tabs)/musteriler', color: Colors.secondaryContainer },
@@ -445,7 +461,10 @@ export default function DashboardScreen() {
               <View style={[styles.bildirimDot, { backgroundColor: '#16a34a' }]} />
               <Text style={styles.sectionTitle}>Görevler</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: '#dbeafe' }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
+              </TouchableOpacity>
               {([['gecmis','Gecikmiş'],['bugun','Bugün'],['7gun','7 Gün'],['tumu','Tümü']] as ['gecmis'|'bugun'|'7gun'|'tumu', string][]).map(([f, label]) => (
                 <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevDashboard(f); }}
                   style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : '#16a34a') : Colors.surfaceContainerHigh }}>
@@ -531,6 +550,33 @@ export default function DashboardScreen() {
         {/* Takip Bildirimleri */}
         {takipMusteriler.length > 0 && (
           <View style={styles.section} onLayout={e => { takipY.current = e.nativeEvent.layout.y; }}>
+        {/* Genel Görev Ekle Modal */}
+        <Modal visible={genelGorevModal} transparent animationType="fade" onRequestClose={() => setGenelGorevModal(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Genel Görev Ekle</Text>
+              <TextInput value={genelBaslik} onChangeText={setGenelBaslik} placeholder="Görev başlığı"
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <TextInput value={genelTarih} onChangeText={setGenelTarih} placeholder="YYYY-MM-DD"
+                  style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+                <TextInput value={genelSaat} onChangeText={setGenelSaat} placeholder="HH:MM"
+                  style={{ width: 90, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); }}
+                  style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={genelGorevEkle}
+                  style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() && genelTarih ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: genelBaslik.trim() && genelTarih ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={styles.bildirimDot} />
