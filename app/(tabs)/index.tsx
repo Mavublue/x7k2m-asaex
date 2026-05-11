@@ -60,6 +60,7 @@ export default function DashboardScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'asistan_oneriler' }, () => fetchBildirimler())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => { fetchBildirimler(); fetchGorevDashboard(gorevFiltre); })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'musteriler' }, () => fetchBildirimler())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilanlar' }, () => fetchBildirimler())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
