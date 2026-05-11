@@ -27,6 +27,9 @@ export default function DashboardScreen() {
   const [genelBaslik, setGenelBaslik] = useState('');
   const [genelTarih, setGenelTarih] = useState('');
   const [genelSaat, setGenelSaat] = useState('');
+  const [genelMusteriId, setGenelMusteriId] = useState<string | null>(null);
+  const [genelMusteriArama, setGenelMusteriArama] = useState('');
+  const [musteriListesi, setMusteriListesi] = useState<{id:string;ad:string;soyad:string|null;etiketler:string|null}[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
@@ -330,6 +333,9 @@ export default function DashboardScreen() {
       .limit(10);
     if (takip) setTakipMusteriler(takip);
 
+    const { data: mListe } = await supabase.from('musteriler').select('id, ad, soyad, etiketler').order('ad');
+    if (mListe) setMusteriListesi(mListe);
+
     setLoading(false);
   }
 
@@ -391,8 +397,8 @@ export default function DashboardScreen() {
     const [y, mo, d] = genelTarih.split('-').map(Number);
     const dt = new Date(y, mo - 1, d);
     if (genelSaat) { const [h, m] = genelSaat.split(':').map(Number); dt.setHours(h, m, 0, 0); }
-    await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false });
-    setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelGorevModal(false);
+    await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, ...(genelMusteriId ? { musteri_id: genelMusteriId } : {}) });
+    setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelMusteriId(null); setGenelMusteriArama(''); setGenelGorevModal(false);
     fetchGorevDashboard(gorevFiltre);
   }
 
@@ -554,9 +560,34 @@ export default function DashboardScreen() {
         <Modal visible={genelGorevModal} transparent animationType="fade" onRequestClose={() => setGenelGorevModal(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
-              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Genel Görev Ekle</Text>
+              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Görev Ekle</Text>
               <TextInput value={genelBaslik} onChangeText={setGenelBaslik} placeholder="Görev başlığı"
                 style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+              {genelMusteriId ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderWidth: 1, borderColor: '#86efac', borderRadius: 8, backgroundColor: '#f0fdf4', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600', flex: 1 }}>
+                    {(() => { const m = musteriListesi.find(x => x.id === genelMusteriId); return [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); })()}
+                  </Text>
+                  <TouchableOpacity onPress={() => { setGenelMusteriId(null); setGenelMusteriArama(''); }}>
+                    <Text style={{ color: '#6b7280', fontSize: 14 }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ marginBottom: 8 }}>
+                  <TextInput value={genelMusteriArama} onChangeText={setGenelMusteriArama} placeholder="Müşteri ara (opsiyonel)"
+                    style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+                  {genelMusteriArama.trim().length > 0 && (
+                    <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 140, overflow: 'hidden' }}>
+                      {musteriListesi.filter(m => `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(genelMusteriArama.toLowerCase())).slice(0,6).map(m => (
+                        <TouchableOpacity key={m.id} onPress={() => { setGenelMusteriId(m.id); setGenelMusteriArama(''); }}
+                          style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+                          <Text style={{ fontSize: 13, color: '#374151' }}>{[m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 <TextInput value={genelTarih} onChangeText={setGenelTarih} placeholder="YYYY-MM-DD"
                   style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
@@ -564,7 +595,7 @@ export default function DashboardScreen() {
                   style={{ width: 90, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); }}
+                <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelMusteriId(null); setGenelMusteriArama(''); }}
                   style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
                 </TouchableOpacity>
