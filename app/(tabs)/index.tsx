@@ -132,7 +132,7 @@ export default function DashboardScreen() {
     ] = await Promise.all([
       supabase.from('musteriler').select('id, ad, soyad, etiketler, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi'),
       supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi'),
-      supabase.from('musteri_gorevler').select('id, baslik, hedef_tarih, musteri_id, musteriler!inner(id, ad, soyad, etiketler)').eq('tamamlandi', false).not('hedef_tarih', 'is', null).lte('hedef_tarih', new Date().toISOString()),
+      supabase.from('musteri_gorevler').select('id, baslik, hedef_tarih, musteri_id, musteriler(id, ad, soyad, etiketler)').eq('tamamlandi', false).not('hedef_tarih', 'is', null).lte('hedef_tarih', new Date().toISOString()),
       supabase.from('musteriler').select('id, ad, soyad, etiketler, guncelleme_tarihi, olusturma_tarihi').eq('durum', 'Aktif').lt('guncelleme_tarihi', yediGunOnce),
       supabase.from('asistan_oneriler').select('id, musteri_id, mesaj, tip, created_at').gte('created_at', yediGunOnceTarih).order('created_at', { ascending: false }),
     ]);
@@ -350,7 +350,7 @@ export default function DashboardScreen() {
 
     let q = supabase
       .from('musteri_gorevler')
-      .select('id, baslik, hedef_tarih, musteri_id, musteriler!inner(ad, soyad, etiketler)')
+      .select('id, baslik, hedef_tarih, musteri_id, musteriler(ad, soyad, etiketler)')
       .eq('tamamlandi', false)
       .not('hedef_tarih', 'is', null)
       .order('hedef_tarih', { ascending: true });
