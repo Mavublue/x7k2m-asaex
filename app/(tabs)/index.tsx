@@ -98,8 +98,23 @@ export default function DashboardScreen() {
     const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}[] = [];
     const bugun = new Date().toISOString().split('T')[0];
 
-    const { data: tumMusteriler, error: mErr } = await supabase.from('musteriler').select('id, ad, soyad, etiketler, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi');
-    const { data: tumIlanlar, error: iErr } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi');
+    const yediGunOnce = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const yediGunOnceTarih = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [
+      { data: tumMusteriler, error: mErr },
+      { data: tumIlanlar, error: iErr },
+      { data: tumGorevler },
+      { data: uzunSuredir },
+      { data: aiOneriler },
+    ] = await Promise.all([
+      supabase.from('musteriler').select('id, ad, soyad, etiketler, butce_min, butce_max, takip_tarihi, tercih_konum, tercih_tip, olusturma_tarihi'),
+      supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi'),
+      supabase.from('musteri_gorevler').select('id, baslik, hedef_tarih, musteri_id, musteriler!inner(id, ad, soyad, etiketler)').eq('tamamlandi', false).not('hedef_tarih', 'is', null).lte('hedef_tarih', new Date().toISOString()),
+      supabase.from('musteriler').select('id, ad, soyad, etiketler, guncelleme_tarihi, olusturma_tarihi').eq('durum', 'Aktif').lt('guncelleme_tarihi', yediGunOnce),
+      supabase.from('asistan_oneriler').select('id, musteri_id, mesaj, tip, created_at').gte('created_at', yediGunOnceTarih).order('created_at', { ascending: false }),
+    ]);
 
     if (mErr || iErr) {
       console.log('Bildirim hata:', mErr?.message, iErr?.message);
@@ -109,7 +124,23 @@ export default function DashboardScreen() {
     const ilanlar = tumIlanlar ?? [];
     const musteriler = tumMusteriler ?? [];
 
-    console.log('Bildirim - musteriler:', musteriler.length, 'ilanlar:', ilanlar.length);
+    // AI asistan önerileri
+    for (const a of aiOneriler ?? []) {
+      liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: a.tip === 'oneri' ? '📋 Görev Önerisi' : a.tip === 'sabah' ? '🌅 Sabah Özeti' : a.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti', alt: a.mesaj, hedefId: a.musteri_id ?? '', tarih: a.created_at });
+    }
+
+    // Gecikmiş görevler
+    for (const g of tumGorevler ?? []) {
+      const m = (g as any).musteriler;
+      const isim = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
+      liste.push({ id: `gorev-${g.id}`, tip: 'gorev', baslik: isim, alt: `Gecikmiş görev: "${g.baslik}"`, hedefId: g.musteri_id, tarih: g.hedef_tarih });
+    }
+
+    // 7+ gün iletişim yok
+    for (const m of uzunSuredir ?? []) {
+      const isim = [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ');
+      liste.push({ id: `sessiz-${m.id}`, tip: 'sessiz', baslik: isim, alt: '7+ gündür iletişim yok', hedefId: m.id, tarih: m.olusturma_tarihi ?? '' });
+    }
 
     // Takip
     for (const m of musteriler) {
@@ -192,6 +223,17 @@ export default function DashboardScreen() {
     } else if (b.tip === 'takip') {
       const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, takip_tarihi, durum').eq('id', b.hedefId).single();
       if (data) setDetayListe([data]);
+    } else if (b.tip === 'gorev') {
+      const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum').eq('id', b.hedefId).single();
+      if (data) setDetayListe([data]);
+    } else if (b.tip === 'sessiz') {
+      const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, guncelleme_tarihi, durum').eq('id', b.hedefId).single();
+      if (data) setDetayListe([data]);
+    } else if (b.tip === 'asistan') {
+      if (b.hedefId) {
+        const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum').eq('id', b.hedefId).single();
+        if (data) setDetayListe([data]);
+      }
     }
     setDetayYukleniyor(false);
   }
@@ -453,10 +495,10 @@ export default function DashboardScreen() {
                             </TouchableOpacity>
                           ) : (
                             <TouchableOpacity style={[styles.bdIcon, {
-                              backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
+                              backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'gorev' ? '#fef3c7' : item.tip === 'sessiz' ? '#f3e8ff' : item.tip === 'asistan' ? '#e0f2fe' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
                             }]} onPress={() => bildirimDetayAc(item)}>
                               <Text style={{ fontSize: 16 }}>
-                                {item.tip === 'takip' ? '⚠️' : item.tip === 'musteri' ? '👤' : '🏠'}
+                                {item.tip === 'takip' ? '⚠️' : item.tip === 'gorev' ? '📋' : item.tip === 'sessiz' ? '🔕' : item.tip === 'asistan' ? '🤖' : item.tip === 'musteri' ? '👤' : '🏠'}
                               </Text>
                             </TouchableOpacity>
                           )}

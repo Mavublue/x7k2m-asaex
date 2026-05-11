@@ -448,6 +448,7 @@ export default function MusteriDetayScreen() {
                     hedef_tarih: d.tarih ? new Date(d.tarih).toISOString() : null,
                     aciklama: 'Nottan önerildi',
                   });
+                  if (d.rowId) await supabase.from('asistan_oneriler').delete().eq('id', d.rowId);
                   refreshGorevler();
                 }},
               ]
