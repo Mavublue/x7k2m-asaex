@@ -162,7 +162,8 @@ export default function DashboardScreen() {
 
     // AI asistan önerileri
     for (const a of aiOneriler ?? []) {
-      liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: a.tip === 'oneri' ? '📋 Görev Önerisi' : a.tip === 'sabah' ? '🌅 Sabah Özeti' : a.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti', alt: a.mesaj, hedefId: a.musteri_id ?? '', tarih: a.created_at });
+      const temizMesaj = a.mesaj.replace(/[#*_`]/g, '').trim();
+      liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: a.tip === 'oneri' ? '📋 Görev Önerisi' : a.tip === 'sabah' ? '🌅 Sabah Özeti' : a.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti', alt: temizMesaj, hedefId: a.musteri_id ?? '', tarih: a.created_at });
     }
 
     // Gecikmiş görevler
@@ -791,6 +792,10 @@ export default function DashboardScreen() {
               // Detay: eşleşen liste
               detayYukleniyor ? (
                 <View style={styles.bdBos}><ActivityIndicator color={Colors.primary} /></View>
+              ) : detayBildirim?.tip === 'asistan' ? (
+                <View style={{ padding: Spacing.xl }}>
+                  <Text style={{ fontSize: 14, color: Colors.onSurface, lineHeight: 22 }}>{detayBildirim.alt}</Text>
+                </View>
               ) : detayListe.length === 0 ? (
                 <View style={styles.bdBos}><Text style={styles.bdBosText}>Eşleşen bulunamadı</Text></View>
               ) : (
