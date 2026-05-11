@@ -20,6 +20,7 @@ export default function DashboardScreen() {
   const [gorevDashboard, setGorevDashboard] = useState<any[]>([]);
   const [gorevFiltre, setGorevFiltre] = useState<'gecmis' | 'bugun' | '7gun' | 'tumu'>('bugun');
   const [gecmisCount, setGecmisCount] = useState(0);
+  const [silOnayId, setSilOnayId] = useState<string | null>(null);
   const [editGorev, setEditGorev] = useState<any | null>(null);
   const [editBaslik, setEditBaslik] = useState('');
   const [editTarihDate, setEditTarihDate] = useState<Date>(new Date());
@@ -391,6 +392,13 @@ export default function DashboardScreen() {
     setGorevDashboard(prev => prev.filter(g => g.id !== gorevId));
   }
 
+  async function gorevSilDashboard(id: string) {
+    await supabase.from('musteri_gorevler').delete().eq('id', id);
+    setGorevDashboard(prev => prev.filter(g => g.id !== id));
+    setGecmisCount(prev => gorevFiltre === 'gecmis' ? Math.max(0, prev - 1) : prev);
+    setSilOnayId(null);
+  }
+
   async function genelGorevEkle() {
     if (!genelBaslik.trim()) return;
     const { data: { user } } = await supabase.auth.getUser();
@@ -517,6 +525,10 @@ export default function DashboardScreen() {
                     }} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
                       <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant }}>✏️</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setSilOnayId(g.id)}
+                      style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#fff5f5', borderRadius: 6, borderWidth: 1, borderColor: '#fecaca' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444' }}>🗑</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => gorevTamamlaDashboard(g.id)}
                       style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
@@ -629,6 +641,24 @@ export default function DashboardScreen() {
           </View>
           {showGenelTarihPicker && <DateTimePicker value={genelTarihDate} mode="date" display="default" locale="tr-TR" onChange={(_, d) => { setShowGenelTarihPicker(false); if (d) setGenelTarihDate(d); }} />}
           {showGenelSaatPicker && <DateTimePicker value={genelSaatDate ?? new Date()} mode="time" is24Hour display="default" onChange={(_, d) => { setShowGenelSaatPicker(false); if (d) setGenelSaatDate(d); }} />}
+        </Modal>
+
+        {/* Görev Sil Onay */}
+        <Modal visible={!!silOnayId} transparent animationType="fade" onRequestClose={() => setSilOnayId(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 320 }}>
+              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 8 }}>🗑 Görevi Sil</Text>
+              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>Bu görev kalıcı olarak silinecek. Emin misiniz?</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={() => setSilOnayId(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => silOnayId && gorevSilDashboard(silOnayId)} style={{ flex: 1, padding: 12, backgroundColor: '#ef4444', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Sil</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
 
             <View style={styles.sectionHeader}>
