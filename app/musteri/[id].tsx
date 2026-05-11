@@ -444,8 +444,10 @@ export default function MusteriDetayScreen() {
               [
                 { text: 'Hayır', style: 'cancel' },
                 { text: 'Evet', onPress: async () => {
+                  const { data: { user: u } } = await supabase.auth.getUser();
                   await supabase.from('musteri_gorevler').insert({
                     musteri_id: id,
+                    user_id: u?.id,
                     baslik: d.baslik,
                     hedef_tarih: d.tarih ? new Date(d.tarih).toISOString() : null,
                     aciklama: 'Nottan önerildi',

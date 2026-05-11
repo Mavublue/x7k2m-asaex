@@ -5,6 +5,7 @@ import {
   StyleSheet, ActivityIndicator, Image, Modal, FlatList, RefreshControl, TextInput,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Eslesme } from '../../types';
@@ -21,12 +22,16 @@ export default function DashboardScreen() {
   const [gecmisCount, setGecmisCount] = useState(0);
   const [editGorev, setEditGorev] = useState<any | null>(null);
   const [editBaslik, setEditBaslik] = useState('');
-  const [editTarih, setEditTarih] = useState('');
-  const [editSaat, setEditSaat] = useState('');
+  const [editTarihDate, setEditTarihDate] = useState<Date>(new Date());
+  const [editSaatDate, setEditSaatDate] = useState<Date | null>(null);
+  const [showEditTarihPicker, setShowEditTarihPicker] = useState(false);
+  const [showEditSaatPicker, setShowEditSaatPicker] = useState(false);
   const [genelGorevModal, setGenelGorevModal] = useState(false);
   const [genelBaslik, setGenelBaslik] = useState('');
-  const [genelTarih, setGenelTarih] = useState('');
-  const [genelSaat, setGenelSaat] = useState('');
+  const [genelTarihDate, setGenelTarihDate] = useState<Date>(new Date());
+  const [genelSaatDate, setGenelSaatDate] = useState<Date | null>(null);
+  const [showGenelTarihPicker, setShowGenelTarihPicker] = useState(false);
+  const [showGenelSaatPicker, setShowGenelSaatPicker] = useState(false);
   const [genelMusteriId, setGenelMusteriId] = useState<string | null>(null);
   const [genelMusteriArama, setGenelMusteriArama] = useState('');
   const [musteriListesi, setMusteriListesi] = useState<{id:string;ad:string;soyad:string|null;etiketler:string|null}[]>([]);
@@ -373,14 +378,11 @@ export default function DashboardScreen() {
 
   async function gorevDuzenleKaydet() {
     if (!editGorev || !editBaslik.trim()) return;
-    let hedefTarihIso: string | null = null;
-    if (editTarih) {
-      const dt = new Date(editTarih);
-      if (editSaat) { const [h, m] = editSaat.split(':').map(Number); dt.setHours(h, m, 0, 0); }
-      hedefTarihIso = dt.toISOString();
-    }
-    await supabase.from('musteri_gorevler').update({ baslik: editBaslik.trim(), hedef_tarih: hedefTarihIso }).eq('id', editGorev.id);
-    setGorevDashboard(prev => prev.map(g => g.id === editGorev.id ? { ...g, baslik: editBaslik.trim(), hedef_tarih: hedefTarihIso } : g));
+    const dt = new Date(editTarihDate);
+    if (editSaatDate) { dt.setHours(editSaatDate.getHours(), editSaatDate.getMinutes(), 0, 0); }
+    else { dt.setUTCHours(0, 0, 0, 0); }
+    await supabase.from('musteri_gorevler').update({ baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() }).eq('id', editGorev.id);
+    setGorevDashboard(prev => prev.map(g => g.id === editGorev.id ? { ...g, baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() } : g));
     setEditGorev(null);
   }
 
@@ -390,13 +392,14 @@ export default function DashboardScreen() {
   }
 
   async function genelGorevEkle() {
-    if (!genelBaslik.trim() || !genelTarih) return;
+    if (!genelBaslik.trim()) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const dt = new Date(genelTarih);
-    if (genelSaat) { const [h, m] = genelSaat.split(':').map(Number); dt.setHours(h, m, 0, 0); }
+    const dt = new Date(genelTarihDate);
+    if (genelSaatDate) { dt.setHours(genelSaatDate.getHours(), genelSaatDate.getMinutes(), 0, 0); }
+    else { dt.setUTCHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, ...(genelMusteriId ? { musteri_id: genelMusteriId } : {}) });
-    setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelMusteriId(null); setGenelMusteriArama(''); setGenelGorevModal(false);
+    setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); setGenelGorevModal(false);
     fetchGorevDashboard(gorevFiltre);
   }
 
@@ -506,11 +509,11 @@ export default function DashboardScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     <TouchableOpacity onPress={() => {
-                      const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
+                      const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date();
                       setEditGorev(g);
                       setEditBaslik(g.baslik);
-                      setEditTarih(dt ? dt.toISOString().slice(0,10) : '');
-                      setEditSaat(dt && (dt.getUTCHours()!==0||dt.getUTCMinutes()!==0) ? `${pad(dt.getHours())}:${pad(dt.getMinutes())}` : '');
+                      setEditTarihDate(dt);
+                      setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null);
                     }} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
                       <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant }}>✏️</Text>
                     </TouchableOpacity>
@@ -534,11 +537,20 @@ export default function DashboardScreen() {
               <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı"
                 style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                <TextInput value={editTarih} onChangeText={setEditTarih} placeholder="YYYY-MM-DD"
-                  style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
-                <TextInput value={editSaat} onChangeText={setEditSaat} placeholder="HH:MM"
-                  style={{ width: 90, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+                <TouchableOpacity onPress={() => setShowEditTarihPicker(true)} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                  <Text style={{ fontSize: 13, color: '#374151' }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowEditSaatPicker(true)} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: editSaatDate ? '#16a34a' : '#9ca3af' }}>
+                    {editSaatDate ? `⏰ ${String(editSaatDate.getHours()).padStart(2,'0')}:${String(editSaatDate.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
+                  </Text>
+                </TouchableOpacity>
               </View>
+              {editSaatDate && (
+                <TouchableOpacity onPress={() => setEditSaatDate(null)} style={{ marginBottom: 12, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
+                </TouchableOpacity>
+              )}
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
@@ -549,6 +561,8 @@ export default function DashboardScreen() {
               </View>
             </View>
           </View>
+          {showEditTarihPicker && <DateTimePicker value={editTarihDate} mode="date" display="default" locale="tr-TR" onChange={(_, d) => { setShowEditTarihPicker(false); if (d) setEditTarihDate(d); }} />}
+          {showEditSaatPicker && <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="default" onChange={(_, d) => { setShowEditSaatPicker(false); if (d) setEditSaatDate(d); }} />}
         </Modal>
 
         {/* Takip Bildirimleri */}
@@ -586,24 +600,35 @@ export default function DashboardScreen() {
                   )}
                 </View>
               )}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                <TextInput value={genelTarih} onChangeText={setGenelTarih} placeholder="YYYY-MM-DD"
-                  style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
-                <TextInput value={genelSaat} onChangeText={setGenelSaat} placeholder="HH:MM"
-                  style={{ width: 90, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                <TouchableOpacity onPress={() => setShowGenelTarihPicker(true)} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                  <Text style={{ fontSize: 13, color: '#374151' }}>📅 {genelTarihDate.toLocaleDateString('tr-TR')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowGenelSaatPicker(true)} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: genelSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: genelSaatDate ? '#16a34a' : '#9ca3af' }}>
+                    {genelSaatDate ? `⏰ ${String(genelSaatDate.getHours()).padStart(2,'0')}:${String(genelSaatDate.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarih(''); setGenelSaat(''); setGenelMusteriId(null); setGenelMusteriArama(''); }}
+              {genelSaatDate && (
+                <TouchableOpacity onPress={() => setGenelSaatDate(null)} style={{ marginBottom: 10, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
+                </TouchableOpacity>
+              )}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); }}
                   style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={genelGorevEkle}
-                  style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() && genelTarih ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: genelBaslik.trim() && genelTarih ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                  style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: genelBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+          {showGenelTarihPicker && <DateTimePicker value={genelTarihDate} mode="date" display="default" locale="tr-TR" onChange={(_, d) => { setShowGenelTarihPicker(false); if (d) setGenelTarihDate(d); }} />}
+          {showGenelSaatPicker && <DateTimePicker value={genelSaatDate ?? new Date()} mode="time" is24Hour display="default" onChange={(_, d) => { setShowGenelSaatPicker(false); if (d) setGenelSaatDate(d); }} />}
         </Modal>
 
             <View style={styles.sectionHeader}>
