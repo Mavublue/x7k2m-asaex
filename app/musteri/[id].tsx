@@ -136,7 +136,8 @@ export default function MusteriDetayScreen() {
   const [showGorevOneriSaatPicker, setShowGorevOneriSaatPicker] = useState(false);
 
   const fetchMusteri = useCallback(async () => {
-    const { data: rpcData } = await supabase.rpc('get_musteri_detay', { mid: id });
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_musteri_detay', { mid: id });
+    if (rpcErr) { console.error('RPC error:', rpcErr); Alert.alert('Hata', rpcErr.message); setLoading(false); return; }
     const data = rpcData?.musteri ?? null;
     const dKod = rpcData?.default_telefon_kodu || VARSAYILAN_TELEFON_KODU;
     const kData = rpcData?.iletisim ?? [];
