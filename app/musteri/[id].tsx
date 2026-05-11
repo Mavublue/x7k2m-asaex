@@ -1628,6 +1628,55 @@ export default function MusteriDetayScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* AI Görev Önerisi Modal */}
+      <Modal visible={!!gorevOneriModal} transparent animationType="fade" onRequestClose={() => setGorevOneriModal(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+            <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700', marginBottom: 6 }}>🤖 Görev Önerisi</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1b21', marginBottom: 4 }}>{gorevOneriModal?.baslik}</Text>
+            {gorevOneriModal?.tarih && (
+              <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
+            )}
+            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Hatırlatma saati:</Text>
+            <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
+              style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>
+                ⏰ {String(gorevOneriSaat.getHours()).padStart(2,'0')}:{String(gorevOneriSaat.getMinutes()).padStart(2,'0')}
+              </Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => setGorevOneriModal(null)}
+                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>Hayır</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={async () => {
+                if (!gorevOneriModal) return;
+                const { data: { user: u } } = await supabase.auth.getUser();
+                let hedefTarih: string | null = null;
+                if (gorevOneriModal.tarih) {
+                  const dt = new Date(gorevOneriModal.tarih);
+                  dt.setHours(gorevOneriSaat.getHours(), gorevOneriSaat.getMinutes(), 0, 0);
+                  hedefTarih = dt.toISOString();
+                }
+                await supabase.from('musteri_gorevler').insert({
+                  musteri_id: id, user_id: u?.id, baslik: gorevOneriModal.baslik,
+                  hedef_tarih: hedefTarih, aciklama: 'Nottan önerildi',
+                });
+                if (gorevOneriModal.rowId) await supabase.from('asistan_oneriler').delete().eq('id', gorevOneriModal.rowId);
+                setGorevOneriModal(null);
+                refreshGorevler();
+              }} style={{ flex: 1, padding: 12, backgroundColor: '#7c3aed', borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Evet, Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+        {showGorevOneriSaatPicker && (
+          <DateTimePicker value={gorevOneriSaat} mode="time" is24Hour display="default"
+            onChange={(_, d) => { setShowGorevOneriSaatPicker(false); if (d) setGorevOneriSaat(d); }} />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1800,55 +1849,6 @@ function GorevlerBox({
         ))
       )}
     </View>
-
-    {/* AI Görev Önerisi Modal */}
-    <Modal visible={!!gorevOneriModal} transparent animationType="fade" onRequestClose={() => setGorevOneriModal(null)}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
-          <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700', marginBottom: 6 }}>🤖 Görev Önerisi</Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1b21', marginBottom: 4 }}>{gorevOneriModal?.baslik}</Text>
-          {gorevOneriModal?.tarih && (
-            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
-          )}
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Hatırlatma saati:</Text>
-          <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
-            style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>
-              ⏰ {String(gorevOneriSaat.getHours()).padStart(2,'0')}:{String(gorevOneriSaat.getMinutes()).padStart(2,'0')}
-            </Text>
-          </TouchableOpacity>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={() => setGorevOneriModal(null)}
-              style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>Hayır</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={async () => {
-              if (!gorevOneriModal) return;
-              const { data: { user: u } } = await supabase.auth.getUser();
-              let hedefTarih: string | null = null;
-              if (gorevOneriModal.tarih) {
-                const dt = new Date(gorevOneriModal.tarih);
-                dt.setHours(gorevOneriSaat.getHours(), gorevOneriSaat.getMinutes(), 0, 0);
-                hedefTarih = dt.toISOString();
-              }
-              await supabase.from('musteri_gorevler').insert({
-                musteri_id: id, user_id: u?.id, baslik: gorevOneriModal.baslik,
-                hedef_tarih: hedefTarih, aciklama: 'Nottan önerildi',
-              });
-              if (gorevOneriModal.rowId) await supabase.from('asistan_oneriler').delete().eq('id', gorevOneriModal.rowId);
-              setGorevOneriModal(null);
-              refreshGorevler();
-            }} style={{ flex: 1, padding: 12, backgroundColor: '#7c3aed', borderRadius: 8, alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Evet, Ekle</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-      {showGorevOneriSaatPicker && (
-        <DateTimePicker value={gorevOneriSaat} mode="time" is24Hour display="default"
-          onChange={(_, d) => { setShowGorevOneriSaatPicker(false); if (d) setGorevOneriSaat(d); }} />
-      )}
-    </Modal>
   );
 }
 
