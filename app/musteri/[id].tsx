@@ -127,7 +127,9 @@ export default function MusteriDetayScreen() {
   const [linkSearch, setLinkSearch] = useState('');
   const [linkPortfoySearch, setLinkPortfoySearch] = useState('');
   const [linkSaat, setLinkSaat] = useState('24');
-
+  const [gorevOneriModal, setGorevOneriModal] = useState<{baslik: string; tarih: string | null; rowId: string | null} | null>(null);
+  const [gorevOneriSaat, setGorevOneriSaat] = useState<Date>(() => { const d = new Date(); d.setHours(7,0,0,0); return d; });
+  const [showGorevOneriSaatPicker, setShowGorevOneriSaatPicker] = useState(false);
 
   const fetchMusteri = useCallback(async () => {
     const { data: rpcData } = await supabase.rpc('get_musteri_detay', { mid: id });
@@ -438,25 +440,9 @@ export default function MusteriDetayScreen() {
           if (!res.ok) return;
           const d = await res.json();
           if (d.gorev && d.baslik) {
-            Alert.alert(
-              'Görev Önerisi',
-              `"${d.baslik}"${d.tarih ? `\nTarih: ${new Date(d.tarih).toLocaleDateString('tr-TR')}` : ''}\n\nGörev olarak eklensin mi?`,
-              [
-                { text: 'Hayır', style: 'cancel' },
-                { text: 'Evet', onPress: async () => {
-                  const { data: { user: u } } = await supabase.auth.getUser();
-                  await supabase.from('musteri_gorevler').insert({
-                    musteri_id: id,
-                    user_id: u?.id,
-                    baslik: d.baslik,
-                    hedef_tarih: d.tarih ? new Date(d.tarih).toISOString() : null,
-                    aciklama: 'Nottan önerildi',
-                  });
-                  if (d.rowId) await supabase.from('asistan_oneriler').delete().eq('id', d.rowId);
-                  refreshGorevler();
-                }},
-              ]
-            );
+            const defaultSaat = new Date(); defaultSaat.setHours(7, 0, 0, 0);
+            setGorevOneriSaat(defaultSaat);
+            setGorevOneriModal({ baslik: d.baslik, tarih: d.tarih ?? null, rowId: d.rowId ?? null });
           }
         }).catch(() => {});
       }
@@ -1707,6 +1693,55 @@ function GorevlerBox({
         ))
       )}
     </View>
+
+    {/* AI Görev Önerisi Modal */}
+    <Modal visible={!!gorevOneriModal} transparent animationType="fade" onRequestClose={() => setGorevOneriModal(null)}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+          <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700', marginBottom: 6 }}>🤖 Görev Önerisi</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1b21', marginBottom: 4 }}>{gorevOneriModal?.baslik}</Text>
+          {gorevOneriModal?.tarih && (
+            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
+          )}
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Hatırlatma saati:</Text>
+          <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
+            style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>
+              ⏰ {String(gorevOneriSaat.getHours()).padStart(2,'0')}:{String(gorevOneriSaat.getMinutes()).padStart(2,'0')}
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity onPress={() => setGorevOneriModal(null)}
+              style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>Hayır</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={async () => {
+              if (!gorevOneriModal) return;
+              const { data: { user: u } } = await supabase.auth.getUser();
+              let hedefTarih: string | null = null;
+              if (gorevOneriModal.tarih) {
+                const dt = new Date(gorevOneriModal.tarih);
+                dt.setHours(gorevOneriSaat.getHours(), gorevOneriSaat.getMinutes(), 0, 0);
+                hedefTarih = dt.toISOString();
+              }
+              await supabase.from('musteri_gorevler').insert({
+                musteri_id: id, user_id: u?.id, baslik: gorevOneriModal.baslik,
+                hedef_tarih: hedefTarih, aciklama: 'Nottan önerildi',
+              });
+              if (gorevOneriModal.rowId) await supabase.from('asistan_oneriler').delete().eq('id', gorevOneriModal.rowId);
+              setGorevOneriModal(null);
+              refreshGorevler();
+            }} style={{ flex: 1, padding: 12, backgroundColor: '#7c3aed', borderRadius: 8, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Evet, Ekle</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      {showGorevOneriSaatPicker && (
+        <DateTimePicker value={gorevOneriSaat} mode="time" is24Hour display="default"
+          onChange={(_, d) => { setShowGorevOneriSaatPicker(false); if (d) setGorevOneriSaat(d); }} />
+      )}
+    </Modal>
   );
 }
 
