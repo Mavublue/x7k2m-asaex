@@ -55,6 +55,14 @@ export default function DashboardScreen() {
     fetchBildirimler();
     fetchData();
     fetchGorevDashboard('bugun');
+
+    const channel = supabase.channel('bildirim-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asistan_oneriler' }, () => fetchBildirimler())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => { fetchBildirimler(); fetchGorevDashboard(gorevFiltre); })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'musteriler' }, () => fetchBildirimler())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useFocusEffect(useCallback(() => {
