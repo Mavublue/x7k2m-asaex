@@ -18,6 +18,8 @@ const ILLER_LISTESI = IL_LISTESI;
 const EMLAK_TIPLERI = ['Daire', 'Villa', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
+const KAT_SAYILARI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];
+const BULUNDUGU_KATLAR = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
 const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
 const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', 'İptal'];
 const musteriTipleri = ['Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
@@ -50,8 +52,8 @@ export default function MusteriEkleScreen() {
   const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
-  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; ozelIstekler: string[]; minKat: string; maxKat: string };
-  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [], minKat: '', maxKat: '' }]);
+  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; ozelIstekler: string[]; katSayilari: string[]; bulunduguKatlar: string[] };
+  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [], katSayilari: [], bulunduguKatlar: [] }]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [konumSearch, setKonumSearch] = useState('');
@@ -264,8 +266,8 @@ export default function MusteriEkleScreen() {
           min_oda: i.minOda || null,
           bina_yasi: i.binaYaslari.length ? i.binaYaslari.join(',') : null,
           ozellikler: i.ozelIstekler.length ? i.ozelIstekler.join(',') : null,
-          min_kat: i.minKat ? parseInt(i.minKat) : null,
-          max_kat: i.maxKat ? parseInt(i.maxKat) : null,
+          kat_sayisi: i.katSayilari.length ? i.katSayilari.join(',') : null,
+          bulundugu_kat: i.bulunduguKatlar.length ? i.bulunduguKatlar.join(',') : null,
         }));
       if (iRows.length) {
         const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
@@ -387,7 +389,7 @@ export default function MusteriEkleScreen() {
           <View style={styles.inputContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
-              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [], minKat: '', maxKat: '' }])}
+              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [], katSayilari: [], bulunduguKatlar: [] }])}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                 <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
               </TouchableOpacity>
@@ -456,14 +458,34 @@ export default function MusteriEkleScreen() {
                     })}
                   </View>
                 </View>
-                {/* Kat Aralığı */}
+                {/* Kat Sayısı */}
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Bulunduğu Kat Aralığı</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Min kat" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
-                      value={istek.minKat} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, minKat: v.replace(/\D/g, '') } : x))} />
-                    <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Max kat" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
-                      value={istek.maxKat} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, maxKat: v.replace(/\D/g, '') } : x))} />
+                  <Text style={styles.label}>Kat Sayısı</Text>
+                  <View style={styles.chipRow}>
+                    {KAT_SAYILARI.map(k => {
+                      const secili = istek.katSayilari.includes(k);
+                      return (
+                        <TouchableOpacity key={k} style={[styles.chip, secili && styles.chipActive]}
+                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, katSayilari: secili ? x.katSayilari.filter(s => s !== k) : [...x.katSayilari, k] } : x))}>
+                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{k}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+                {/* Bulunduğu Kat */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Bulunduğu Kat</Text>
+                  <View style={styles.chipRow}>
+                    {BULUNDUGU_KATLAR.map(k => {
+                      const secili = istek.bulunduguKatlar.includes(k);
+                      return (
+                        <TouchableOpacity key={k} style={[styles.chip, secili && styles.chipActive]}
+                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, bulunduguKatlar: secili ? x.bulunduguKatlar.filter(s => s !== k) : [...x.bulunduguKatlar, k] } : x))}>
+                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{k}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
                 {/* Özel İstekler */}
