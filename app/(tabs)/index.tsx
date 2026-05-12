@@ -5,10 +5,24 @@ import {
   StyleSheet, ActivityIndicator, Image, Modal, FlatList, RefreshControl, TextInput, AppState,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import R2Image from '../../components/R2Image';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Eslesme } from '../../types';
+
+function goreciZaman(iso: string): string {
+  if (!iso) return '';
+  const fark = Date.now() - new Date(iso).getTime();
+  const dk = Math.floor(fark / 60000);
+  if (dk < 1) return 'Az önce';
+  if (dk < 60) return `${dk} dk önce`;
+  const saat = Math.floor(dk / 60);
+  if (saat < 24) return `${saat} saat önce`;
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
@@ -780,7 +794,7 @@ export default function DashboardScreen() {
                         <View style={[styles.bdItem, !isOkundu && styles.bdItemYeni]}>
                           {item.foto ? (
                             <TouchableOpacity onPress={() => bildirimDetayAc(item)}>
-                              <Image source={{ uri: item.foto }} style={styles.bdFoto} resizeMode="cover" />
+                              <R2Image source={item.foto!} size="sm" style={styles.bdFoto} />
                             </TouchableOpacity>
                           ) : (
                             <TouchableOpacity style={[styles.bdIcon, {
@@ -794,6 +808,7 @@ export default function DashboardScreen() {
                           <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
                             <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }]} numberOfLines={1}>{item.baslik}</Text>
                             <Text style={styles.bdAlt}>{item.alt}</Text>
+                            {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.bdMenuBtn}
@@ -831,7 +846,7 @@ export default function DashboardScreen() {
                       {detayBildirim.tip === 'musteri' ? (
                         <>
                           {item.fotograflar?.[0]
-                            ? <Image source={{ uri: item.fotograflar[0] }} style={styles.bdDetayFoto} resizeMode="cover" />
+                            ? <R2Image source={item.fotograflar[0]} size="sm" style={styles.bdDetayFoto} />
                             : <View style={[styles.bdDetayFoto, { backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }]}><Text>🏠</Text></View>
                           }
                           <View style={{ flex: 1 }}>
@@ -1062,6 +1077,7 @@ const styles = StyleSheet.create({
   bdFoto: { width: 48, height: 48, borderRadius: Radius.md },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  bdZaman: { fontSize: 11, color: Colors.outlineVariant, marginTop: 2 },
   bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   bdMenuText: { fontSize: 22, color: '#6b7280', fontWeight: '700', lineHeight: 24 },
   bdMenuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' },

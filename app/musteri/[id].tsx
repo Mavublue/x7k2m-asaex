@@ -90,6 +90,7 @@ export default function MusteriDetayScreen() {
   const [notTarih, setNotTarih] = useState<Date>(new Date());
   const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
   const [showTakipPicker, setShowTakipPicker] = useState(false);
+  const [showInlineTakipPicker, setShowInlineTakipPicker] = useState(false);
   const [notEditId, setNotEditId] = useState<string | null>(null);
   const [gorevler, setGorevler] = useState<MusteriGorev[]>([]);
   const [gorevEkle, setGorevEkle] = useState(false);
@@ -123,6 +124,7 @@ export default function MusteriDetayScreen() {
   const [ilanSearch, setIlanSearch] = useState('');
   const [pendingIlanlar, setPendingIlanlar] = useState<Ilan[]>([]);
   const [eslesiyorBulk, setEslesiyorBulk] = useState(false);
+  const [musteriFiltre, setMusteriFiltre] = useState(false);
 
   // Link paylaş
   const [linkModal, setLinkModal] = useState(false);
@@ -348,7 +350,39 @@ export default function MusteriDetayScreen() {
     setTumIlanlar(data ?? []);
     setIlanSearch('');
     setPendingIlanlar([]);
+    setMusteriFiltre(istekler.length > 0);
     setIlanModal(true);
+  }
+
+  function ilanMusteriUyuyor(ilan: Ilan): boolean {
+    if (!istekler.length) return true;
+    return istekler.some(istek => {
+      const f = Number(ilan.fiyat);
+      const bMin = istek.butceMin ? parseInt(istek.butceMin.replace(/\./g, '')) : null;
+      const bMax = istek.butceMax ? parseInt(istek.butceMax.replace(/\./g, '')) : null;
+      if (bMin != null && f < bMin) return false;
+      if (bMax != null && f > bMax) return false;
+      if (istek.tipler.length && !istek.tipler.some(t => (ilan.kategori ?? '').toLowerCase().includes(t.toLowerCase()))) return false;
+      return true;
+    });
+  }
+
+  function musteriOzetStr(): string {
+    if (!istekler.length) return '';
+    const parts: string[] = [];
+    const birlesik = { tipler: new Set<string>(), butceMinler: [] as number[], butceMaxler: [] as number[] };
+    for (const i of istekler) {
+      i.tipler.forEach(t => birlesik.tipler.add(t));
+      if (i.butceMin) birlesik.butceMinler.push(parseInt(i.butceMin.replace(/\./g, '')));
+      if (i.butceMax) birlesik.butceMaxler.push(parseInt(i.butceMax.replace(/\./g, '')));
+    }
+    if (birlesik.tipler.size) parts.push([...birlesik.tipler].join('/'));
+    if (birlesik.butceMinler.length || birlesik.butceMaxler.length) {
+      const mn = birlesik.butceMinler.length ? `min ₺${Math.min(...birlesik.butceMinler).toLocaleString('tr-TR')}` : '';
+      const mx = birlesik.butceMaxler.length ? `max ₺${Math.max(...birlesik.butceMaxler).toLocaleString('tr-TR')}` : '';
+      parts.push([mn, mx].filter(Boolean).join(' – '));
+    }
+    return parts.join(' · ');
   }
 
   function togglePendingIlan(ilan: Ilan) {
@@ -1092,7 +1126,7 @@ export default function MusteriDetayScreen() {
                 {/* İstekler */}
                 {istekler.length > 0 && (
                   <View style={[styles.infoBox, { gap: 10 }]}>
-                    <Text style={styles.sectionTitle}>İstekler</Text>
+                    <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md }]}>İstekler</Text>
                     {istekler.map((istek, idx) => (
                       <View key={istek.id ?? idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 12, gap: 6 }}>
                         <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant }}>İstek {idx + 1}</Text>
@@ -1130,7 +1164,10 @@ export default function MusteriDetayScreen() {
                     {takipTarihi ? (
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Takip Tarihi</Text>
-                        <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
+                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} onPress={() => setShowInlineTakipPicker(true)}>
+                          <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
+                          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>✏️</Text>
+                        </TouchableOpacity>
                       </View>
                     ) : null}
                   </View>
@@ -1158,10 +1195,29 @@ export default function MusteriDetayScreen() {
                     {takipTarihi ? (
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Takip Tarihi</Text>
-                        <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
+                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} onPress={() => setShowInlineTakipPicker(true)}>
+                          <Text style={[styles.infoDeger, { color: Colors.primary }]}>📅 {takipTarihi}</Text>
+                          <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>✏️</Text>
+                        </TouchableOpacity>
                       </View>
                     ) : null}
                   </View>
+                )}
+                {showInlineTakipPicker && (
+                  <DateTimePicker
+                    value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(_, sel) => {
+                      setShowInlineTakipPicker(false);
+                      if (sel) {
+                        const pad = (n: number) => String(n).padStart(2, '0');
+                        const yeni = `${pad(sel.getDate())}.${pad(sel.getMonth()+1)}.${sel.getFullYear()}`;
+                        setTakipTarihi(yeni);
+                        supabase.from('musteriler').update({ takip_tarihi: isoFormat(yeni) }).eq('id', id).then(() => {});
+                      }
+                    }}
+                  />
                 )}
 
                   {/* Notlar */}
