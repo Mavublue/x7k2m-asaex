@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Image, Modal, FlatList, RefreshControl, TextInput, AppState,
+  StyleSheet, ActivityIndicator, Alert, Image, Modal, FlatList, RefreshControl, TextInput, AppState,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import R2Image from '../../components/R2Image';
@@ -41,6 +41,7 @@ export default function DashboardScreen() {
   const [editSaatDate, setEditSaatDate] = useState<Date | null>(null);
   const [showEditTarihPicker, setShowEditTarihPicker] = useState(false);
   const [showEditSaatPicker, setShowEditSaatPicker] = useState(false);
+  const [gorevPanel, setGorevPanel] = useState(false);
   const [genelGorevModal, setGenelGorevModal] = useState(false);
   const [genelBaslik, setGenelBaslik] = useState('');
   const [genelTarihDate, setGenelTarihDate] = useState<Date>(new Date());
@@ -435,8 +436,6 @@ export default function DashboardScreen() {
   const hizliAksiyonlar = [
     { label: 'İlan Ekle', icon: '＋', route: '/ilan/ekle', color: Colors.primary },
     { label: 'Müşteri', icon: '👤', route: '/(tabs)/musteriler', color: Colors.secondaryContainer },
-    { label: 'Tur Planla', icon: '📅', route: '/(tabs)/ayarlar', color: '#1e3a8a' },
-    { label: 'Rapor Al', icon: '📊', route: '/(tabs)/ayarlar', color: '#4b1c00' },
   ];
 
   if (loading) {
@@ -492,75 +491,18 @@ export default function DashboardScreen() {
 
         {/* Görevler */}
         <View style={styles.section}>
-          <View style={{ marginBottom: Spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={[styles.bildirimDot, { backgroundColor: '#16a34a' }]} />
-                <Text style={styles.sectionTitle}>Görevler</Text>
-              </View>
-              <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: '#dbeafe' }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
-              </TouchableOpacity>
+          <TouchableOpacity onPress={() => setGorevPanel(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={[styles.bildirimDot, { backgroundColor: '#16a34a' }]} />
+              <Text style={styles.sectionTitle}>Görevler</Text>
+              {gecmisCount > 0 && (
+                <View style={{ backgroundColor: '#ef4444', borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{gecmisCount}</Text>
+                </View>
+              )}
             </View>
-            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-              {([['gecmis','Gecikmiş'],['bugun','Bugün'],['yarin','Yarın'],['7gun','7 Gün'],['tumu','Tümü']] as ['gecmis'|'bugun'|'yarin'|'7gun'|'tumu', string][]).map(([f, label]) => (
-                <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevDashboard(f); }}
-                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : '#16a34a') : Colors.surfaceContainerHigh }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: gorevFiltre === f ? '#fff' : (f === 'gecmis' && gecmisCount > 0 ? '#ef4444' : Colors.onSurfaceVariant) }}>
-                    {label}{f === 'gecmis' && gecmisCount > 0 && gorevFiltre !== 'gecmis' ? ` ${gecmisCount}` : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          {gorevDashboard.length === 0 ? (
-            <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? '#fff5f5' : '#f0fdf4', borderRadius: 10, alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, color: gorevFiltre === 'gecmis' ? '#ef4444' : '#16a34a', fontWeight: '500' }}>
-                {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}
-              </Text>
-            </View>
-          ) : (
-            gorevDashboard.map(g => {
-              const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
-              const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
-              const pad = (n: number) => String(n).padStart(2, '0');
-              const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
-              const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
-              const gecmis = gorevFiltre === 'gecmis';
-              const m = g.musteriler;
-              const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
-              return (
-                <TouchableOpacity key={g.id} onPress={() => router.push(`/musteri/${g.musteri_id}` as any)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? '#fff5f5' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? '#fecaca' : '#e5e7eb', borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a', marginBottom: 6 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>
-                    <Text style={{ fontSize: 11, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 2 }}>
-                      {musteriLabel || '—'}{tarihStr ? ` · 📅 ${tarihStr}` : ''}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 4 }}>
-                    <TouchableOpacity onPress={() => {
-                      const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date();
-                      setEditGorev(g);
-                      setEditBaslik(g.baslik);
-                      setEditTarihDate(dt);
-                      setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null);
-                    }} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant }}>✏️</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setSilOnayId(g.id)}
-                      style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#fff5f5', borderRadius: 6, borderWidth: 1, borderColor: '#fecaca' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444' }}>🗑</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => gorevTamamlaDashboard(g.id)}
-                      style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
+            <Text style={{ fontSize: 18, color: Colors.primary, fontWeight: '600' }}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Görev Düzenle Modal */}
@@ -721,33 +663,6 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* İstatistikler */}
-        <View style={styles.statsRow}>
-          <StatKart baslik="Aktif İlanlar" deger={ilanSayisi} renk={Colors.primary} route="/(tabs)/ilanlar" altText="Portföy" />
-          <StatKart baslik="Müşteriler" deger={musteriSayisi} renk={Colors.secondaryContainer} route="/(tabs)/musteriler" altText="Aktif Takip" />
-          <StatKart baslik="Eşleşmeler" deger={eslesmeSayisi} renk="#1e3a8a" route="/(tabs)/musteriler" altText="Toplam" />
-        </View>
-
-        {/* Yeni Eşleşmeler */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Yeni Eşleşmeler</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/musteriler')}>
-              <Text style={styles.tümünüGör}>Tümünü Gör</Text>
-            </TouchableOpacity>
-          </View>
-
-          {yeniEslesmeler.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>Henüz eşleşme yok</Text>
-            </View>
-          ) : (
-            yeniEslesmeler.map((e) => (
-              <EslesmeKart key={e.id} eslesme={e} />
-            ))
-          )}
-        </View>
-
       </ScrollView>
 
       {/* Bildirim Modalı */}
@@ -875,6 +790,80 @@ export default function DashboardScreen() {
                 />
               )
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Görev Panel */}
+      <Modal visible={gorevPanel} animationType="slide" transparent onRequestClose={() => setGorevPanel(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setGorevPanel(false)} />
+          <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.onSurface }}>Görevler</Text>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: '#dbeafe' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setGorevPanel(false)}>
+                  <Text style={{ fontSize: 20, color: Colors.onSurfaceVariant }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md }}>
+              {([['gecmis','Gecikmiş'],['bugun','Bugün'],['yarin','Yarın'],['7gun','7 Gün'],['tumu','Tümü']] as ['gecmis'|'bugun'|'yarin'|'7gun'|'tumu', string][]).map(([f, label]) => (
+                <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevDashboard(f); }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : '#16a34a') : Colors.surfaceContainerHigh }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: gorevFiltre === f ? '#fff' : (f === 'gecmis' && gecmisCount > 0 ? '#ef4444' : Colors.onSurfaceVariant) }}>
+                    {label}{f === 'gecmis' && gecmisCount > 0 && gorevFiltre !== 'gecmis' ? ` ${gecmisCount}` : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <FlatList
+              data={gorevDashboard}
+              keyExtractor={g => g.id}
+              contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xl, gap: 6 }}
+              ListEmptyComponent={
+                <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? '#fff5f5' : '#f0fdf4', borderRadius: 10, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: gorevFiltre === 'gecmis' ? '#ef4444' : '#16a34a', fontWeight: '500' }}>
+                    {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}
+                  </Text>
+                </View>
+              }
+              renderItem={({ item: g }) => {
+                const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
+                const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
+                const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
+                const gecmis = gorevFiltre === 'gecmis';
+                const m = g.musteriler;
+                const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
+                return (
+                  <TouchableOpacity onPress={() => { setGorevPanel(false); router.push(`/musteri/${g.musteri_id}` as any); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? '#fff5f5' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? '#fecaca' : '#e5e7eb', borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>
+                      <Text style={{ fontSize: 11, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 2 }}>
+                        {musteriLabel || '—'}{tarihStr ? ` · 📅 ${tarihStr}` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => gorevTamamlaDashboard(g.id)}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
+                      { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null); } },
+                      { text: 'Sil', style: 'destructive', onPress: () => gorevSilDashboard(g.id) },
+                      { text: 'İptal', style: 'cancel' },
+                    ])} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 16, color: Colors.onSurfaceVariant, fontWeight: '700' }}>⋯</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              }}
+            />
           </View>
         </View>
       </Modal>
