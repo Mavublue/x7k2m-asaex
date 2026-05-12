@@ -403,113 +403,120 @@ export default function MusteriEkleScreen() {
               </TouchableOpacity>
             </View>
             {istekler.map((istek, idx) => (
-              <View key={idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 12, gap: 10, marginTop: 8 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>İstek {idx + 1}</Text>
+              <View key={idx} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: Radius.lg, overflow: 'hidden', marginTop: 8 }}>
+                {/* Kart başlık */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#E53935', letterSpacing: 0.5 }}>#{idx + 1} İSTEK</Text>
                   {istekler.length > 1 && (
                     <TouchableOpacity onPress={() => setIstekler(p => p.filter((_, i) => i !== idx))}>
-                      <Text style={{ fontSize: 16, color: Colors.primary, fontWeight: '700' }}>× Kaldır</Text>
+                      <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>× Kaldır</Text>
                     </TouchableOpacity>
                   )}
                 </View>
-                <View style={styles.chipRow}>
-                  {EMLAK_TIPLERI.map(t => {
-                    const secili = istek.tipler.includes(t);
-                    return (
-                      <TouchableOpacity key={t} style={[styles.chip, secili && styles.chipActive]}
-                        onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: secili ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t] } : x))}>
-                        <Text style={[styles.chipText, secili && styles.chipTextActive]}>{t}</Text>
+                {/* Bütçe */}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bütçe (₺)</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8 }}>
+                    <TextInput style={[styles.input, { flex: 1 }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                      value={istek.butceMin} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMin: formatButce(v) } : x))} />
+                    <TextInput style={[styles.input, { flex: 1 }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                      value={istek.butceMax} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMax: formatButce(v) } : x))} />
+                  </View>
+                </View>
+                {/* Portföy Tipi */}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Portföy Tipi</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {EMLAK_TIPLERI.map(t => { const s = istek.tipler.includes(t); return (
+                      <TouchableOpacity key={t} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: s ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t] } : x))}>
+                        <Text style={[styles.chipText, s && styles.chipTextActive]}>{t}</Text>
                       </TouchableOpacity>
-                    );
-                  })}
+                    ); })}
+                  </View>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
-                    value={istek.butceMin} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMin: formatButce(v) } : x))} />
-                  <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
-                    value={istek.butceMax} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMax: formatButce(v) } : x))} />
+                {/* Konum */}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Tercih Konum</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10 }}>
+                    <TouchableOpacity style={[styles.konumBox, istek.konumlar.length > 0 && styles.konumBoxAktif]}
+                      onPress={() => { setActiveIstekIdx(idx); setKonumSearch(''); setFilterPage('il'); }}>
+                      <Text style={[styles.konumBoxText, istek.konumlar.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
+                        {istek.konumlar.length > 0 ? `${istek.konumlar.length} konum seçildi` : 'Konum Seç'}
+                      </Text>
+                      <Text style={styles.konumBoxChevron}>▾</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <TouchableOpacity style={[styles.konumBox, istek.konumlar.length > 0 && styles.konumBoxAktif]}
-                  onPress={() => { setActiveIstekIdx(idx); setKonumSearch(''); setFilterPage('il'); }}>
-                  <Text style={[styles.konumBoxText, istek.konumlar.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
-                    {istek.konumlar.length > 0 ? `${istek.konumlar.length} konum seçildi` : 'Konum Seç'}
-                  </Text>
-                  <Text style={styles.konumBoxChevron}>▾</Text>
-                </TouchableOpacity>
                 {/* Min Oda */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Min Oda</Text>
-                  <View style={styles.chipRow}>
-                    {ODALAR.map(o => {
-                      const secili = istek.minOda === o;
-                      return (
-                        <TouchableOpacity key={o} style={[styles.chip, secili && styles.chipActive]}
-                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, minOda: x.minOda === o ? '' : o } : x))}>
-                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{o}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Min Oda</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {ODALAR.map(o => { const s = istek.minOda === o; return (
+                      <TouchableOpacity key={o} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, minOda: x.minOda === o ? '' : o } : x))}>
+                        <Text style={[styles.chipText, s && styles.chipTextActive]}>{o}</Text>
+                      </TouchableOpacity>
+                    ); })}
                   </View>
                 </View>
                 {/* Bina Yaşı */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Bina Yaşı</Text>
-                  <View style={styles.chipRow}>
-                    {BINA_YASLARI.map(y => {
-                      const secili = istek.binaYaslari.includes(y);
-                      return (
-                        <TouchableOpacity key={y} style={[styles.chip, secili && styles.chipActive]}
-                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: secili ? x.binaYaslari.filter(b => b !== y) : [...x.binaYaslari, y] } : x))}>
-                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{y}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bina Yaşı</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {BINA_YASLARI.map(y => { const s = istek.binaYaslari.includes(y); return (
+                      <TouchableOpacity key={y} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: s ? x.binaYaslari.filter(b => b !== y) : [...x.binaYaslari, y] } : x))}>
+                        <Text style={[styles.chipText, s && styles.chipTextActive]}>{y}</Text>
+                      </TouchableOpacity>
+                    ); })}
                   </View>
                 </View>
                 {/* Kat Sayısı */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Kat Sayısı</Text>
-                  <View style={styles.chipRow}>
-                    {KAT_SAYILARI.map(k => {
-                      const secili = istek.katSayilari.includes(k);
-                      return (
-                        <TouchableOpacity key={k} style={[styles.chip, secili && styles.chipActive]}
-                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, katSayilari: secili ? x.katSayilari.filter(s => s !== k) : [...x.katSayilari, k] } : x))}>
-                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{k}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Kat Sayısı</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {KAT_SAYILARI.map(k => { const s = istek.katSayilari.includes(k); return (
+                      <TouchableOpacity key={k} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, katSayilari: s ? x.katSayilari.filter(ss => ss !== k) : [...x.katSayilari, k] } : x))}>
+                        <Text style={[styles.chipText, s && styles.chipTextActive]}>{k}</Text>
+                      </TouchableOpacity>
+                    ); })}
                   </View>
                 </View>
                 {/* Bulunduğu Kat */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Bulunduğu Kat</Text>
-                  <View style={styles.chipRow}>
-                    {BULUNDUGU_KATLAR.map(k => {
-                      const secili = istek.bulunduguKatlar.includes(k);
-                      return (
-                        <TouchableOpacity key={k} style={[styles.chip, secili && styles.chipActive]}
-                          onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, bulunduguKatlar: secili ? x.bulunduguKatlar.filter(s => s !== k) : [...x.bulunduguKatlar, k] } : x))}>
-                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{k}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                <View style={{ borderBottomWidth: tumOzellikler.length > 0 ? 1 : 0, borderBottomColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bulunduğu Kat</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {BULUNDUGU_KATLAR.map(k => { const s = istek.bulunduguKatlar.includes(k); return (
+                      <TouchableOpacity key={k} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, bulunduguKatlar: s ? x.bulunduguKatlar.filter(ss => ss !== k) : [...x.bulunduguKatlar, k] } : x))}>
+                        <Text style={[styles.chipText, s && styles.chipTextActive]}>{k}</Text>
+                      </TouchableOpacity>
+                    ); })}
                   </View>
                 </View>
                 {/* Özel İstekler */}
                 {tumOzellikler.length > 0 && (
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Özel İstekler</Text>
-                    <View style={styles.chipRow}>
-                      {tumOzellikler.map(oz => {
-                        const secili = istek.ozelIstekler.includes(oz.id);
-                        return (
-                          <TouchableOpacity key={oz.id} style={[styles.chip, secili && styles.chipActive]}
-                            onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: secili ? x.ozelIstekler.filter(id => id !== oz.id) : [...x.ozelIstekler, oz.id] } : x))}>
-                            <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                  <View>
+                    <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Özel İstekler</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {tumOzellikler.map(oz => { const s = istek.ozelIstekler.includes(oz.id); return (
+                        <TouchableOpacity key={oz.id} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: s ? x.ozelIstekler.filter(id => id !== oz.id) : [...x.ozelIstekler, oz.id] } : x))}>
+                          <Text style={[styles.chipText, s && styles.chipTextActive]}>{oz.ad}</Text>
+                        </TouchableOpacity>
+                      ); })}
                     </View>
                   </View>
                 )}
