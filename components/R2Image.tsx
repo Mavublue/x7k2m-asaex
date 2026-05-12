@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, ImageStyle } from 'react-native';
+import { Image } from 'expo-image';
+import { ImageStyle } from 'react-native';
 
 type Size = 'cover' | 'sm' | 'md' | 'lg';
 
@@ -30,5 +31,5 @@ export default function R2Image({ source, style, resizeMode = 'cover', size = 'm
     ? source
     : toSizedUrl(source, size);
 
-  return <Image source={{ uri }} style={style} resizeMode={resizeMode} />;
+  return <Image source={{ uri }} style={style} contentFit={resizeMode === 'contain' ? 'contain' : 'cover'} cachePolicy="disk" />;
 }

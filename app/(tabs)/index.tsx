@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Image, Modal, FlatList, RefreshControl, TextInput,
+  StyleSheet, ActivityIndicator, Image, Modal, FlatList, RefreshControl, TextInput, AppState,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -63,7 +63,11 @@ export default function DashboardScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ilanlar' }, () => fetchBildirimler())
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') fetchBildirimler();
+    });
+
+    return () => { supabase.removeChannel(channel); appStateSub.remove(); };
   }, []);
 
   useFocusEffect(useCallback(() => {
