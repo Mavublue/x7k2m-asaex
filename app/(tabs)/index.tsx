@@ -806,9 +806,11 @@ export default function DashboardScreen() {
                             </TouchableOpacity>
                           )}
                           <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
-                            <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }]} numberOfLines={1}>{item.baslik}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                              <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }, { flex: 1 }]} numberOfLines={1}>{item.baslik}</Text>
+                              {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
+                            </View>
                             <Text style={styles.bdAlt}>{item.alt}</Text>
-                            {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.bdMenuBtn}
