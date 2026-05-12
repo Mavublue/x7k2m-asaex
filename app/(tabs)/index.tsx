@@ -111,7 +111,8 @@ export default function DashboardScreen() {
 
   const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
   function istekEslesiyor(istek: any, ilan: any): boolean {
-    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi) return false;
+    const istekOzellikIds: string[] = (istek.musteri_istek_ozellikler ?? []).map((o: any) => o.ozellik_id);
+    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi && !istek.kat_sayisi && !istek.bulundugu_kat && !istekOzellikIds.length) return false;
     const f = Number(ilan.fiyat);
     if (istek.butce_min != null && f < Number(istek.butce_min)) return false;
     if (istek.butce_max != null && f > Number(istek.butce_max)) return false;
@@ -149,6 +150,18 @@ export default function DashboardScreen() {
       const list = istek.bina_yasi.split(',').map((s: string) => s.trim());
       if (list.length && !list.includes(ilan.bina_yasi)) return false;
     }
+    if (istek.kat_sayisi && (ilan as any).kat_sayisi) {
+      const list = istek.kat_sayisi.split(',').map((s: string) => s.trim());
+      if (list.length && !list.includes((ilan as any).kat_sayisi)) return false;
+    }
+    if (istek.bulundugu_kat && (ilan as any).bulundugu_kat) {
+      const list = istek.bulundugu_kat.split(',').map((s: string) => s.trim());
+      if (list.length && !list.includes((ilan as any).bulundugu_kat)) return false;
+    }
+    if (istekOzellikIds.length) {
+      const ilanOzellikIds = (ilan.ilan_ozellikler ?? []).map((o: any) => o.ozellik_id);
+      if (!istekOzellikIds.every((oid: string) => ilanOzellikIds.includes(oid))) return false;
+    }
     return true;
   }
 
@@ -173,8 +186,8 @@ export default function DashboardScreen() {
       { data: uzunSuredir },
       { data: aiOneriler },
     ] = await Promise.all([
-      supabase.from('musteriler').select('id, ad, soyad, etiketler, takip_tarihi, olusturma_tarihi, musteri_istekler(tip, butce_min, butce_max, tercih_konum)'),
-      supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi'),
+      supabase.from('musteriler').select('id, ad, soyad, etiketler, takip_tarihi, olusturma_tarihi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
+      supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)'),
       supabase.from('musteri_gorevler').select('id, baslik, hedef_tarih, musteri_id, musteriler(id, ad, soyad, etiketler)').eq('tamamlandi', false).not('hedef_tarih', 'is', null).lte('hedef_tarih', new Date().toISOString()),
       supabase.from('musteriler').select('id, ad, soyad, etiketler, guncelleme_tarihi, olusturma_tarihi').eq('durum', 'Aktif').lt('guncelleme_tarihi', yediGunOnce),
       supabase.from('asistan_oneriler').select('id, musteri_id, mesaj, tip, created_at').gte('created_at', yediGunOnceTarih).order('created_at', { ascending: false }),
@@ -249,9 +262,9 @@ export default function DashboardScreen() {
       }
     }
     if (b.tip === 'musteri') {
-      const { data: istekler } = await supabase.from('musteri_istekler').select('*').eq('musteri_id', b.hedefId);
+      const { data: istekler } = await supabase.from('musteri_istekler').select('*, musteri_istek_ozellikler(ozellik_id)').eq('musteri_id', b.hedefId);
       if (istekler?.length) {
-        const { data } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip').eq('durum', 'Aktif');
+        const { data } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif');
         setDetayListe((data ?? []).filter((ilan: any) => (istekler ?? []).some((istek: any) => istekEslesiyor(istek, ilan))));
       } else {
         setDetayListe([]);
@@ -259,7 +272,7 @@ export default function DashboardScreen() {
     } else if (b.tip === 'ilan') {
       const { data: ilan } = await supabase.from('ilanlar').select('fiyat, konum, ilce, mahalle, kategori').eq('id', b.hedefId).single();
       if (ilan) {
-        const { data: tum } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, musteri_istekler(tip, butce_min, butce_max, tercih_konum)');
+        const { data: tum } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))');
         setDetayListe((tum ?? []).filter(m => eslesenMi(m, ilan)));
       }
     } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz') {

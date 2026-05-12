@@ -265,13 +265,21 @@ export default function MusteriEkleScreen() {
           tercih_konum: i.konumlar.length ? i.konumlar.join(' | ') : null,
           min_oda: i.minOda || null,
           bina_yasi: i.binaYaslari.length ? i.binaYaslari.join(',') : null,
-          ozellikler: i.ozelIstekler.length ? i.ozelIstekler.join(',') : null,
           kat_sayisi: i.katSayilari.length ? i.katSayilari.join(',') : null,
           bulundugu_kat: i.bulunduguKatlar.length ? i.bulunduguKatlar.join(',') : null,
         }));
+      const ozelIsteklerPerIstek = istekler
+        .filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length)
+        .map(i => i.ozelIstekler);
       if (iRows.length) {
-        const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
+        const { data: insertedIstekler, error: iErr } = await supabase.from('musteri_istekler').insert(iRows).select('id');
         if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setLoading(false); return; }
+        if (insertedIstekler) {
+          const ozRows = insertedIstekler.flatMap((ins: any, idx: number) =>
+            (ozelIsteklerPerIstek[idx] ?? []).map((oid: string) => ({ musteri_istek_id: ins.id, ozellik_id: oid }))
+          );
+          if (ozRows.length) await supabase.from('musteri_istek_ozellikler').insert(ozRows);
+        }
       }
     }
     if (ozelIstekler.length && inserted) {
