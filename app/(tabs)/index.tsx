@@ -247,19 +247,17 @@ export default function DashboardScreen() {
         const { data: tum } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, musteri_istekler(tip, butce_min, butce_max, tercih_konum)');
         setDetayListe((tum ?? []).filter(m => eslesenMi(m, ilan)));
       }
-    } else if (b.tip === 'takip') {
-      const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, takip_tarihi, durum').eq('id', b.hedefId).single();
-      if (data) setDetayListe([data]);
-    } else if (b.tip === 'gorev') {
-      const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum').eq('id', b.hedefId).single();
-      if (data) setDetayListe([data]);
-    } else if (b.tip === 'sessiz') {
-      const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, guncelleme_tarihi, durum').eq('id', b.hedefId).single();
-      if (data) setDetayListe([data]);
+    } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz') {
+      setBildirimModal(false);
+      setDetayBildirim(null);
+      router.push(`/musteri/${b.hedefId}` as any);
+      return;
     } else if (b.tip === 'asistan') {
       if (b.hedefId) {
-        const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum').eq('id', b.hedefId).single();
-        if (data) setDetayListe([data]);
+        setBildirimModal(false);
+        setDetayBildirim(null);
+        router.push(`/musteri/${b.hedefId}` as any);
+        return;
       }
     }
     setDetayYukleniyor(false);
