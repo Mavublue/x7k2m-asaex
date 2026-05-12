@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -50,8 +50,8 @@ export default function MusteriEkleScreen() {
   const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
-  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; ozelIstekler: string[] };
-  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [] }]);
+  type IstekState = { tipler: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; ozelIstekler: string[]; minKat: string; maxKat: string };
+  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [], minKat: '', maxKat: '' }]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [konumSearch, setKonumSearch] = useState('');
@@ -152,6 +152,7 @@ export default function MusteriEkleScreen() {
   const [musteriTipi, setMusteriTipi] = useState('Bireysel');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
+  const scrollRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
 
@@ -208,6 +209,7 @@ export default function MusteriEkleScreen() {
     setNotIcerik('');
     setNotTarih(new Date());
     setNotForm(true);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
   }
   function notDuzenleAc(idx: number) {
     const n = yeniNotlar[idx];
@@ -262,6 +264,8 @@ export default function MusteriEkleScreen() {
           min_oda: i.minOda || null,
           bina_yasi: i.binaYaslari.length ? i.binaYaslari.join(',') : null,
           ozellikler: i.ozelIstekler.length ? i.ozelIstekler.join(',') : null,
+          min_kat: i.minKat ? parseInt(i.minKat) : null,
+          max_kat: i.maxKat ? parseInt(i.maxKat) : null,
         }));
       if (iRows.length) {
         const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
@@ -303,7 +307,7 @@ export default function MusteriEkleScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
           <View style={styles.satir}>
             <View style={{ flex: 1 }}><Field label="Ad *" value={ad} onChangeText={setAd} placeholder="Ahmet" /></View>
@@ -383,7 +387,7 @@ export default function MusteriEkleScreen() {
           <View style={styles.inputContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
-              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [] }])}
+              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [], minKat: '', maxKat: '' }])}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                 <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
               </TouchableOpacity>
@@ -450,6 +454,16 @@ export default function MusteriEkleScreen() {
                         </TouchableOpacity>
                       );
                     })}
+                  </View>
+                </View>
+                {/* Kat Aralığı */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Bulunduğu Kat Aralığı</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Min kat" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                      value={istek.minKat} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, minKat: v.replace(/\D/g, '') } : x))} />
+                    <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Max kat" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                      value={istek.maxKat} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, maxKat: v.replace(/\D/g, '') } : x))} />
                   </View>
                 </View>
                 {/* Özel İstekler */}
@@ -577,6 +591,7 @@ export default function MusteriEkleScreen() {
                   onChangeText={setNotIcerik}
                   multiline
                   textAlignVertical="top"
+                  onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
                 />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <TouchableOpacity onPress={() => setShowPicker('date')} style={[styles.notInput, { flex: 1, minWidth: 160, justifyContent: 'center' }]}>
@@ -699,13 +714,21 @@ export default function MusteriEkleScreen() {
             <TouchableOpacity style={styles.modalDimmer} onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); }} />
             <View style={styles.modalPanel}>
               <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setFilterPage('main')}>
-                  <Text style={styles.modalKapat}>←</Text>
-                </TouchableOpacity>
-                <Text style={styles.modalBaslik}>
-                  {filterPage === 'il' ? 'İl Seçin' : filterPage === 'ilce' ? 'İlçe Seçin' : 'Mahalle Seçin'}
-                </Text>
-                <TouchableOpacity onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); }}>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {([['il', 'İl'], ['ilce', 'İlçe'], ['mahalle', 'Mah.']] as ['il'|'ilce'|'mahalle', string][]).map(([p, label]) => {
+                    const count = p === 'il' ? ilSayisi : p === 'ilce' ? ilceSayisi : mahSayisi;
+                    const disabled = (p === 'ilce' && ilSayisi === 0) || (p === 'mahalle' && ilceSayisi === 0);
+                    return (
+                      <TouchableOpacity key={p} onPress={() => { if (!disabled) { setFilterPage(p); setKonumSearch(''); } }} disabled={disabled}
+                        style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, backgroundColor: filterPage === p ? Colors.primary : Colors.surfaceContainerHigh, opacity: disabled ? 0.4 : 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: filterPage === p ? '#fff' : Colors.onSurfaceVariant }}>
+                          {label}{count > 0 ? ` (${count})` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TouchableOpacity onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); setKonumSearch(''); }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.primary }}>Tamam</Text>
                 </TouchableOpacity>
               </View>
