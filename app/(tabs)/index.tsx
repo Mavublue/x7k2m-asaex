@@ -388,10 +388,10 @@ export default function DashboardScreen() {
       .order('hedef_tarih', { ascending: true });
 
     if (filtre === 'gecmis') {
-      q = q.lt('hedef_tarih', baslangic.toISOString());
+      q = q.lt('hedef_tarih', new Date().toISOString());
     } else if (filtre === 'bugun') {
       const bitis = new Date(baslangic); bitis.setDate(bitis.getDate() + 1);
-      q = q.gte('hedef_tarih', baslangic.toISOString()).lt('hedef_tarih', bitis.toISOString());
+      q = q.lt('hedef_tarih', bitis.toISOString());
     } else if (filtre === 'yarin') {
       const yBaslangic = new Date(baslangic); yBaslangic.setDate(yBaslangic.getDate() + 1);
       const yBitis = new Date(yBaslangic); yBitis.setDate(yBitis.getDate() + 1);
@@ -408,7 +408,7 @@ export default function DashboardScreen() {
       .select('id', { count: 'exact', head: true })
       .eq('tamamlandi', false)
       .not('hedef_tarih', 'is', null)
-      .lt('hedef_tarih', baslangic.toISOString());
+      .lt('hedef_tarih', new Date().toISOString());
     setGecmisCount(count ?? 0);
   }
 
@@ -543,7 +543,7 @@ export default function DashboardScreen() {
               const pad = (n: number) => String(n).padStart(2, '0');
               const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
               const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
-              const gecmis = gorevFiltre === 'gecmis';
+              const gecmis = gorevFiltre === 'gecmis' || (d !== null && d < new Date());
               const m = g.musteriler;
               const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
               return (
@@ -904,7 +904,7 @@ export default function DashboardScreen() {
                 const pad = (n: number) => String(n).padStart(2, '0');
                 const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
                 const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
-                const gecmis = gorevFiltre === 'gecmis';
+                const gecmis = gorevFiltre === 'gecmis' || (d !== null && d < new Date());
                 const m = g.musteriler;
                 const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
                 return (
