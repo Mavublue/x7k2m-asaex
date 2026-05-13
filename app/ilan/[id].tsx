@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Image, ActivityIndicator, Alert,
@@ -8,7 +8,8 @@ import {
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
-import { deleteIlanPhotos, getPresignedUrl } from '../../lib/r2';
+import { deleteIlanPhotos } from '../../lib/r2';
+import { setDownloadProgress } from '../../lib/downloadProgress';
 
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
 
@@ -40,7 +41,6 @@ L.marker([${lat},${lng}],{icon:icon}).addTo(map);
 
 export default function IlanDetayScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
   const [ilan, setIlan] = useState<Ilan | null>(null);
   const [loading, setLoading] = useState(true);
   const [aktifFoto, setAktifFoto] = useState(0);
@@ -57,7 +57,6 @@ export default function IlanDetayScreen() {
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkYukleniyor, setLinkYukleniyor] = useState(false);
   const [linkKopyalandi, setLinkKopyalandi] = useState(false);
-  const [indirmeProgress, setIndirmeProgress] = useState<{ current: number; total: number } | null>(null);
   const [linkMusteriler, setLinkMusteriler] = useState<any[]>([]);
   const [linkMusteriAra, setLinkMusteriAra] = useState('');
   const [linkEtiketAra, setLinkEtiketAra] = useState('');
@@ -107,17 +106,18 @@ export default function IlanDetayScreen() {
       return;
     }
     try {
-      setIndirmeProgress({ current: 1, total: 1 });
-      const url = await getPresignedUrl(key);
-      const dosyaAdi = `ilan_${id}_${index + 1}.jpg`;
-      const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + dosyaAdi;
+      const dotIdx = key.lastIndexOf('.');
+      const lgKey = key.slice(0, dotIdx) + '_lg.jpg';
+      const url = `${R2_BASE}/${lgKey}`;
+      setDownloadProgress({ current: 1, total: 1 });
+      const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${index + 1}.jpg`;
       const result = await FileSystem.downloadAsync(url, localUri);
       if (result.status !== 200) throw new Error(`HTTP ${result.status}`);
       await MediaLibrary.saveToLibraryAsync(result.uri);
-      setIndirmeProgress(null);
+      setDownloadProgress(null);
       Alert.alert('İndirildi', `Fotoğraf ${index + 1} galeriye kaydedildi.`);
     } catch (e: any) {
-      setIndirmeProgress(null);
+      setDownloadProgress(null);
       Alert.alert('Hata', e?.message ?? 'Fotoğraf indirilemedi.');
     }
   }
@@ -133,10 +133,12 @@ export default function IlanDetayScreen() {
     }
     let basarili = 0;
     let ilkHata = '';
-    setIndirmeProgress({ current: 0, total: fotograflar.length });
+    setDownloadProgress({ current: 0, total: fotograflar.length });
     for (let i = 0; i < fotograflar.length; i++) {
       try {
-        const url = await getPresignedUrl(fotograflar[i]);
+        const dotIdx = fotograflar[i].lastIndexOf('.');
+        const lgKey = fotograflar[i].slice(0, dotIdx) + '_lg.jpg';
+        const url = `${R2_BASE}/${lgKey}`;
         const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${i + 1}.jpg`;
         const result = await FileSystem.downloadAsync(url, localUri);
         if (result.status !== 200) throw new Error(`HTTP ${result.status}`);
@@ -145,9 +147,9 @@ export default function IlanDetayScreen() {
       } catch (e: any) {
         if (!ilkHata) ilkHata = e?.message ?? String(e);
       }
-      setIndirmeProgress({ current: i + 1, total: fotograflar.length });
+      setDownloadProgress({ current: i + 1, total: fotograflar.length });
     }
-    setIndirmeProgress(null);
+    setDownloadProgress(null);
     Alert.alert('Tamamlandı', `${basarili}/${fotograflar.length} fotoğraf kaydedildi.${ilkHata ? `\n\nHata: ${ilkHata}` : ''}`);
   }
 
@@ -297,18 +299,6 @@ export default function IlanDetayScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* İndirme progress pill */}
-      {indirmeProgress && (
-        <Modal transparent animationType="fade" visible statusBarTranslucent>
-          <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 8, left: 0, right: 0, alignItems: 'center', zIndex: 9999 }}>
-            <View style={{ backgroundColor: '#111', borderRadius: 30, paddingHorizontal: 20, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, elevation: 20 }}>
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
-                ⬇️  {indirmeProgress.current}/{indirmeProgress.total} indiriliyor
-              </Text>
-            </View>
-          </View>
-        </Modal>
-      )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
