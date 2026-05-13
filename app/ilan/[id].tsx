@@ -56,6 +56,7 @@ export default function IlanDetayScreen() {
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkYukleniyor, setLinkYukleniyor] = useState(false);
   const [linkKopyalandi, setLinkKopyalandi] = useState(false);
+  const [indirmeProgress, setIndirmeProgress] = useState<{ current: number; total: number } | null>(null);
   const [linkMusteriler, setLinkMusteriler] = useState<any[]>([]);
   const [linkMusteriAra, setLinkMusteriAra] = useState('');
   const [linkEtiketAra, setLinkEtiketAra] = useState('');
@@ -105,16 +106,18 @@ export default function IlanDetayScreen() {
       return;
     }
     try {
-      const dotIdx = key.lastIndexOf('.');
-      const lgKey = key.slice(0, dotIdx) + '_lg.jpg';
-      const url = `${R2_BASE}/${lgKey}`;
-      const dosyaAdi = `ilan_${id}_${index + 1}.jpg`;
+      const url = `${R2_BASE}/${key}`;
+      const ext = key.split('.').pop() ?? 'jpg';
+      const dosyaAdi = `ilan_${id}_${index + 1}.${ext}`;
       const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + dosyaAdi;
+      setIndirmeProgress({ current: 1, total: 1 });
       const result = await FileSystem.downloadAsync(url, localUri);
       if (result.status !== 200) throw new Error(`HTTP ${result.status}`);
       await MediaLibrary.saveToLibraryAsync(result.uri);
+      setIndirmeProgress(null);
       Alert.alert('İndirildi', `Fotoğraf ${index + 1} galeriye kaydedildi.`);
     } catch (e: any) {
+      setIndirmeProgress(null);
       Alert.alert('Hata', e?.message ?? 'Fotoğraf indirilemedi.');
     }
   }
@@ -128,25 +131,24 @@ export default function IlanDetayScreen() {
       Alert.alert('İzin Gerekli', 'Fotoğraf kaydetmek için galeri iznine ihtiyaç var.');
       return;
     }
-    Alert.alert('İndiriliyor', `${fotograflar.length} fotoğraf indiriliyor...`);
     let basarili = 0;
     let ilkHata = '';
+    setIndirmeProgress({ current: 0, total: fotograflar.length });
     for (let i = 0; i < fotograflar.length; i++) {
       try {
-        const dotIdx = fotograflar[i].lastIndexOf('.');
-        const lgKey = fotograflar[i].slice(0, dotIdx) + '_lg.jpg';
-        const url = `${R2_BASE}/${lgKey}`;
-        const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${i + 1}.jpg`;
+        const url = `${R2_BASE}/${fotograflar[i]}`;
+        const ext = fotograflar[i].split('.').pop() ?? 'jpg';
+        const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${i + 1}.${ext}`;
         const result = await FileSystem.downloadAsync(url, localUri);
-        console.log(`[indirme] foto ${i} status:`, result.status, result.uri);
         if (result.status !== 200) throw new Error(`HTTP ${result.status}`);
         await MediaLibrary.saveToLibraryAsync(result.uri);
         basarili++;
       } catch (e: any) {
         if (!ilkHata) ilkHata = e?.message ?? String(e);
-        console.error(`[indirme] foto ${i}:`, e);
       }
+      setIndirmeProgress({ current: i + 1, total: fotograflar.length });
     }
+    setIndirmeProgress(null);
     Alert.alert('Tamamlandı', `${basarili}/${fotograflar.length} fotoğraf kaydedildi.${ilkHata ? `\n\nHata: ${ilkHata}` : ''}`);
   }
 
@@ -296,6 +298,18 @@ export default function IlanDetayScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* İndirme progress pill */}
+      {indirmeProgress && (
+        <Modal transparent animationType="fade" visible statusBarTranslucent>
+          <View pointerEvents="none" style={{ position: 'absolute', top: 14, left: 0, right: 0, alignItems: 'center', zIndex: 9999 }}>
+            <View style={{ backgroundColor: '#111', borderRadius: 30, paddingHorizontal: 20, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, elevation: 20 }}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+                ⬇️  {indirmeProgress.current}/{indirmeProgress.total} indiriliyor
+              </Text>
+            </View>
+          </View>
+        </Modal>
+      )}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>

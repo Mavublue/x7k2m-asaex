@@ -672,7 +672,7 @@ export default function IlanlarScreen() {
                 activeOpacity={0.92}
               >
                 {seciliIlan.fotograflar?.[0] ? (
-                  <R2Image source={seciliIlan.fotograflar[0]} style={styles.popupFoto} resizeMode="cover" size="cover" />
+                  <R2Image source={seciliIlan.fotograflar[0]} style={styles.popupFoto} resizeMode="cover" size="sm" />
                 ) : (
                   <View style={[styles.popupFoto, styles.popupFotoPlaceholder]}>
                     <Text style={{ fontSize: 24 }}>🏠</Text>
