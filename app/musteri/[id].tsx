@@ -59,6 +59,7 @@ export default function MusteriDetayScreen() {
   const [elleEslesen, setElleEslesen] = useState<{id: string; ilan: Ilan}[]>([]);
   const [eslesenYuklendi, setEslesenYuklendi] = useState(false);
   const [eslesenYukleniyor, setEslesenYukleniyor] = useState(false);
+  const [eslesSort, setEslesSort] = useState<'tarih' | 'fiyat_artan' | 'fiyat_azalan'>('tarih');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [duzenle, setDuzenle] = useState(false);
@@ -1345,6 +1346,22 @@ export default function MusteriDetayScreen() {
                     </TouchableOpacity>
                   ) : (
                     <>
+                  {/* Sıralama */}
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: Spacing.sm, marginBottom: 4 }}>
+                    {(['tarih', 'fiyat_artan', 'fiyat_azalan'] as const).map(s => (
+                      <TouchableOpacity key={s} onPress={() => setEslesSort(s)} style={{
+                        paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+                        borderWidth: 1.5,
+                        borderColor: eslesSort === s ? '#E53935' : '#e5e7eb',
+                        backgroundColor: eslesSort === s ? 'rgba(229,57,53,0.08)' : '#fff',
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: eslesSort === s ? '#E53935' : '#6b7280' }}>
+                          {s === 'tarih' ? 'Tarih' : s === 'fiyat_artan' ? 'Fiyat ↑' : 'Fiyat ↓'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
                   {/* Elle Eşleştirilenler */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.sm }}>
                     <Text style={styles.sectionTitle}>Elle Eşleştirilenler</Text>
@@ -1357,7 +1374,12 @@ export default function MusteriDetayScreen() {
                       <Text style={styles.emptyText}>Elle eşleştirilmiş ilan yok</Text>
                 </View>
               ) : (
-                elleEslesen.map(({ id: eslesmeId, ilan }) => ilan ? (
+                (eslesSort === 'fiyat_artan'
+                  ? [...elleEslesen].sort((a, b) => Number(a.ilan?.fiyat ?? 0) - Number(b.ilan?.fiyat ?? 0))
+                  : eslesSort === 'fiyat_azalan'
+                  ? [...elleEslesen].sort((a, b) => Number(b.ilan?.fiyat ?? 0) - Number(a.ilan?.fiyat ?? 0))
+                  : elleEslesen
+                ).map(({ id: eslesmeId, ilan }) => ilan ? (
                   <View key={eslesmeId} style={styles.ilanKartWrap}>
                     <TouchableOpacity style={[styles.ilanKart, { flex: 1 }]} onPress={() => router.push(`/ilan/${ilan.id}` as any)}>
                       {ilan.fotograflar?.[0] ? (
@@ -1390,7 +1412,12 @@ export default function MusteriDetayScreen() {
                   <Text style={styles.emptyText}>Bütçeye uygun ilan bulunamadı</Text>
                 </View>
               ) : (
-                eslesen
+                (eslesSort === 'fiyat_artan'
+                  ? [...eslesen].sort((a, b) => Number(a.fiyat) - Number(b.fiyat))
+                  : eslesSort === 'fiyat_azalan'
+                  ? [...eslesen].sort((a, b) => Number(b.fiyat) - Number(a.fiyat))
+                  : eslesen
+                )
                   .filter(ilan => !elleEslesen.some(e => e.ilan?.id === ilan.id))
                   .map(ilan => (
                     <TouchableOpacity key={ilan.id} style={styles.ilanKart} onPress={() => router.push(`/ilan/${ilan.id}` as any)}>
