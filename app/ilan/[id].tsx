@@ -63,6 +63,10 @@ export default function IlanDetayScreen() {
   const [linkSeciliMusteri, setLinkSeciliMusteri] = useState<string>('');
   const flatListRef = useRef<any>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
+  const [sosyalModal, setSosyalModal] = useState(false);
+  const [sosyalMetin, setSosyalMetin] = useState('');
+  const [sosyalKaydediliyor, setSosyalKaydediliyor] = useState(false);
+  const [sosyalKopyalandi, setSosyalKopyalandi] = useState(false);
 
   const fetchIlan = useCallback(() => {
     supabase.from('ilanlar').select('*').eq('id', id).single().then(({ data }) => {
@@ -82,6 +86,53 @@ export default function IlanDetayScreen() {
     });
   }, [id]);
   useFocusEffect(fetchIlan);
+
+  function generateSosyalMetin(i: typeof ilan): string {
+    if (!i) return '';
+    const emojiMap: Record<string, string> = {
+      Villa: '🏡', Daire: '🏢', Arsa: '🌿', Tarla: '🌾',
+      'İşyeri': '🏬', 'Müstakil Ev': '🏠', Otel: '🏨',
+    };
+    const emoji = emojiMap[i.kategori] ?? '🏠';
+    const lokasyon = [i.mahalle, i.ilce, i.konum].filter(Boolean).join(' / ');
+    const lines: string[] = [];
+    lines.push(`${emoji} ${i.baslik}`);
+    lines.push('');
+    lines.push(`💰 ${Number(i.fiyat).toLocaleString('tr-TR')} ₺`);
+    lines.push('');
+    if (lokasyon) lines.push(`✅ ${lokasyon.toUpperCase()}'DA`);
+    if (i.oda_sayisi) lines.push(`✅ ${i.oda_sayisi}`);
+    if (i.metrekare) lines.push(`✅ ${i.metrekare} NET M²`);
+    if (i.brut_metrekare) lines.push(`✅ ${i.brut_metrekare} BRÜT M²`);
+    if (i.bina_yasi) lines.push(`✅ ${i.bina_yasi} YAŞINDA`);
+    if (i.kat_sayisi) lines.push(`✅ ${i.kat_sayisi} KATLI`);
+    if (i.bulundugu_kat) lines.push(`✅ ${i.bulundugu_kat}. KAT`);
+    if (i.banyo_sayisi) lines.push(`✅ ${i.banyo_sayisi} BANYO`);
+    return lines.join('\n');
+  }
+
+  function sosyalModalAc() {
+    setMenuModal(false);
+    const otomatik = generateSosyalMetin(ilan);
+    setSosyalMetin(ilan?.sosyal_medya_metni ?? otomatik);
+    setSosyalModal(true);
+  }
+
+  async function sosyalKaydet() {
+    const otomatik = generateSosyalMetin(ilan);
+    setSosyalKaydediliyor(true);
+    const deger = sosyalMetin.trim() === otomatik.trim() ? null : sosyalMetin;
+    await supabase.from('ilanlar').update({ sosyal_medya_metni: deger }).eq('id', id);
+    if (ilan) setIlan({ ...ilan, sosyal_medya_metni: deger });
+    setSosyalKaydediliyor(false);
+    setSosyalModal(false);
+  }
+
+  async function sosyalKopyala() {
+    await Clipboard.setStringAsync(sosyalMetin);
+    setSosyalKopyalandi(true);
+    setTimeout(() => setSosyalKopyalandi(false), 2000);
+  }
 
   if (loading) {
     return (
@@ -590,6 +641,10 @@ export default function IlanDetayScreen() {
                 <View style={styles.menuSep} />
               </>
             )}
+            <TouchableOpacity style={styles.menuItem} onPress={sosyalModalAc}>
+              <Text style={styles.menuItemText}>📱  Sosyal Medya Metni</Text>
+            </TouchableOpacity>
+            <View style={styles.menuSep} />
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); linkModalAc(); }}>
               <Text style={styles.menuItemText}>🔗  Link Paylaş</Text>
             </TouchableOpacity>
@@ -795,6 +850,70 @@ export default function IlanDetayScreen() {
             />
           </View>
         </View>
+      </Modal>
+
+      {/* Sosyal Medya Metni Modalı */}
+      <Modal visible={sosyalModal} animationType="slide" transparent onRequestClose={() => setSosyalModal(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity style={styles.modalDimmer} onPress={() => setSosyalModal(false)} />
+            <View style={[styles.modalPanel, { maxHeight: '85%' }]}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setSosyalModal(false)}>
+                  <Text style={styles.modalKapat}>✕</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalBaslik}>📱 Sosyal Medya Metni</Text>
+                <View style={{ width: 32 }} />
+              </View>
+              <ScrollView style={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+                <TextInput
+                  value={sosyalMetin}
+                  onChangeText={setSosyalMetin}
+                  multiline
+                  style={{
+                    borderWidth: 1.5,
+                    borderColor: '#e5e7eb',
+                    borderRadius: 10,
+                    padding: 12,
+                    fontSize: 13,
+                    color: Colors.onSurface,
+                    lineHeight: 22,
+                    minHeight: 260,
+                    textAlignVertical: 'top',
+                    marginBottom: 8,
+                  }}
+                />
+                {sosyalMetin.trim() !== generateSosyalMetin(ilan).trim() && (
+                  <TouchableOpacity onPress={() => setSosyalMetin(generateSosyalMetin(ilan))} style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, color: '#9ca3af' }}>↺ Otomatik metne sıfırla</Text>
+                  </TouchableOpacity>
+                )}
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                  <TouchableOpacity
+                    onPress={sosyalKopyala}
+                    style={{ flex: 1, backgroundColor: sosyalKopyalandi ? '#3aaa6e' : Colors.surfaceContainerLow, borderRadius: 8, padding: 14, alignItems: 'center' }}
+                  >
+                    <Text style={{ color: sosyalKopyalandi ? '#fff' : Colors.onSurface, fontSize: 13, fontWeight: '700' }}>
+                      {sosyalKopyalandi ? '✓ Kopyalandı!' : '📋 Kopyala'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={sosyalKaydet}
+                    disabled={sosyalKaydediliyor}
+                    style={{ flex: 1, backgroundColor: Colors.primary, borderRadius: 8, padding: 14, alignItems: 'center', opacity: sosyalKaydediliyor ? 0.7 : 1 }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+                      {sosyalKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ fontSize: 11, color: '#9ca3af', lineHeight: 16, marginBottom: 24 }}>
+                  Düzenleyip Kaydet&apos;e basarsan bu ilana özel saklanır.
+                </Text>
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>

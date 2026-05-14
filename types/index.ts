@@ -27,6 +27,7 @@ export interface Ilan {
   portfoy_no: string | null;
   ozellikler: string | null;
   olusturma_tarihi: string;
+  sosyal_medya_metni: string | null;
 }
 
 export interface Musteri {
