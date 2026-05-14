@@ -164,6 +164,21 @@ export default function IlanlarScreen() {
   const [paylasEtiketAra, setPaylasEtiketAra] = useState('');
   const [paylasHaric, setPaylasHaric] = useState<Set<string>>(new Set());
   const [paylasIlanlar, setPaylasIlanlar] = useState<Ilan[]>([]);
+  const [rastgeleModal, setRastgeleModal] = useState(false);
+
+  function rastgeleGit(mod: 'Tümü' | 'Görünür' | 'Görünmez') {
+    setRastgeleModal(false);
+    const havuz = ilanlar.filter(i => {
+      if (i.durum !== 'Aktif') return false;
+      if (mod === 'Görünür') return !i.musteri_gizle;
+      if (mod === 'Görünmez') return !!i.musteri_gizle;
+      return true;
+    });
+    if (!havuz.length) { Alert.alert('Bulunamadı', 'Bu filtrede aktif ilan yok.'); return; }
+    const secilen = havuz[Math.floor(Math.random() * havuz.length)];
+    router.push(`/ilan/${secilen.id}`);
+  }
+
   // Toplu seçim
   const [secimModu, setSecimModu] = useState(false);
   const [seciliIds, setSeciliIds] = useState<Set<string>>(new Set());
@@ -594,6 +609,9 @@ export default function IlanlarScreen() {
         <>
           <View style={styles.header}>
             <SearchPill style={{ flex: 1 }} />
+            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => setRastgeleModal(true)}>
+              <Text style={styles.paylasBtnSmallText}>🎲</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.paylasBtnSmall, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
               <Text style={[styles.paylasBtnSmallText, secimModu && { color: '#fff' }]}>{secimModu ? '✕' : '☑'}</Text>
             </TouchableOpacity>
@@ -1387,6 +1405,26 @@ export default function IlanlarScreen() {
           </View>
         </>
       )}
+
+      {/* Rastgele Modal */}
+      <Modal visible={rastgeleModal} transparent animationType="fade" onRequestClose={() => setRastgeleModal(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setRastgeleModal(false)}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, width: 260, gap: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface, marginBottom: 4, textAlign: 'center' }}>🎲 Rastgele İlan</Text>
+            {(['Tümü', 'Görünür', 'Görünmez'] as const).map(mod => (
+              <TouchableOpacity
+                key={mod}
+                onPress={() => rastgeleGit(mod)}
+                style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, padding: 14, alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.onSurface }}>
+                  {mod === 'Görünür' ? '👁 Görünür' : mod === 'Görünmez' ? '🚫 Görünmez' : '🎲 Tümü'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
     </SafeAreaView>
   );
