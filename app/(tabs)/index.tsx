@@ -270,11 +270,10 @@ export default function DashboardScreen() {
         setDetayListe([]);
       }
     } else if (b.tip === 'ilan') {
-      const { data: ilan } = await supabase.from('ilanlar').select('fiyat, konum, ilce, mahalle, kategori').eq('id', b.hedefId).single();
-      if (ilan) {
-        const { data: tum } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))');
-        setDetayListe((tum ?? []).filter(m => eslesenMi(m, ilan)));
-      }
+      setBildirimModal(false);
+      setDetayBildirim(null);
+      router.push(`/ilan/eslesen/${b.hedefId}` as any);
+      return;
     } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz') {
       setBildirimModal(false);
       setDetayBildirim(null);
