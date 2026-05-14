@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Modal, Linking, FlatList, SafeAreaView,
+  ActivityIndicator, Modal, Linking, FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import R2Image from '../../../components/R2Image';
@@ -40,6 +41,18 @@ function istekEslesiyor(istek: any, ilan: any): boolean {
   if (istek.bina_yasi && ilan.bina_yasi) {
     const list = istek.bina_yasi.split(',').map((s: string) => s.trim());
     if (list.length && !list.includes(ilan.bina_yasi)) return false;
+  }
+  if (istek.kat_sayisi && ilan.kat_sayisi) {
+    const list = istek.kat_sayisi.split(',').map((s: string) => s.trim());
+    if (list.length && !list.includes(ilan.kat_sayisi)) return false;
+  }
+  if (istek.bulundugu_kat && ilan.bulundugu_kat) {
+    const list = istek.bulundugu_kat.split(',').map((s: string) => s.trim());
+    if (list.length && !list.includes(ilan.bulundugu_kat)) return false;
+  }
+  if (istekOzellikIds.length) {
+    const ilanOzellikIds = (ilan.ilan_ozellikler ?? []).map((o: any) => o.ozellik_id);
+    if (!istekOzellikIds.every((oid: string) => ilanOzellikIds.includes(oid))) return false;
   }
   return true;
 }
@@ -97,10 +110,10 @@ export default function EslesenMusterilerScreen() {
   }
 
   if (loading) return (
-    <View style={styles.center}><ActivityIndicator color={Colors.secondary} /></View>
+    <SafeAreaView style={s.center}><ActivityIndicator color={Colors.secondary} /></SafeAreaView>
   );
   if (!ilan) return (
-    <View style={styles.center}><Text style={{ color: Colors.error }}>İlan bulunamadı.</Text></View>
+    <SafeAreaView style={s.center}><Text style={{ color: '#E53935' }}>İlan bulunamadı.</Text></SafeAreaView>
   );
 
   const ilk = ilan.fotograflar?.[0];
@@ -111,41 +124,52 @@ export default function EslesenMusterilerScreen() {
       <FlatList
         data={musteriler}
         keyExtractor={m => m.id}
-        contentContainerStyle={{ padding: Spacing.md }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         ListHeaderComponent={
           <View>
-            {/* Geri Butonu */}
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backBtnText}>← Geri</Text>
-            </TouchableOpacity>
-
             {/* İlan Özet Kartı */}
-            <View style={styles.ilanKart}>
+            <View style={s.ilanKart}>
               {ilk && (
-                <R2Image source={ilk} style={styles.ilanFoto} resizeMode="cover" size="md" />
+                <R2Image source={ilk} style={s.ilanFoto} resizeMode="cover" size="lg" />
               )}
-              <View style={styles.ilanBody}>
-                <Text style={styles.ilanTip}>{ilan.tip} · {ilan.kategori}</Text>
-                <Text style={styles.ilanBaslik} numberOfLines={2}>{ilan.baslik}</Text>
-                <Text style={styles.ilanFiyat}>₺{ilan.fiyat?.toLocaleString('tr-TR')}</Text>
-                {konum ? <Text style={styles.ilanKonum}>📍 {konum}</Text> : null}
-                <View style={styles.tagRow}>
-                  {ilan.oda_sayisi ? <View style={styles.tag}><Text style={styles.tagText}>{ilan.oda_sayisi}</Text></View> : null}
-                  {ilan.metrekare ? <View style={styles.tag}><Text style={styles.tagText}>{ilan.metrekare} m²</Text></View> : null}
-                  {ilan.bina_yasi ? <View style={styles.tag}><Text style={styles.tagText}>{ilan.bina_yasi}</Text></View> : null}
+              <View style={s.ilanBody}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={s.ilanTip}>{ilan.tip} · {ilan.kategori}</Text>
+                    <Text style={s.ilanBaslik} numberOfLines={2}>{ilan.baslik}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={s.ilanFiyat}>₺{ilan.fiyat?.toLocaleString('tr-TR')}</Text>
+                    {ilan.portfoy_no ? <Text style={s.portfoyNo}>#{ilan.portfoy_no}</Text> : null}
+                  </View>
+                </View>
+
+                {konum ? <Text style={s.ilanKonum}>📍 {konum}</Text> : null}
+
+                <View style={s.tagRow}>
+                  {ilan.oda_sayisi ? <View style={s.tag}><Text style={s.tagText}>{ilan.oda_sayisi}</Text></View> : null}
+                  {ilan.metrekare ? <View style={s.tag}><Text style={s.tagText}>{ilan.metrekare} m²</Text></View> : null}
+                  {ilan.bina_yasi ? <View style={s.tag}><Text style={s.tagText}>{ilan.bina_yasi}</Text></View> : null}
+                  {ilan.bulundugu_kat ? <View style={s.tag}><Text style={s.tagText}>{ilan.bulundugu_kat}. kat</Text></View> : null}
+                </View>
+
+                <View style={s.ilanFooter}>
+                  <TouchableOpacity onPress={() => router.push(`/ilan/${id}` as any)} style={s.ilanBtn}>
+                    <Text style={s.ilanBtnText}>İlanı Görüntüle →</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
 
-            {/* Başlık */}
-            <View style={styles.listHeader}>
-              <Text style={styles.listHeaderText}>Eşleşen Müşteriler</Text>
-              <View style={styles.badge}><Text style={styles.badgeText}>{musteriler.length}</Text></View>
+            {/* Liste Başlık */}
+            <View style={s.listHeader}>
+              <Text style={s.listHeaderText}>Eşleşen Müşteriler</Text>
+              <View style={s.badge}><Text style={s.badgeText}>{musteriler.length}</Text></View>
             </View>
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>Eşleşen müşteri bulunamadı.</Text>
+          <Text style={s.empty}>Eşleşen müşteri bulunamadı.</Text>
         }
         renderItem={({ item: m }) => {
           const initials = `${(m.ad ?? '').charAt(0)}${(m.soyad ?? '').charAt(0)}`.toUpperCase() || '?';
@@ -158,92 +182,85 @@ export default function EslesenMusterilerScreen() {
           ]).filter(Boolean) as string[];
 
           return (
-            <TouchableOpacity style={styles.musteriKart} onPress={() => musteriSec(m)} activeOpacity={0.7}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
+            <TouchableOpacity style={s.musteriKart} onPress={() => musteriSec(m)} activeOpacity={0.75}>
+              <View style={s.avatar}>
+                <Text style={s.avatarText}>{initials}</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                  <Text style={styles.musteriAd}>{m.ad} {m.soyad}</Text>
-                  {m.etiketler ? <Text style={styles.etiket}>#{m.etiketler}</Text> : null}
-                  <View style={[styles.durumBadge, { backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
-                    <Text style={[styles.durumText, { color: m.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{m.durum}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 5 }}>
+                  <Text style={s.musteriAd}>{m.ad} {m.soyad}</Text>
+                  {m.etiketler ? <Text style={s.etiket}>#{m.etiketler}</Text> : null}
+                  <View style={[s.durumBadge, { backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
+                    <Text style={[s.durumText, { color: m.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{m.durum}</Text>
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                  {tipler.slice(0, 2).map(t => <View key={t} style={styles.tipTag}><Text style={styles.tipTagText}>{t}</Text></View>)}
-                  {konumlar.slice(0, 1).map(k => <View key={k} style={styles.konumTag}><Text style={styles.konumTagText}>{k}</Text></View>)}
-                  {butceler.slice(0, 1).map((b, i) => <View key={i} style={styles.butceTag}><Text style={styles.butceTagText}>{b}</Text></View>)}
+                  {tipler.slice(0, 3).map(t => <View key={t} style={s.tipTag}><Text style={s.tipTagText}>{t}</Text></View>)}
+                  {konumlar.slice(0, 2).map(k => <View key={k} style={s.konumTag}><Text style={s.konumTagText}>{k}</Text></View>)}
+                  {butceler.slice(0, 2).map((b, i) => <View key={i} style={s.butceTag}><Text style={s.butceTagText}>{b}</Text></View>)}
                 </View>
               </View>
+              {m.telefon && (
+                <TouchableOpacity onPress={e => { Linking.openURL(`tel:${m.telefon}`); }} style={s.telMiniBtn}>
+                  <Text style={{ fontSize: 16 }}>📞</Text>
+                </TouchableOpacity>
+              )}
               <Text style={{ color: '#d1d5db', fontSize: 20 }}>›</Text>
             </TouchableOpacity>
           );
         }}
       />
 
-      {/* Müşteri Detay Modal */}
-      <Modal
-        visible={!!secili}
-        animationType="slide"
-        transparent
-        onRequestClose={() => { setSecili(null); setDetay(null); }}
-      >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setSecili(null); setDetay(null); }} />
-        <View style={styles.modalSheet}>
-          {/* Sheet Handle */}
-          <View style={styles.sheetHandle} />
+      {/* Bottom Sheet Modal */}
+      <Modal visible={!!secili} animationType="slide" transparent onRequestClose={() => { setSecili(null); setDetay(null); }}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => { setSecili(null); setDetay(null); }} />
+        <View style={s.sheet}>
+          <View style={s.sheetHandle} />
 
-          {/* Başlık */}
           {secili && (
-            <View style={styles.sheetHeader}>
-              <View style={styles.sheetAvatar}>
-                <Text style={styles.sheetAvatarText}>
+            <View style={s.sheetHeader}>
+              <View style={s.sheetAvatar}>
+                <Text style={s.sheetAvatarText}>
                   {`${(secili.ad ?? '').charAt(0)}${(secili.soyad ?? '').charAt(0)}`.toUpperCase() || '?'}
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sheetAd}>{secili.ad} {secili.soyad}</Text>
-                <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                  <View style={[styles.durumBadge, { backgroundColor: secili.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
-                    <Text style={[styles.durumText, { color: secili.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{secili.durum}</Text>
+                <Text style={s.sheetAd}>{secili.ad} {secili.soyad}</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                  <View style={[s.durumBadge, { backgroundColor: secili.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
+                    <Text style={[s.durumText, { color: secili.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{secili.durum}</Text>
                   </View>
                   {secili.musteri_tipi && secili.musteri_tipi !== 'Bireysel' && (
-                    <View style={styles.durumBadge}><Text style={styles.durumText}>{secili.musteri_tipi}</Text></View>
+                    <View style={s.durumBadge}><Text style={s.durumText}>{secili.musteri_tipi}</Text></View>
                   )}
                 </View>
               </View>
-              <View style={{ gap: 8 }}>
+              <View style={{ gap: 8, alignItems: 'flex-end' }}>
                 {secili.telefon && (
-                  <TouchableOpacity style={styles.telBtn} onPress={() => Linking.openURL(`tel:${secili.telefon}`)}>
-                    <Text style={styles.telBtnText}>📞</Text>
+                  <TouchableOpacity style={s.telBtn} onPress={() => Linking.openURL(`tel:${secili.telefon}`)}>
+                    <Text style={{ fontSize: 18 }}>📞</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.detayBtn} onPress={() => { setSecili(null); setDetay(null); router.push(`/musteri/${secili.id}` as any); }}>
-                  <Text style={styles.detayBtnText}>Detay</Text>
+                <TouchableOpacity style={s.detayBtn} onPress={() => { setSecili(null); setDetay(null); router.push(`/musteri/${secili.id}` as any); }}>
+                  <Text style={s.detayBtnText}>Detay →</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
           {detayYukleniyor ? (
-            <View style={styles.center}><ActivityIndicator color={Colors.secondary} /></View>
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator color={Colors.secondary} />
+            </View>
           ) : (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.md, gap: 20 }}>
-
-              {/* Telefon */}
-              {secili?.telefon && (
-                <TouchableOpacity onPress={() => Linking.openURL(`tel:${secili.telefon}`)}>
-                  <Text style={{ fontSize: 14, color: '#374151', fontWeight: '600' }}>📞 {secili.telefon}</Text>
-                </TouchableOpacity>
-              )}
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }}>
 
               {/* Ek Kişiler */}
               {(detay?.iletisim ?? []).length > 0 && (
                 <View>
-                  <Text style={styles.sectionTitle}>Ek Kişiler</Text>
+                  <Text style={s.sectionTitle}>Ek Kişiler</Text>
                   {(detay?.iletisim ?? []).map((k: any) => (
-                    <View key={k.id} style={styles.ekKisiRow}>
+                    <View key={k.id} style={s.ekKisiRow}>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', flex: 1 }}>{k.ad}</Text>
                       {k.tip ? <Text style={{ fontSize: 12, color: '#9ca3af' }}>{k.tip}</Text> : null}
                       {k.telefon ? (
@@ -259,11 +276,11 @@ export default function EslesenMusterilerScreen() {
               {/* İstekler */}
               {(detay?.istekler ?? []).length > 0 && (
                 <View>
-                  <Text style={styles.sectionTitle}>İstekler</Text>
+                  <Text style={s.sectionTitle}>İstekler</Text>
                   {(detay?.istekler ?? []).map((istek: any, idx: number) => (
-                    <View key={istek.id} style={styles.istekKart}>
+                    <View key={istek.id} style={s.istekKart}>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
-                        <View style={styles.istekNo}><Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>#{idx + 1}</Text></View>
+                        <View style={s.istekNo}><Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>#{idx + 1}</Text></View>
                         {(istek.butce_min || istek.butce_max) && (
                           <Text style={{ fontSize: 14, fontWeight: '800', color: '#1a1b21' }}>
                             {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '—'}
@@ -272,16 +289,16 @@ export default function EslesenMusterilerScreen() {
                           </Text>
                         )}
                         {istek.tip && istek.tip.split(',').map((t: string) => (
-                          <View key={t} style={styles.tipTag}><Text style={styles.tipTagText}>{t.trim()}</Text></View>
+                          <View key={t} style={s.tipTag}><Text style={s.tipTagText}>{t.trim()}</Text></View>
                         ))}
                       </View>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
                         {istek.tercih_konum && istek.tercih_konum.split('|').map((k: string) => (
-                          <View key={k} style={styles.konumTag}><Text style={styles.konumTagText}>{k.trim()}</Text></View>
+                          <View key={k} style={s.konumTag}><Text style={s.konumTagText}>{k.trim()}</Text></View>
                         ))}
-                        {istek.min_oda ? <View style={styles.odaTag}><Text style={styles.odaTagText}>Min {istek.min_oda}</Text></View> : null}
+                        {istek.min_oda ? <View style={s.odaTag}><Text style={s.odaTagText}>Min {istek.min_oda}</Text></View> : null}
                         {istek.bina_yasi && istek.bina_yasi.split(',').map((b: string) => (
-                          <View key={b} style={styles.yasTag}><Text style={styles.yasTagText}>{b.trim()}</Text></View>
+                          <View key={b} style={s.yasTag}><Text style={s.yasTagText}>{b.trim()}</Text></View>
                         ))}
                       </View>
                     </View>
@@ -292,11 +309,11 @@ export default function EslesenMusterilerScreen() {
               {/* Notlar */}
               {(detay?.notlar ?? []).length > 0 && (
                 <View>
-                  <Text style={styles.sectionTitle}>Son Notlar</Text>
+                  <Text style={s.sectionTitle}>Son Notlar</Text>
                   {(detay?.notlar ?? []).map((n: any) => (
-                    <View key={n.id} style={styles.notKart}>
-                      <Text style={styles.notTarih}>{tarihGoster(n.tarih)}</Text>
-                      <Text style={styles.notIcerik}>{n.icerik}</Text>
+                    <View key={n.id} style={s.notKart}>
+                      <Text style={s.notTarih}>{tarihGoster(n.tarih)}</Text>
+                      <Text style={s.notIcerik}>{n.icerik}</Text>
                     </View>
                   ))}
                 </View>
@@ -310,26 +327,28 @@ export default function EslesenMusterilerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  backBtn: { marginBottom: 12 },
-  backBtnText: { fontSize: 14, color: Colors.secondary, fontWeight: '600' },
 
-  ilanKart: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#e5e7eb' },
-  ilanFoto: { width: '100%', height: 180 },
-  ilanBody: { padding: 16 },
-  ilanTip: { fontSize: 11, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
-  ilanBaslik: { fontSize: 17, fontWeight: '800', color: '#1a1b21', marginBottom: 4 },
-  ilanFiyat: { fontSize: 20, fontWeight: '800', color: '#E53935', marginBottom: 4 },
-  ilanKonum: { fontSize: 13, color: '#6b7280', marginBottom: 8 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  ilanKart: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: '#e5e7eb', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  ilanFoto: { width: '100%', height: 210 },
+  ilanBody: { padding: 18 },
+  ilanTip: { fontSize: 11, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 4 },
+  ilanBaslik: { fontSize: 18, fontWeight: '800', color: '#1a1b21', lineHeight: 24 },
+  ilanFiyat: { fontSize: 22, fontWeight: '800', color: '#E53935' },
+  portfoyNo: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+  ilanKonum: { fontSize: 13, color: '#6b7280', marginBottom: 10 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 2 },
   tag: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: '#f3f4f6', borderRadius: 999 },
   tagText: { fontSize: 12, fontWeight: '600', color: '#374151' },
+  ilanFooter: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#f3f4f6', alignItems: 'flex-end' },
+  ilanBtn: { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: '#f3f4f6', borderRadius: 8 },
+  ilanBtnText: { fontSize: 13, fontWeight: '600', color: '#374151' },
 
   listHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  listHeaderText: { fontSize: 15, fontWeight: '700', color: '#1a1b21' },
-  badge: { backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  listHeaderText: { fontSize: 16, fontWeight: '700', color: '#1a1b21' },
+  badge: { backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2 },
+  badgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   empty: { textAlign: 'center', color: '#9ca3af', fontSize: 14, paddingVertical: 32 },
 
   musteriKart: { backgroundColor: '#fff', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e5e7eb' },
@@ -339,6 +358,7 @@ const styles = StyleSheet.create({
   etiket: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
   durumBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f3f4f6' },
   durumText: { fontSize: 11, fontWeight: '600', color: '#6b7280' },
+  telMiniBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
   tipTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(59,130,246,0.08)' },
   tipTagText: { fontSize: 11, fontWeight: '600', color: '#2563eb' },
   konumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f0fdf4' },
@@ -350,22 +370,21 @@ const styles = StyleSheet.create({
   yasTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(245,158,11,0.1)' },
   yasTagText: { fontSize: 11, fontWeight: '600', color: '#d97706' },
 
-  modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', minHeight: '50%' },
-  sheetHandle: { width: 40, height: 4, backgroundColor: '#e5e7eb', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  sheetAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  sheetAvatarText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82%' },
+  sheetHandle: { width: 40, height: 4, backgroundColor: '#e5e7eb', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 6 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  sheetAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  sheetAvatarText: { fontSize: 17, fontWeight: '700', color: '#fff' },
   sheetAd: { fontSize: 16, fontWeight: '800', color: '#1a1b21' },
-  telBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  telBtnText: { fontSize: 16 },
-  detayBtn: { paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#E53935', borderRadius: 8 },
+  telBtn: { width: 38, height: 38, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  detayBtn: { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#E53935', borderRadius: 8 },
   detayBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 },
   ekKisiRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 6 },
   istekKart: { backgroundColor: '#fafafa', borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 },
-  istekNo: { paddingHorizontal: 6, paddingVertical: 1, backgroundColor: '#E53935', borderRadius: 999 },
+  istekNo: { paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#E53935', borderRadius: 999 },
   notKart: { backgroundColor: 'rgba(254,243,199,0.7)', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 12, marginBottom: 6 },
   notTarih: { fontSize: 11, fontWeight: '600', color: '#92400e', marginBottom: 4 },
   notIcerik: { fontSize: 13, color: '#78350f', lineHeight: 20 },
