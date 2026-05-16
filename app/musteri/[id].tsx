@@ -296,9 +296,7 @@ export default function MusteriDetayScreen() {
     const { error } = await supabase.from('musteriler').update({
       ad, soyad: soyad || null,
       telefon: tamTelefon,
-      min_oda: minOda || null,
       takip_tarihi: takipTarihi ? isoFormat(takipTarihi) : null,
-      bina_yasi: binaYaslari.length ? binaYaslari.join(',') : null,
       etiketler: etiket.trim() || null,
       durum,
       musteri_tipi: musteriTipi,
@@ -324,12 +322,6 @@ export default function MusteriDetayScreen() {
       if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setSaving(false); return; }
     }
 
-    await supabase.from('musteri_ozellikler').delete().eq('musteri_id', id);
-    if (ozelIstekler.length) {
-      const rows = ozelIstekler.map(oid => ({ musteri_id: id, ozellik_id: oid }));
-      const { error: jErr } = await supabase.from('musteri_ozellikler').insert(rows);
-      if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setSaving(false); return; }
-    }
 
     await supabase.from('musteri_iletisim').delete().eq('musteri_id', id);
     const cleanKisiler = ekKisiler.map(k => ({ ad: k.ad.trim(), telefon: birlestirTelefon(k.kod, k.numara), tip: k.tip })).filter(k => k.ad || k.telefon);
@@ -867,58 +859,6 @@ export default function MusteriDetayScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Minimum Oda Sayısı</Text>
-                <View style={styles.chipRow}>
-                  {ODALAR.map(o => {
-                    const secili = minOda === o;
-                    return (
-                      <TouchableOpacity
-                        key={o}
-                        style={[styles.chip, secili && styles.chipActive]}
-                        onPress={() => setMinOda(secili ? '' : o)}
-                      >
-                        <Text style={[styles.chipText, secili && styles.chipTextActive]}>{o}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Bina Yaşı Tercihi</Text>
-                <View style={styles.chipRow}>
-                  {BINA_YASLARI.map(y => {
-                    const secili = binaYaslari.includes(y);
-                    return (
-                      <TouchableOpacity key={y} style={[styles.chip, secili && styles.chipActive]}
-                        onPress={() => setBinaYaslari(prev => secili ? prev.filter(x => x !== y) : [...prev, y])}>
-                        <Text style={[styles.chipText, secili && styles.chipTextActive]}>{y}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-              {tumOzellikler.length > 0 && (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Özel İstekler</Text>
-                  <View style={styles.chipRow}>
-                    {tumOzellikler.map(oz => {
-                      const secili = ozelIstekler.includes(oz.id);
-                      return (
-                        <TouchableOpacity
-                          key={oz.id}
-                          style={[styles.chip, secili && styles.chipActive]}
-                          onPress={() => setOzelIstekler(prev =>
-                            secili ? prev.filter(x => x !== oz.id) : [...prev, oz.id]
-                          )}
-                        >
-                          <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Takip Tarihi</Text>
                 <TouchableOpacity onPress={() => setShowTakipPicker(true)} style={styles.dateBtn}>
