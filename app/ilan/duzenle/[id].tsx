@@ -158,7 +158,7 @@ export default function IlanDuzenleScreen() {
     const prefix = ((profil as any)?.portfoy_prefix ?? '').toUpperCase();
     const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
     const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
-    let n = 1;
+    let n = 1000;
     while (nums.has(n)) n++;
     setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
     setPortfoyYukleniyor(false);
