@@ -264,7 +264,9 @@ export function ayirTelefon(tam: string | null | undefined, varsayilan: string =
 export function birlestirTelefon(kod: string, numara: string): string | null {
   const temiz = numara.replace(/\D/g, '');
   if (!temiz) return null;
-  return kod + temiz;
+  const kodRakam = kod.replace(/\D/g, '');
+  const noPrefix = temiz.startsWith(kodRakam) ? temiz.slice(kodRakam.length) : temiz;
+  return kod + noPrefix;
 }
 
 export function formatNumara(kod: string, numara: string): string {
