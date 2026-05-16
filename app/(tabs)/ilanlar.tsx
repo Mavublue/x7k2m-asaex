@@ -19,6 +19,10 @@ import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
 import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
 
+function normalizeMahalle(m: string): string {
+  return m.toLowerCase().replace(/\s*(mahallesi|mah\.?)\s*$/, '').replace(/\s+/g, '').trim();
+}
+
 function fmtPin(fiyat: number) {
   if (fiyat >= 1_000_000) return (fiyat / 1_000_000).toFixed(1) + 'M';
   if (fiyat >= 1_000) return Math.round(fiyat / 1_000) + 'K';
@@ -272,7 +276,7 @@ export default function IlanlarScreen() {
       r = r.filter(ilan => {
         if (f.filterIl.length > 0 && !f.filterIl.includes(ilan.konum)) return false;
         if (f.filterIlce.length > 0 && (!ilan.ilce || !f.filterIlce.includes(ilan.ilce))) return false;
-        if (f.filterMahalle.length > 0 && !f.filterMahalle.some(m => (ilan.mahalle ?? '').toLowerCase() === m.toLowerCase())) return false;
+        if (f.filterMahalle.length > 0 && !f.filterMahalle.some(m => normalizeMahalle(ilan.mahalle ?? '') === normalizeMahalle(m))) return false;
         return true;
       });
     }
