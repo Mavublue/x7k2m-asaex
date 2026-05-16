@@ -8,7 +8,7 @@ import {
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
-import { deleteIlanPhotos } from '../../lib/r2';
+import { deleteIlanPhotos, copyIlanFiles } from '../../lib/r2';
 import { setDownloadProgress } from '../../lib/downloadProgress';
 
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
@@ -131,11 +131,21 @@ export default function IlanDetayScreen() {
     const nums = new Set((tumIlanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
     let n = 1000; while (nums.has(n)) n++;
     const portfoy_no = prefix ? `${prefix}-${n}` : String(n);
+    let yeniFotograflar = fotograflar ?? [];
+    let yeniGizliFotograflar = gizli_fotograflar ?? [];
+    if (yeniFotograflar.length) {
+      try {
+        const kopyalar = await copyIlanFiles(id as string, newId, yeniFotograflar);
+        const eskiYeni = new Map(yeniFotograflar.map((k: string, i: number) => [k, kopyalar[i]]));
+        yeniGizliFotograflar = (yeniGizliFotograflar ?? []).map((k: string) => eskiYeni.get(k) ?? k);
+        yeniFotograflar = kopyalar;
+      } catch { /* kopyalama başarısız olursa eski keyleri kullan */ }
+    }
     const { error } = await supabase.from('ilanlar').insert({
       id: newId, user_id: session.user.id, portfoy_no,
       baslik, tip, kategori, fiyat, konum, ilce, mahalle, metrekare, brut_metrekare,
       oda_sayisi, banyo_sayisi, bina_yasi, kat_sayisi, bulundugu_kat, aciklama,
-      musteri_aciklamasi, musteri_gizle, fotograflar, gizli_fotograflar,
+      musteri_aciklamasi, musteri_gizle, fotograflar: yeniFotograflar, gizli_fotograflar: yeniGizliFotograflar,
       lat, lng, musteri_lat, musteri_lng, durum,
     });
     if (error) { Alert.alert('Hata', error.message); setCogaltiyor(false); return; }

@@ -38,6 +38,18 @@ export async function optimizePhoto(key: string, isFirst = false): Promise<void>
   });
 }
 
+export async function copyIlanFiles(sourceIlanId: string, targetIlanId: string, fotograflar: string[]): Promise<string[]> {
+  const token = await getToken();
+  const res = await fetch(`${MEDIA_SERVICE}/copy-ilan-files`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ sourceIlanId, targetIlanId, fotograflar }),
+  });
+  if (!res.ok) throw new Error('Kopyalama başarısız');
+  const data = await res.json();
+  return data.fotograflar;
+}
+
 export async function deleteFile(key: string): Promise<void> {
   const token = await getToken();
   await fetch(`${MEDIA_SERVICE}/delete-file`, {
