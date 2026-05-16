@@ -67,6 +67,7 @@ export default function IlanDetayScreen() {
   const [sosyalMetin, setSosyalMetin] = useState('');
   const [sosyalKaydediliyor, setSosyalKaydediliyor] = useState(false);
   const [sosyalKopyalandi, setSosyalKopyalandi] = useState(false);
+  const [cogaltiyor, setCogaltiyor] = useState(false);
 
   const fetchIlan = useCallback(() => {
     supabase.from('ilanlar').select('*').eq('id', id).single().then(({ data }) => {
@@ -109,6 +110,33 @@ export default function IlanDetayScreen() {
     if (i.bulundugu_kat) lines.push(`✅ ${i.bulundugu_kat}. KAT`);
     if (i.banyo_sayisi) lines.push(`✅ ${i.banyo_sayisi} BANYO`);
     return lines.join('\n');
+  }
+
+  async function handleCogalt() {
+    if (!ilan) return;
+    setMenuModal(false);
+    setCogaltiyor(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setCogaltiyor(false); return; }
+    const newId = crypto.randomUUID();
+    const { baslik, tip, kategori, fiyat, konum, ilce, mahalle, metrekare, brut_metrekare,
+      oda_sayisi, banyo_sayisi, bina_yasi, kat_sayisi, bulundugu_kat, aciklama,
+      musteri_aciklamasi, musteri_gizle, fotograflar, gizli_fotograflar,
+      lat, lng, musteri_lat, musteri_lng, durum } = ilan;
+    const { error } = await supabase.from('ilanlar').insert({
+      id: newId, user_id: session.user.id,
+      baslik, tip, kategori, fiyat, konum, ilce, mahalle, metrekare, brut_metrekare,
+      oda_sayisi, banyo_sayisi, bina_yasi, kat_sayisi, bulundugu_kat, aciklama,
+      musteri_aciklamasi, musteri_gizle, fotograflar, gizli_fotograflar,
+      lat, lng, musteri_lat, musteri_lng, durum,
+    });
+    if (error) { Alert.alert('Hata', error.message); setCogaltiyor(false); return; }
+    const { data: ozellikler } = await supabase.from('ilan_ozellikler').select('ozellik_id').eq('ilan_id', id);
+    if (ozellikler?.length) {
+      await supabase.from('ilan_ozellikler').insert(ozellikler.map(o => ({ ilan_id: newId, ozellik_id: o.ozellik_id })));
+    }
+    setCogaltiyor(false);
+    router.push(`/ilan/duzenle/${newId}` as any);
   }
 
   function sosyalModalAc() {
@@ -631,6 +659,10 @@ export default function IlanDetayScreen() {
           <View style={styles.menuPanel}>
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); router.push(`/ilan/duzenle/${id}` as any); }}>
               <Text style={styles.menuItemText}>✏️  Düzenle</Text>
+            </TouchableOpacity>
+            <View style={styles.menuSep} />
+            <TouchableOpacity style={styles.menuItem} onPress={handleCogalt} disabled={cogaltiyor}>
+              <Text style={styles.menuItemText}>{cogaltiyor ? '⧉  Çoğaltılıyor...' : '⧉  Çoğalt'}</Text>
             </TouchableOpacity>
             <View style={styles.menuSep} />
             {fotograflar.length > 0 && (
