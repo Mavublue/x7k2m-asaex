@@ -135,33 +135,35 @@ export default function MusterilerScreen() {
 
 
       {/* Durum sekmeleri + Sıralama */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 4, gap: 8, overflow: 'hidden' }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} style={{ flex: 1 }}>
-          {durumlar.map(d => (
+      <View style={{ paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} style={{ flex: 1 }}>
+            {durumlar.map(d => (
+              <TouchableOpacity
+                key={d}
+                style={[styles.tab, activeDurum === d && styles.tabActive]}
+                onPress={() => setActiveDurum(d)}
+              >
+                <Text style={[styles.tabText, activeDurum === d && styles.tabTextActive]}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity onPress={() => setSiralamaAcik(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <Text style={{ fontSize: 13, color: Colors.onSurface, fontWeight: '600' }}>⇅ {SIRALAMA_LABEL[siralama]}</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingTop: 6, paddingBottom: 6 }}>
+          {musteriTipleri.map(t => (
             <TouchableOpacity
-              key={d}
-              style={[styles.tab, activeDurum === d && styles.tabActive]}
-              onPress={() => setActiveDurum(d)}
+              key={t}
+              style={[styles.tab, activeTip === t && { backgroundColor: '#374151', borderColor: '#374151' }]}
+              onPress={() => setActiveTip(t)}
             >
-              <Text style={[styles.tabText, activeDurum === d && styles.tabTextActive]}>{d}</Text>
+              <Text style={[styles.tabText, activeTip === t && { color: '#fff' }]}>{t}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <TouchableOpacity onPress={() => setSiralamaAcik(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontSize: 13, color: Colors.onSurface, fontWeight: '600' }}>⇅ {SIRALAMA_LABEL[siralama]}</Text>
-        </TouchableOpacity>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: Spacing.md, paddingTop: 4, paddingBottom: 6 }}>
-        {musteriTipleri.map(t => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.tab, activeTip === t && { backgroundColor: '#374151', borderColor: '#374151' }]}
-            onPress={() => setActiveTip(t)}
-          >
-            <Text style={[styles.tabText, activeTip === t && { color: '#fff' }]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       <Modal visible={siralamaAcik} transparent animationType="fade" onRequestClose={() => setSiralamaAcik(false)}>
         <TouchableOpacity activeOpacity={1} onPress={() => setSiralamaAcik(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 30 }}>

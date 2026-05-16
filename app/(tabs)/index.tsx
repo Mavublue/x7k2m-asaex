@@ -594,8 +594,18 @@ export default function DashboardScreen() {
                   <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
                 </TouchableOpacity>
               )}
-              {showEditTarihPicker && <DateTimePicker value={editTarihDate} mode="date" display="spinner" onChange={(_, d) => { setShowEditTarihPicker(false); if (d) setEditTarihDate(d); }} />}
-              {showEditSaatPicker && <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { setShowEditSaatPicker(false); if (d) setEditSaatDate(d); }} />}
+              {showEditTarihPicker && <>
+                <DateTimePicker value={editTarihDate} mode="date" display="spinner" onChange={(_, d) => { if (d) setEditTarihDate(d); }} />
+                <TouchableOpacity onPress={() => setShowEditTarihPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                </TouchableOpacity>
+              </>}
+              {showEditSaatPicker && <>
+                <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { if (d) setEditSaatDate(d); }} />
+                <TouchableOpacity onPress={() => setShowEditSaatPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                </TouchableOpacity>
+              </>}
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
@@ -658,8 +668,18 @@ export default function DashboardScreen() {
                   <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
                 </TouchableOpacity>
               )}
-              {showGenelTarihPicker && <DateTimePicker value={genelTarihDate} mode="date" display="spinner" onChange={(_, d) => { setShowGenelTarihPicker(false); if (d) setGenelTarihDate(d); }} />}
-              {showGenelSaatPicker && <DateTimePicker value={genelSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { setShowGenelSaatPicker(false); if (d) setGenelSaatDate(d); }} />}
+              {showGenelTarihPicker && <>
+                <DateTimePicker value={genelTarihDate} mode="date" display="spinner" onChange={(_, d) => { if (d) setGenelTarihDate(d); }} />
+                <TouchableOpacity onPress={() => setShowGenelTarihPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                </TouchableOpacity>
+              </>}
+              {showGenelSaatPicker && <>
+                <DateTimePicker value={genelSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { if (d) setGenelSaatDate(d); }} />
+                <TouchableOpacity onPress={() => setShowGenelSaatPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                </TouchableOpacity>
+              </>}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); }}
                   style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
