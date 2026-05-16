@@ -123,8 +123,16 @@ export default function IlanDetayScreen() {
       oda_sayisi, banyo_sayisi, bina_yasi, kat_sayisi, bulundugu_kat, aciklama,
       musteri_aciklamasi, musteri_gizle, fotograflar, gizli_fotograflar,
       lat, lng, musteri_lat, musteri_lng, durum } = ilan;
+    const [{ data: profil }, { data: tumIlanlar }] = await Promise.all([
+      supabase.from('profiller').select('portfoy_prefix').eq('id', session.user.id).single(),
+      supabase.from('ilanlar').select('portfoy_no').eq('user_id', session.user.id),
+    ]);
+    const prefix = ((profil as any)?.portfoy_prefix ?? '').toUpperCase();
+    const nums = new Set((tumIlanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
+    let n = 1000; while (nums.has(n)) n++;
+    const portfoy_no = prefix ? `${prefix}-${n}` : String(n);
     const { error } = await supabase.from('ilanlar').insert({
-      id: newId, user_id: session.user.id,
+      id: newId, user_id: session.user.id, portfoy_no,
       baslik, tip, kategori, fiyat, konum, ilce, mahalle, metrekare, brut_metrekare,
       oda_sayisi, banyo_sayisi, bina_yasi, kat_sayisi, bulundugu_kat, aciklama,
       musteri_aciklamasi, musteri_gizle, fotograflar, gizli_fotograflar,
