@@ -289,7 +289,8 @@ export default function IlanlarScreen() {
     if (search) r = r.filter(i =>
       i.baslik.toLowerCase().includes(search.toLowerCase()) ||
       i.konum.toLowerCase().includes(search.toLowerCase()) ||
-      (i.ilce ?? '').toLowerCase().includes(search.toLowerCase())
+      (i.ilce ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (i.mahalle ?? '').toLowerCase().includes(search.toLowerCase())
     );
     r = [...r].sort((a, b) => {
       if (siralama === 'fiyat_artan') return a.fiyat - b.fiyat;
