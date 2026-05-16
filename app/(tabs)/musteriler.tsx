@@ -135,7 +135,7 @@ export default function MusterilerScreen() {
 
 
       {/* Durum sekmeleri + Sıralama */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 4, gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, paddingBottom: 4, gap: 8, overflow: 'hidden' }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} style={{ flex: 1 }}>
           {durumlar.map(d => (
             <TouchableOpacity
@@ -151,7 +151,7 @@ export default function MusterilerScreen() {
           <Text style={{ fontSize: 13, color: Colors.onSurface, fontWeight: '600' }}>⇅ {SIRALAMA_LABEL[siralama]}</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: Spacing.md, paddingBottom: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: Spacing.md, paddingTop: 4, paddingBottom: 6 }}>
         {musteriTipleri.map(t => (
           <TouchableOpacity
             key={t}
