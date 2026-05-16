@@ -255,6 +255,7 @@ export default function IlanEkleScreen() {
       musteri_lat: (musteriKonumAktif && musteriLat) ? parseFloat(musteriLat) : null,
       musteri_lng: (musteriKonumAktif && musteriLng) ? parseFloat(musteriLng) : null,
       metrekare: netM2 ? parseFloat(netM2) : null,
+      brut_metrekare: brutM2 ? parseFloat(brutM2) : null,
       oda_sayisi: odaSayisi || null,
       tip, kategori: secilenKategoriler.join(', '),
       aciklama: aciklama || null,
@@ -415,7 +416,7 @@ export default function IlanEkleScreen() {
           {/* Konum */}
           <FormGroup label="Konum *">
             <View style={styles.satir}>
-              <TouchableOpacity style={[styles.selectBtn, { flex: 1 }]} onPress={() => setIlModal(true)}>
+              <TouchableOpacity style={[styles.selectBtn, { flex: 1 }, submitted && !il && styles.inputErr]} onPress={() => setIlModal(true)}>
                 <Text style={il ? styles.selectText : styles.selectPlaceholder}>{il || 'İl Seç'}</Text>
                 <Text style={styles.selectArrow}>▾</Text>
               </TouchableOpacity>
