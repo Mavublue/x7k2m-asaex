@@ -232,6 +232,11 @@ export default function MusteriEkleScreen() {
   }
 
   async function handleKaydet() {
+    let finalNotlar = yeniNotlar;
+    if (notIcerik.trim()) {
+      const yeni = { icerik: notIcerik.trim(), tarih: notTarih.toISOString() };
+      finalNotlar = notEditIdx !== null ? yeniNotlar.map((n, i) => i === notEditIdx ? yeni : n) : [yeni, ...yeniNotlar];
+    }
     if (!ad) { Alert.alert('Hata', 'Ad zorunludur.'); return; }
     if (etiketCakisma) {
       Alert.alert('Etiket Çakışması', 'Bu etiket başka müşteride var');
@@ -284,8 +289,8 @@ export default function MusteriEkleScreen() {
       const { error: kErr } = await supabase.from('musteri_iletisim').insert(kRows);
       if (kErr) { Alert.alert('Ek kişi kaydı hatası', kErr.message); setLoading(false); return; }
     }
-    if (yeniNotlar.length && inserted) {
-      const nRows = yeniNotlar.map(n => ({ musteri_id: (inserted as any).id, icerik: n.icerik, tarih: n.tarih }));
+    if (finalNotlar.length && inserted) {
+      const nRows = finalNotlar.map(n => ({ musteri_id: (inserted as any).id, icerik: n.icerik, tarih: n.tarih }));
       const { error: nErr } = await supabase.from('musteri_notlar').insert(nRows);
       if (nErr) { Alert.alert('Not kaydı hatası', nErr.message); setLoading(false); return; }
     }
@@ -530,7 +535,7 @@ export default function MusteriEkleScreen() {
               <DateTimePicker
                 value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
                 onChange={(_, sel) => {
                   setShowTakipPicker(Platform.OS === 'ios');
                   if (sel) {
@@ -585,7 +590,7 @@ export default function MusteriEkleScreen() {
                     value={notTarih}
                     mode={showPicker}
                     is24Hour
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    display={Platform.OS === 'ios' ? (showPicker === 'date' ? 'inline' : 'spinner') : showPicker === 'date' ? 'calendar' : 'default'}
                     onChange={(_, sel) => {
                       if (Platform.OS === 'android') {
                         if (showPicker === 'date') {

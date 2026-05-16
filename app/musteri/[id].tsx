@@ -875,7 +875,7 @@ export default function MusteriDetayScreen() {
                   <DateTimePicker
                     value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
                     mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
                     onChange={(_, sel) => {
                       setShowTakipPicker(Platform.OS === 'ios');
                       if (sel) {
@@ -929,7 +929,7 @@ export default function MusteriDetayScreen() {
                         value={notTarih}
                         mode={showPicker}
                         is24Hour
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        display={Platform.OS === 'ios' ? (showPicker === 'date' ? 'inline' : 'spinner') : showPicker === 'date' ? 'calendar' : 'default'}
                         onChange={(_, sel) => {
                           if (Platform.OS === 'android') {
                             if (showPicker === 'date') {
@@ -1148,7 +1148,7 @@ export default function MusteriDetayScreen() {
                   <DateTimePicker
                     value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
                     mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
                     onChange={(_, sel) => {
                       setShowInlineTakipPicker(false);
                       if (sel) {
@@ -1198,7 +1198,7 @@ export default function MusteriDetayScreen() {
                             value={notTarih}
                             mode={showPicker}
                             is24Hour
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            display={Platform.OS === 'ios' ? (showPicker === 'date' ? 'inline' : 'spinner') : showPicker === 'date' ? 'calendar' : 'default'}
                             onChange={(_, sel) => {
                               if (Platform.OS === 'android') {
                                 if (showPicker === 'date') {

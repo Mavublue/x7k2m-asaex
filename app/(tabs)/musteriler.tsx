@@ -231,6 +231,11 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
             <Text style={styles.musteriAd} numberOfLines={1}>{`${musteri.ad ?? ''} ${musteri.soyad ?? ''}`.trim()}</Text>
+            {musteri.etiketler ? (
+              <View style={styles.etiketPill}>
+                <Text style={styles.etiketPillText}>#{musteri.etiketler}</Text>
+              </View>
+            ) : null}
           </View>
           {musteri.telefon ? (
             <Text style={styles.telefon} numberOfLines={1}>📞 {musteri.telefon}</Text>
@@ -248,11 +253,6 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
           <View style={[styles.durumBadge, { backgroundColor: durumRenk.bg }]}>
             <Text style={[styles.durumText, { color: durumRenk.text }]}>{musteri.durum}</Text>
           </View>
-          {musteri.etiketler ? (
-            <View style={styles.etiketPill}>
-              <Text style={styles.etiketPillText}>#{musteri.etiketler}</Text>
-            </View>
-          ) : null}
         </View>
       </View>
 
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   durumBadge: { borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3 },
   durumText: { fontSize: 10, fontWeight: '600' },
-  musteriAd: { fontSize: 15, fontWeight: '700', color: Colors.onSurface, flex: 1 },
+  musteriAd: { fontSize: 15, fontWeight: '700', color: Colors.onSurface, flexShrink: 1 },
   telefon: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 1 },
   etiketPill: { backgroundColor: Colors.surfaceContainerHigh, borderRadius: Radius.full, paddingHorizontal: 7, paddingVertical: 2 },
   etiketPillText: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant },
