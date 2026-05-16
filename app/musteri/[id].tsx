@@ -1812,12 +1812,12 @@ function GorevlerBox({
             textAlignVertical="top"
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            <TouchableOpacity onPress={() => setShowGorevPicker(true)} style={[gorevStyles.input, { flex: 1, minWidth: 120, justifyContent: 'center' }]}>
+            <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGorevPicker(true); }} style={[gorevStyles.input, { flex: 1, minWidth: 120, justifyContent: 'center' }]}>
               <Text style={{ fontSize: 13, color: gorevHedefTarih ? Colors.onSurface : Colors.outlineVariant }}>
                 {gorevHedefTarih ? `📅 ${gorevTarihGoster(gorevHedefTarih.toISOString()).split(' ')[0]}` : '📅 Tarih'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowGorevSaatPicker(true)} style={[gorevStyles.input, { minWidth: 90, justifyContent: 'center' }]}>
+            <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGorevSaatPicker(true); }} style={[gorevStyles.input, { minWidth: 90, justifyContent: 'center' }]}>
               <Text style={{ fontSize: 13, color: gorevHedefSaat ? Colors.onSurface : Colors.outlineVariant }}>
                 {gorevHedefSaat ? `⏰ ${String(gorevHedefSaat.getHours()).padStart(2,'0')}:${String(gorevHedefSaat.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
               </Text>

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, Image, Modal, FlatList, RefreshControl, TextInput, AppState,
+  StyleSheet, ActivityIndicator, Alert, Image, Modal, FlatList, RefreshControl, TextInput, AppState, Keyboard,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import R2Image from '../../components/R2Image';
@@ -580,10 +580,10 @@ export default function DashboardScreen() {
               <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı"
                 style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                <TouchableOpacity onPress={() => setShowEditTarihPicker(true)} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
                   <Text style={{ fontSize: 13, color: '#374151' }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowEditSaatPicker(true)} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: editSaatDate ? '#16a34a' : '#9ca3af' }}>
                     {editSaatDate ? `⏰ ${String(editSaatDate.getHours()).padStart(2,'0')}:${String(editSaatDate.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
                   </Text>
@@ -596,16 +596,14 @@ export default function DashboardScreen() {
               )}
               {showEditTarihPicker && <DateTimePicker value={editTarihDate} mode="date" display="spinner" onChange={(_, d) => { setShowEditTarihPicker(false); if (d) setEditTarihDate(d); }} />}
               {showEditSaatPicker && <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { setShowEditSaatPicker(false); if (d) setEditSaatDate(d); }} />}
-              {!showEditTarihPicker && !showEditSaatPicker && (
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -646,10 +644,10 @@ export default function DashboardScreen() {
                 </View>
               )}
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                <TouchableOpacity onPress={() => setShowGenelTarihPicker(true)} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGenelTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
                   <Text style={{ fontSize: 13, color: '#374151' }}>📅 {genelTarihDate.toLocaleDateString('tr-TR')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowGenelSaatPicker(true)} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: genelSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGenelSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: genelSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: genelSaatDate ? '#16a34a' : '#9ca3af' }}>
                     {genelSaatDate ? `⏰ ${String(genelSaatDate.getHours()).padStart(2,'0')}:${String(genelSaatDate.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
                   </Text>
@@ -662,18 +660,16 @@ export default function DashboardScreen() {
               )}
               {showGenelTarihPicker && <DateTimePicker value={genelTarihDate} mode="date" display="spinner" onChange={(_, d) => { setShowGenelTarihPicker(false); if (d) setGenelTarihDate(d); }} />}
               {showGenelSaatPicker && <DateTimePicker value={genelSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { setShowGenelSaatPicker(false); if (d) setGenelSaatDate(d); }} />}
-              {!showGenelTarihPicker && !showGenelSaatPicker && (
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); }}
-                    style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={genelGorevEkle}
-                    style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: genelBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); }}
+                  style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={genelGorevEkle}
+                  style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: genelBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
