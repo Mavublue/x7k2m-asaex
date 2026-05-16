@@ -1839,6 +1839,7 @@ function GorevlerBox({
               value={gorevHedefTarih ?? new Date()}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              locale="tr-TR"
               onChange={(_, sel) => {
                 setShowGorevPicker(Platform.OS === 'ios');
                 if (sel) setGorevHedefTarih(sel);

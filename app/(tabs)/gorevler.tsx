@@ -231,25 +231,27 @@ export default function GorevlerScreen() {
               </TouchableOpacity>
             )}
             {showEditTarihPicker && <>
-              <DateTimePicker value={editTarihDate} mode="date" display="spinner" onChange={(_, d) => { if (d) setEditTarihDate(d); }} />
-              <TouchableOpacity onPress={() => setShowEditTarihPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+              <DateTimePicker value={editTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setEditTarihDate(d); }} />
+              <TouchableOpacity onPress={() => setShowEditTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                 <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
               </TouchableOpacity>
             </>}
             {showEditSaatPicker && <>
               <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { if (d) setEditSaatDate(d); }} />
-              <TouchableOpacity onPress={() => setShowEditSaatPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+              <TouchableOpacity onPress={() => setShowEditSaatPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                 <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
               </TouchableOpacity>
             </>}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
-              </TouchableOpacity>
-            </View>
+            {!showEditTarihPicker && !showEditSaatPicker && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -302,26 +304,28 @@ export default function GorevlerScreen() {
               </TouchableOpacity>
             )}
             {showEkleTarihPicker && <>
-              <DateTimePicker value={ekleTarihDate} mode="date" display="spinner" onChange={(_, d) => { if (d) setEkleTarihDate(d); }} />
-              <TouchableOpacity onPress={() => setShowEkleTarihPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+              <DateTimePicker value={ekleTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setEkleTarihDate(d); }} />
+              <TouchableOpacity onPress={() => setShowEkleTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                 <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
               </TouchableOpacity>
             </>}
             {showEkleSaatPicker && <>
               <DateTimePicker value={ekleSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { if (d) setEkleSaatDate(d); }} />
-              <TouchableOpacity onPress={() => setShowEkleSaatPicker(false)} style={{ alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12 }}>
+              <TouchableOpacity onPress={() => setShowEkleSaatPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                 <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
               </TouchableOpacity>
             </>}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriId(null); setEkleMusteriArama(''); }}
-                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={gorevEkle} style={{ flex: 1, padding: 12, backgroundColor: ekleBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: ekleBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
-              </TouchableOpacity>
-            </View>
+            {!showEkleTarihPicker && !showEkleSaatPicker && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriId(null); setEkleMusteriArama(''); }}
+                  style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={gorevEkle} style={{ flex: 1, padding: 12, backgroundColor: ekleBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: ekleBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
