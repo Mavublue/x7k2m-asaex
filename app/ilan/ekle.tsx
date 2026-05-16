@@ -128,11 +128,11 @@ export default function IlanEkleScreen() {
             .map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10))
             .filter((n: number) => n > 0)
         );
-        let n = 1;
+        let n = 1000;
         while (nums.has(n)) n++;
         setPortfoyNo(prefix ? `${prefix}-${n}` : String(n));
       } catch (e) {
-        setPortfoyNo('1');
+        setPortfoyNo('1000');
       }
     })();
   }, []);
