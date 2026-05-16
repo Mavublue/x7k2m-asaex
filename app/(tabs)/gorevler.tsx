@@ -209,7 +209,7 @@ export default function GorevlerScreen() {
       />
 
       {/* Görev Düzenle Modal */}
-      <Modal visible={!!editGorev} transparent animationType="fade" onRequestClose={() => setEditGorev(null)}>
+      <Modal visible={!!editGorev} transparent animationType="fade" onRequestClose={() => { if (showEditTarihPicker) { setShowEditTarihPicker(false); return; } if (showEditSaatPicker) { setShowEditSaatPicker(false); return; } setEditGorev(null); }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 10 }}>✏️ Görevi Düzenle</Text>
@@ -230,18 +230,20 @@ export default function GorevlerScreen() {
                 <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
               </TouchableOpacity>
             )}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
-              </TouchableOpacity>
-            </View>
+            {showEditTarihPicker && <DateTimePicker value={editTarihDate} mode="date" display="spinner" onChange={(_, d) => { setShowEditTarihPicker(false); if (d) setEditTarihDate(d); }} />}
+            {showEditSaatPicker && <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { setShowEditSaatPicker(false); if (d) setEditSaatDate(d); }} />}
+            {!showEditTarihPicker && !showEditSaatPicker && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
-        {showEditTarihPicker && <DateTimePicker value={editTarihDate} mode="date" display="default" onChange={(_, d) => { setShowEditTarihPicker(false); if (d) setEditTarihDate(d); }} />}
-        {showEditSaatPicker && <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="default" onChange={(_, d) => { setShowEditSaatPicker(false); if (d) setEditSaatDate(d); }} />}
       </Modal>
 
       {/* Görev Ekle Modal */}
@@ -291,19 +293,21 @@ export default function GorevlerScreen() {
                 <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
               </TouchableOpacity>
             )}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriId(null); setEkleMusteriArama(''); }}
-                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={gorevEkle} style={{ flex: 1, padding: 12, backgroundColor: ekleBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: ekleBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
-              </TouchableOpacity>
-            </View>
+            {showEkleTarihPicker && <DateTimePicker value={ekleTarihDate} mode="date" display="spinner" onChange={(_, d) => { setShowEkleTarihPicker(false); if (d) setEkleTarihDate(d); }} />}
+            {showEkleSaatPicker && <DateTimePicker value={ekleSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { setShowEkleSaatPicker(false); if (d) setEkleSaatDate(d); }} />}
+            {!showEkleTarihPicker && !showEkleSaatPicker && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriId(null); setEkleMusteriArama(''); }}
+                  style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={gorevEkle} style={{ flex: 1, padding: 12, backgroundColor: ekleBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: ekleBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
-        {showEkleTarihPicker && <DateTimePicker value={ekleTarihDate} mode="date" display="default" onChange={(_, d) => { setShowEkleTarihPicker(false); if (d) setEkleTarihDate(d); }} />}
-        {showEkleSaatPicker && <DateTimePicker value={ekleSaatDate ?? new Date()} mode="time" is24Hour display="default" onChange={(_, d) => { setShowEkleSaatPicker(false); if (d) setEkleSaatDate(d); }} />}
       </Modal>
     </SafeAreaView>
   );

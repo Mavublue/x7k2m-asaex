@@ -1743,12 +1743,17 @@ export default function MusteriDetayScreen() {
               <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
             )}
             <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Hatırlatma saati:</Text>
-            <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
-              style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>
-                ⏰ {String(gorevOneriSaat.getHours()).padStart(2,'0')}:{String(gorevOneriSaat.getMinutes()).padStart(2,'0')}
-              </Text>
-            </TouchableOpacity>
+            {!showGorevOneriSaatPicker ? (
+              <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
+                style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>
+                  ⏰ {String(gorevOneriSaat.getHours()).padStart(2,'0')}:{String(gorevOneriSaat.getMinutes()).padStart(2,'0')}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <DateTimePicker value={gorevOneriSaat} mode="time" is24Hour display="spinner"
+                onChange={(_, d) => { setShowGorevOneriSaatPicker(false); if (d) setGorevOneriSaat(d); }} />
+            )}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity onPress={() => setGorevOneriModal(null)}
                 style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
@@ -1776,10 +1781,6 @@ export default function MusteriDetayScreen() {
             </View>
           </View>
         </View>
-        {showGorevOneriSaatPicker && (
-          <DateTimePicker value={gorevOneriSaat} mode="time" is24Hour display="default"
-            onChange={(_, d) => { setShowGorevOneriSaatPicker(false); if (d) setGorevOneriSaat(d); }} />
-        )}
       </Modal>
     </SafeAreaView>
   );
