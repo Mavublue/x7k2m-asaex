@@ -316,10 +316,15 @@ export default function MusteriDetayScreen() {
         tercih_konum: i.konumlar.length ? i.konumlar.join(' | ') : null,
         min_oda: i.minOda || null,
         bina_yasi: i.binaYaslari.length ? i.binaYaslari.join(',') : null,
-        ozellikler: i.ozelIstekler.length ? i.ozelIstekler.join(',') : null,
       }));
-      const { error: iErr } = await supabase.from('musteri_istekler').insert(iRows);
+      const { data: insertedIstekler, error: iErr } = await supabase.from('musteri_istekler').insert(iRows).select('id');
       if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setSaving(false); return; }
+      if (insertedIstekler) {
+        const ozRows = insertedIstekler.flatMap((ins, idx) =>
+          (validIstekler[idx].ozelIstekler ?? []).map(oid => ({ musteri_istek_id: ins.id, ozellik_id: oid }))
+        );
+        if (ozRows.length) await supabase.from('musteri_istek_ozellikler').insert(ozRows);
+      }
     }
 
 
