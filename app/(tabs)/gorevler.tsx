@@ -31,7 +31,7 @@ export default function GorevlerScreen() {
   const [ekleSaatDate, setEkleSaatDate] = useState<Date | null>(null);
   const [showEkleTarihPicker, setShowEkleTarihPicker] = useState(false);
   const [showEkleSaatPicker, setShowEkleSaatPicker] = useState(false);
-  const [ekleMusteriId, setEkleMusteriId] = useState<string | null>(null);
+  const [ekleMusteriIds, setEkleMusteriIds] = useState<string[]>([]);
   const [ekleMusteriArama, setEkleMusteriArama] = useState('');
   const [musteriListesi, setMusteriListesi] = useState<{id:string;ad:string;soyad:string|null;telefon:string|null;durum:string|null;etiketler:string|null;musteri_iletisim:{ad:string|null;telefon:string|null;tip:string|null}[];musteri_istekler:{butce_min:number|null;butce_max:number|null}[]}[]>([]);
 
@@ -113,8 +113,14 @@ export default function GorevlerScreen() {
     const dt = new Date(ekleTarihDate);
     if (ekleSaatDate) { dt.setHours(ekleSaatDate.getHours(), ekleSaatDate.getMinutes(), 0, 0); }
     else { dt.setUTCHours(0, 0, 0, 0); }
-    await supabase.from('musteri_gorevler').insert({ baslik: ekleBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, ...(ekleMusteriId ? { musteri_id: ekleMusteriId } : {}) });
-    setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriId(null); setEkleMusteriArama(''); setEkleModal(false);
+    if (ekleMusteriIds.length > 0) {
+      await supabase.from('musteri_gorevler').insert(
+        ekleMusteriIds.map(mid => ({ baslik: ekleBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, musteri_id: mid }))
+      );
+    } else {
+      await supabase.from('musteri_gorevler').insert({ baslik: ekleBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false });
+    }
+    setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriIds([]); setEkleMusteriArama(''); setEkleModal(false);
     fetchGorevler(gorevFiltre);
   }
 
@@ -263,66 +269,71 @@ export default function GorevlerScreen() {
             <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Görev Ekle</Text>
             <TextInput value={ekleBaslik} onChangeText={setEkleBaslik} placeholder="Görev başlığı"
               style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
-            {ekleMusteriId ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderWidth: 1, borderColor: '#86efac', borderRadius: 8, backgroundColor: '#f0fdf4', marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600', flex: 1 }}>
-                  {(() => { const m = musteriListesi.find(x => x.id === ekleMusteriId); return [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); })()}
-                </Text>
-                <TouchableOpacity onPress={() => { setEkleMusteriId(null); setEkleMusteriArama(''); }}>
-                  <Text style={{ color: '#6b7280', fontSize: 14 }}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={{ marginBottom: 8 }}>
-                <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} placeholder="Müşteri ara (opsiyonel)"
-                  style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
-                {ekleMusteriArama.trim().length > 0 && (
-                  <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
-                    {musteriListesi.filter(m => {
-                      const q = ekleMusteriArama.toLowerCase();
-                      return `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(q) ||
-                        m.telefon?.includes(ekleMusteriArama.trim()) ||
-                        (m.musteri_iletisim ?? []).some((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(ekleMusteriArama.trim()));
-                    }).slice(0, 5).map(m => {
-                      const q = ekleMusteriArama.toLowerCase();
-                      const eslesen = (m.musteri_iletisim ?? []).filter((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(ekleMusteriArama.trim()));
-                      const istek = (m.musteri_istekler ?? [])[0];
-                      const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: '#f3f4f6', color: '#6b7280' };
-                      return (
-                        <TouchableOpacity key={m.id} onPress={() => { setEkleMusteriId(m.id); setEkleMusteriArama(''); }}
-                          style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                          {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
-                          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                              <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface }}>{m.ad} {m.soyad}</Text>
-                              {m.durum ? <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: durumRenk.bg, color: durumRenk.color }}>{m.durum}</Text> : null}
-                            </View>
-                            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-                              {m.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {m.telefon}</Text> : null}
-                              {istek && (istek.butce_min || istek.butce_max) ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>💰 {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '?'} — {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '?'}</Text> : null}
-                            </View>
-                            {eslesen.length > 0 && (
-                              <View style={{ marginTop: 5, paddingTop: 5, borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 3 }}>
-                                {eslesen.map((k: any, i: number) => (
-                                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                    <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary }}>↳ {k.tip || 'Ek Kişi'}</Text>
-                                    <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{k.ad}</Text>
-                                    {k.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text> : null}
-                                  </View>
-                                ))}
-                              </View>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
+            {/* Seçili müşteriler chips */}
+            {ekleMusteriIds.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {musteriListesi.filter(m => ekleMusteriIds.includes(m.id)).map(m => (
+                  <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(22,163,74,0.08)', borderWidth: 1, borderColor: '#86efac', borderRadius: 99 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#166534' }}>{[m.etiketler ? `#${m.etiketler.split(',')[0].trim()}` : null, m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
+                    <TouchableOpacity onPress={() => setEkleMusteriIds(prev => prev.filter(id => id !== m.id))}>
+                      <Text style={{ color: '#6b7280', fontSize: 13, marginLeft: 2 }}>✕</Text>
+                    </TouchableOpacity>
                   </View>
-                )}
+                ))}
               </View>
             )}
+            {/* Müşteri arama */}
+            <View style={{ marginBottom: 8 }}>
+              <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} placeholder="Müşteri ekle (opsiyonel, çoklu)"
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+              {ekleMusteriArama.trim().length > 0 && (
+                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
+                  {musteriListesi.filter(m => {
+                    const q = ekleMusteriArama.toLowerCase();
+                    return `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(q) ||
+                      m.telefon?.includes(ekleMusteriArama.trim()) ||
+                      (m.musteri_iletisim ?? []).some((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(ekleMusteriArama.trim()));
+                  }).slice(0, 5).map(m => {
+                    const q = ekleMusteriArama.toLowerCase();
+                    const secili = ekleMusteriIds.includes(m.id);
+                    const eslesen = (m.musteri_iletisim ?? []).filter((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(ekleMusteriArama.trim()));
+                    const istek = (m.musteri_istekler ?? [])[0];
+                    const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: '#f3f4f6', color: '#6b7280' };
+                    return (
+                      <TouchableOpacity key={m.id} onPress={() => { if (!secili) setEkleMusteriIds(prev => [...prev, m.id]); setEkleMusteriArama(''); }}
+                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: secili ? 'rgba(22,163,74,0.06)' : '#fff' }}>
+                        {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: secili ? '#16a34a' : Colors.onSurface }}>{m.ad} {m.soyad}</Text>
+                            {m.durum ? <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: durumRenk.bg, color: durumRenk.color }}>{m.durum}</Text> : null}
+                            {secili ? <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(22,163,74,0.1)', color: '#16a34a' }}>✓ Seçildi</Text> : null}
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                            {m.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {m.telefon}</Text> : null}
+                            {istek && (istek.butce_min || istek.butce_max) ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>💰 {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '?'} — {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '?'}</Text> : null}
+                          </View>
+                          {eslesen.length > 0 && (
+                            <View style={{ marginTop: 5, paddingTop: 5, borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 3 }}>
+                              {eslesen.map((k: any, i: number) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary }}>↳ {k.tip || 'Ek Kişi'}</Text>
+                                  <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{k.ad}</Text>
+                                  {k.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text> : null}
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEkleTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
                 <Text style={{ fontSize: 13, color: '#374151' }}>📅 {ekleTarihDate.toLocaleDateString('tr-TR')}</Text>
@@ -352,7 +363,7 @@ export default function GorevlerScreen() {
             </>}
             {!showEkleTarihPicker && !showEkleSaatPicker && (
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriId(null); setEkleMusteriArama(''); }}
+                <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriIds([]); setEkleMusteriArama(''); }}
                   style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
                 </TouchableOpacity>
