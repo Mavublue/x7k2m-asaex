@@ -291,7 +291,7 @@ export default function IlanDetayScreen() {
     setLinkEtiketAra('');
     setLinkUrl(null);
     setLinkSaat('24');
-    const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, butce_min, butce_max, etiketler, musteri_iletisim(ad, telefon, tip)').eq('durum', 'Aktif').order('ad');
+    const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').eq('durum', 'Aktif').order('ad');
     if (data) setLinkMusteriler(data as any);
     setLinkModal(true);
   }
@@ -767,32 +767,36 @@ export default function IlanDetayScreen() {
                         if (filtered.length === 0) return <Text style={{ padding: 12, fontSize: 13, color: Colors.onSurfaceVariant }}>Bulunamadı</Text>;
                         return filtered.map(m => {
                           const eslesen = linkMusteriAra !== '' ? (m.musteri_iletisim ?? []).filter((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(linkMusteriAra)) : [];
+                          const istek = (m.musteri_istekler ?? [])[0];
+                          const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: '#f3f4f6', color: '#6b7280' };
                           return (
                             <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra([m.ad, m.soyad].filter(Boolean).join(' ')); setLinkEtiketAra(''); }}
-                              style={{ padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.06)' : '#fff' }}>
-                              <View style={{ flexDirection: 'column', gap: 2 }}>
-                                <Text style={{ fontSize: 13, fontWeight: linkSeciliMusteri === m.id ? '600' : '400', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>
-                                  {[m.ad, m.soyad].filter(Boolean).join(' ')}
-                                </Text>
-                                <View style={{ flexDirection: 'row', gap: 10 }}>
-                                  {m.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {m.telefon}</Text> : null}
-                                  {(m.butce_min || m.butce_max) ? (
-                                    <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>
-                                      💰 {m.butce_min ? `₺${Number(m.butce_min).toLocaleString('tr-TR')}` : '?'} — {m.butce_max ? `₺${Number(m.butce_max).toLocaleString('tr-TR')}` : '?'}
-                                    </Text>
-                                  ) : null}
-                                </View>
-                                {eslesen.map((k: any, i: number) => (
-                                  <Text key={i} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>↳ {[k.tip, k.ad].filter(Boolean).join('  ')}{k.telefon ? `  ${k.telefon}` : ''}</Text>
-                                ))}
+                              style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.06)' : '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+                              {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
+                              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
                               </View>
-                              {m.etiketler && (
-                                <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', flexShrink: 1, justifyContent: 'flex-end' }}>
-                                  {m.etiketler.split(',').map((e: string) => e.trim()).filter(Boolean).map((e: string) => (
-                                    <Text key={e} style={{ fontSize: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 9999, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary, fontWeight: '600' }}>{e}</Text>
-                                  ))}
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+                                  <Text style={{ fontSize: 13, fontWeight: '700', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>{[m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
+                                  {m.durum ? <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: durumRenk.bg, color: durumRenk.color }}>{m.durum}</Text> : null}
                                 </View>
-                              )}
+                                <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                                  {m.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {m.telefon}</Text> : null}
+                                  {istek && (istek.butce_min || istek.butce_max) ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>💰 {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '?'} — {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '?'}</Text> : null}
+                                </View>
+                                {eslesen.length > 0 && (
+                                  <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#e5e7eb', borderStyle: 'dashed', gap: 3 }}>
+                                    {eslesen.map((k: any, i: number) => (
+                                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary }}>↳ {k.tip || 'Ek Kişi'}</Text>
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{k.ad}</Text>
+                                        {k.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text> : null}
+                                      </View>
+                                    ))}
+                                  </View>
+                                )}
+                              </View>
                             </TouchableOpacity>
                           );
                         });
