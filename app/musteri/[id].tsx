@@ -71,7 +71,7 @@ export default function MusteriDetayScreen() {
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
   const [telefonRaw, setTelefonRaw] = useState('');
-  type IstekState = { id?: string; tipler: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; ozelIstekler: string[] };
+  type IstekState = { id?: string; tipler: string[]; tipler_haric: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; binaYaslari_haric: string[]; ozelIstekler: string[]; ozelIstekler_haric: string[] };
   const [istekler, setIstekler] = useState<IstekState[]>([]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [konumlar, setKonumlar] = useState<string[]>([]);
@@ -162,12 +162,15 @@ export default function MusteriDetayScreen() {
       setIstekler((rpcData?.istekler ?? []).map((i: any) => ({
         id: i.id,
         tipler: i.tip ? i.tip.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+        tipler_haric: i.tip_haric ? i.tip_haric.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
         butceMin: i.butce_min ? formatButce(String(i.butce_min)) : '',
         butceMax: i.butce_max ? formatButce(String(i.butce_max)) : '',
         konumlar: i.tercih_konum ? i.tercih_konum.split(/\s*\|\s*/).filter(Boolean) : [],
         minOda: i.min_oda ?? '',
         binaYaslari: i.bina_yasi ? i.bina_yasi.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        binaYaslari_haric: i.bina_yasi_haric ? i.bina_yasi_haric.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
         ozelIstekler: i.ozellikler ? i.ozellikler.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        ozelIstekler_haric: i.ozellikler_haric ? i.ozellikler_haric.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
       })));
       setTakipTarihi(data.takip_tarihi ? tarihFormat(data.takip_tarihi) : '');
       setBinaYaslari(data.bina_yasi ? data.bina_yasi.split(',') : []);
@@ -311,18 +314,21 @@ export default function MusteriDetayScreen() {
         musteri_id: id,
         ...(i.id ? { id: i.id } : {}),
         tip: i.tipler.length ? i.tipler.join(',') : null,
+        tip_haric: i.tipler_haric.length ? i.tipler_haric.join(',') : null,
         butce_min: i.butceMin ? parseInt(i.butceMin.replace(/\./g, '')) : null,
         butce_max: i.butceMax ? parseInt(i.butceMax.replace(/\./g, '')) : null,
         tercih_konum: i.konumlar.length ? i.konumlar.join(' | ') : null,
         min_oda: i.minOda || null,
         bina_yasi: i.binaYaslari.length ? i.binaYaslari.join(',') : null,
+        bina_yasi_haric: i.binaYaslari_haric.length ? i.binaYaslari_haric.join(',') : null,
       }));
       const { data: insertedIstekler, error: iErr } = await supabase.from('musteri_istekler').insert(iRows).select('id');
       if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setSaving(false); return; }
       if (insertedIstekler) {
-        const ozRows = insertedIstekler.flatMap((ins, idx) =>
-          (validIstekler[idx].ozelIstekler ?? []).map(oid => ({ musteri_istek_id: ins.id, ozellik_id: oid }))
-        );
+        const ozRows = insertedIstekler.flatMap((ins, idx) => [
+          ...(validIstekler[idx].ozelIstekler ?? []).map(oid => ({ musteri_istek_id: ins.id, ozellik_id: oid, haric: false })),
+          ...(validIstekler[idx].ozelIstekler_haric ?? []).map(oid => ({ musteri_istek_id: ins.id, ozellik_id: oid, haric: true })),
+        ]);
         if (ozRows.length) await supabase.from('musteri_istek_ozellikler').insert(ozRows);
       }
     }
@@ -764,7 +770,7 @@ export default function MusteriDetayScreen() {
               <View style={styles.inputContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
-                  <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [] }])}
+                  <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] }])}
                     style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                     <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
                   </TouchableOpacity>
@@ -782,10 +788,14 @@ export default function MusteriDetayScreen() {
                     <View style={styles.chipRow}>
                       {EMLAK_TIPLERI.map(t => {
                         const secili = istek.tipler.includes(t);
+                        const haric = istek.tipler_haric.includes(t);
                         return (
-                          <TouchableOpacity key={t} style={[styles.chip, secili && styles.chipActive]}
-                            onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: secili ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t] } : x))}>
-                            <Text style={[styles.chipText, secili && styles.chipTextActive]}>{t}</Text>
+                          <TouchableOpacity key={t}
+                            style={[styles.chip, secili && styles.chipActive, haric && styles.chipHaric]}
+                            onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: secili ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t], tipler_haric: x.tipler_haric.filter(tt => tt !== t) } : x))}
+                            onLongPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: x.tipler.filter(tt => tt !== t), tipler_haric: haric ? x.tipler_haric.filter(tt => tt !== t) : [...x.tipler_haric, t] } : x))}
+                            delayLongPress={500}>
+                            <Text style={[styles.chipText, secili && styles.chipTextActive, haric && styles.chipHaricText]}>{t}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -829,10 +839,14 @@ export default function MusteriDetayScreen() {
                       <View style={styles.chipRow}>
                         {BINA_YASLARI.map(y => {
                           const secili = istek.binaYaslari.includes(y);
+                          const haric = istek.binaYaslari_haric.includes(y);
                           return (
-                            <TouchableOpacity key={y} style={[styles.chip, secili && styles.chipActive]}
-                              onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: secili ? x.binaYaslari.filter(b => b !== y) : [...x.binaYaslari, y] } : x))}>
-                              <Text style={[styles.chipText, secili && styles.chipTextActive]}>{y}</Text>
+                            <TouchableOpacity key={y}
+                              style={[styles.chip, secili && styles.chipActive, haric && styles.chipHaric]}
+                              onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: secili ? x.binaYaslari.filter(b => b !== y) : [...x.binaYaslari, y], binaYaslari_haric: x.binaYaslari_haric.filter(b => b !== y) } : x))}
+                              onLongPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: x.binaYaslari.filter(b => b !== y), binaYaslari_haric: haric ? x.binaYaslari_haric.filter(b => b !== y) : [...x.binaYaslari_haric, y] } : x))}
+                              delayLongPress={500}>
+                              <Text style={[styles.chipText, secili && styles.chipTextActive, haric && styles.chipHaricText]}>{y}</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -845,10 +859,14 @@ export default function MusteriDetayScreen() {
                         <View style={styles.chipRow}>
                           {tumOzellikler.map(oz => {
                             const secili = istek.ozelIstekler.includes(oz.id);
+                            const haric = istek.ozelIstekler_haric.includes(oz.id);
                             return (
-                              <TouchableOpacity key={oz.id} style={[styles.chip, secili && styles.chipActive]}
-                                onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: secili ? x.ozelIstekler.filter(id => id !== oz.id) : [...x.ozelIstekler, oz.id] } : x))}>
-                                <Text style={[styles.chipText, secili && styles.chipTextActive]}>{oz.ad}</Text>
+                              <TouchableOpacity key={oz.id}
+                                style={[styles.chip, secili && styles.chipActive, haric && styles.chipHaric]}
+                                onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: secili ? x.ozelIstekler.filter(id => id !== oz.id) : [...x.ozelIstekler, oz.id], ozelIstekler_haric: x.ozelIstekler_haric.filter(id => id !== oz.id) } : x))}
+                                onLongPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: x.ozelIstekler.filter(id => id !== oz.id), ozelIstekler_haric: haric ? x.ozelIstekler_haric.filter(id => id !== oz.id) : [...x.ozelIstekler_haric, oz.id] } : x))}
+                                delayLongPress={500}>
+                                <Text style={[styles.chipText, secili && styles.chipTextActive, haric && styles.chipHaricText]}>{oz.ad}</Text>
                               </TouchableOpacity>
                             );
                           })}
@@ -858,7 +876,7 @@ export default function MusteriDetayScreen() {
                   </View>
                 ))}
                 {istekler.length === 0 && (
-                  <TouchableOpacity onPress={() => setIstekler([{ tipler: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], ozelIstekler: [] }])}
+                  <TouchableOpacity onPress={() => setIstekler([{ tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] }])}
                     style={{ padding: 12, borderRadius: Radius.lg, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center' }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>+ İlk isteği ekle</Text>
                   </TouchableOpacity>
@@ -2014,8 +2032,10 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outline },
   chipActive: { backgroundColor: Colors.primaryFixed, borderColor: Colors.primary },
+  chipHaric: { backgroundColor: '#fee2e2', borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: Colors.primary, fontWeight: '700' },
+  chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
 
   secimBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 12 },
   secimBtnText: { fontSize: 15, color: Colors.onSurface },

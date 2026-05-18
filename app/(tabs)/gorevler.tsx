@@ -308,7 +308,7 @@ export default function GorevlerScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                            <Text style={{ fontSize: 13, fontWeight: '700', color: secili ? '#16a34a' : Colors.onSurface }}>{m.ad} {m.soyad}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: secili ? '#16a34a' : Colors.onSurface }}>{m.ad}{m.soyad ? ` ${m.soyad}` : ''}</Text>
                             {m.durum ? <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: durumRenk.bg, color: durumRenk.color }}>{m.durum}</Text> : null}
                             {secili ? <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(22,163,74,0.1)', color: '#16a34a' }}>✓ Seçildi</Text> : null}
                           </View>

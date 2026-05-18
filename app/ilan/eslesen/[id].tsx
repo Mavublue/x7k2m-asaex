@@ -188,7 +188,7 @@ export default function EslesenMusterilerScreen() {
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 5 }}>
-                  <Text style={s.musteriAd}>{m.ad} {m.soyad}</Text>
+                  <Text style={s.musteriAd}>{m.ad}{m.soyad ? ` ${m.soyad}` : ''}</Text>
                   {m.etiketler ? <Text style={s.etiket}>#{m.etiketler}</Text> : null}
                   <View style={[s.durumBadge, { backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
                     <Text style={[s.durumText, { color: m.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{m.durum}</Text>
@@ -225,7 +225,7 @@ export default function EslesenMusterilerScreen() {
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.sheetAd}>{secili.ad} {secili.soyad}</Text>
+                <Text style={s.sheetAd}>{secili.ad}{secili.soyad ? ` ${secili.soyad}` : ''}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                   <View style={[s.durumBadge, { backgroundColor: secili.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
                     <Text style={[s.durumText, { color: secili.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{secili.durum}</Text>

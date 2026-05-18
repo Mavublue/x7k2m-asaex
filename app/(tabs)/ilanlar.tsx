@@ -100,6 +100,7 @@ type FiltreState = {
   durum: string;
   musteriGizle: string;
   kategoriler: string[];
+  kategoriler_haric: string[];
   filterIl: string[];
   filterIlce: string[];
   filterMahalle: string[];
@@ -107,15 +108,22 @@ type FiltreState = {
   fiyatMax: string;
   odalar: string[];
   binaYaslari: string[];
+  binaYaslari_haric: string[];
   katSayilari: string[];
   bulunduguKatlar: string[];
+  bulunduguKatlar_haric: string[];
   ozellikler: string[];
+  ozellikler_haric: string[];
 };
 
 const BOS_FILTRE: FiltreState = {
   tip: 'Tümü', durum: 'Aktif', musteriGizle: 'Tümü',
-  kategoriler: [], filterIl: [], filterIlce: [], filterMahalle: [],
-  fiyatMin: '', fiyatMax: '', odalar: [], binaYaslari: [], katSayilari: [], bulunduguKatlar: [], ozellikler: [],
+  kategoriler: [], kategoriler_haric: [], filterIl: [], filterIlce: [], filterMahalle: [],
+  fiyatMin: '', fiyatMax: '', odalar: [],
+  binaYaslari: [], binaYaslari_haric: [],
+  katSayilari: [],
+  bulunduguKatlar: [], bulunduguKatlar_haric: [],
+  ozellikler: [], ozellikler_haric: [],
 };
 
 function aktifFiltreSayisi(f: FiltreState) {
@@ -123,14 +131,14 @@ function aktifFiltreSayisi(f: FiltreState) {
   if (f.tip !== 'Tümü') n++;
   if (f.durum !== 'Aktif') n++;
   if (f.musteriGizle !== 'Tümü') n++;
-  if (f.kategoriler.length) n++;
+  if (f.kategoriler.length || f.kategoriler_haric.length) n++;
   if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) n++;
   if (f.fiyatMin || f.fiyatMax) n++;
   if (f.odalar.length) n++;
-  if (f.binaYaslari.length) n++;
+  if (f.binaYaslari.length || f.binaYaslari_haric.length) n++;
   if (f.katSayilari.length) n++;
-  if (f.bulunduguKatlar.length) n++;
-  if (f.ozellikler.length) n++;
+  if (f.bulunduguKatlar.length || f.bulunduguKatlar_haric.length) n++;
+  if (f.ozellikler.length || f.ozellikler_haric.length) n++;
   return n;
 }
 
@@ -272,6 +280,10 @@ export default function IlanlarScreen() {
       const ilanCats = (i.kategori ?? '').split(',').map(s => s.trim()).filter(Boolean);
       return ilanCats.some(c => f.kategoriler.includes(c));
     });
+    if (f.kategoriler_haric.length) r = r.filter(i => {
+      const ilanCats = (i.kategori ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      return !ilanCats.some(c => f.kategoriler_haric.includes(c));
+    });
     if (f.filterIl.length || f.filterIlce.length || f.filterMahalle.length) {
       r = r.filter(ilan => {
         if (f.filterIl.length > 0 && !f.filterIl.includes(ilan.konum)) return false;
@@ -284,11 +296,17 @@ export default function IlanlarScreen() {
     if (f.fiyatMax) r = r.filter(i => i.fiyat <= parseInt(f.fiyatMax.replace(/\./g, '')));
     if (f.odalar.length) r = r.filter(i => i.oda_sayisi && f.odalar.includes(i.oda_sayisi));
     if (f.binaYaslari.length) r = r.filter(i => i.bina_yasi && f.binaYaslari.includes(i.bina_yasi));
+    if (f.binaYaslari_haric.length) r = r.filter(i => !i.bina_yasi || !f.binaYaslari_haric.includes(i.bina_yasi));
     if (f.katSayilari.length) r = r.filter(i => i.kat_sayisi && f.katSayilari.includes(i.kat_sayisi));
     if (f.bulunduguKatlar.length) r = r.filter(i => i.bulundugu_kat && f.bulunduguKatlar.includes(i.bulundugu_kat));
+    if (f.bulunduguKatlar_haric.length) r = r.filter(i => !i.bulundugu_kat || !f.bulunduguKatlar_haric.includes(i.bulundugu_kat));
     if (f.ozellikler.length) r = r.filter(i => {
       const ilanOz: string[] = (i as any).ozellik_ids ?? [];
       return f.ozellikler.every(o => ilanOz.includes(o));
+    });
+    if (f.ozellikler_haric.length) r = r.filter(i => {
+      const ilanOz: string[] = (i as any).ozellik_ids ?? [];
+      return !f.ozellikler_haric.some(o => ilanOz.includes(o));
     });
     if (search) r = r.filter(i =>
       i.baslik.toLowerCase().includes(search.toLowerCase()) ||
@@ -314,9 +332,15 @@ export default function IlanlarScreen() {
   function toggleKategori(k: string) {
     setGecici(g => ({
       ...g,
-      kategoriler: g.kategoriler.includes(k)
-        ? g.kategoriler.filter(x => x !== k)
-        : [...g.kategoriler, k],
+      kategoriler: g.kategoriler.includes(k) ? g.kategoriler.filter(x => x !== k) : [...g.kategoriler, k],
+      kategoriler_haric: g.kategoriler_haric.filter(x => x !== k),
+    }));
+  }
+  function toggleKategoriHaric(k: string) {
+    setGecici(g => ({
+      ...g,
+      kategoriler: g.kategoriler.filter(x => x !== k),
+      kategoriler_haric: g.kategoriler_haric.includes(k) ? g.kategoriler_haric.filter(x => x !== k) : [...g.kategoriler_haric, k],
     }));
   }
 
@@ -337,7 +361,43 @@ export default function IlanlarScreen() {
   function toggleOzellik(o: string) {
     setGecici(g => ({
       ...g,
+      ozellikler_haric: g.ozellikler_haric.filter(x => x !== o),
       ozellikler: g.ozellikler.includes(o) ? g.ozellikler.filter(x => x !== o) : [...g.ozellikler, o],
+    }));
+  }
+  function toggleOzellikHaric(o: string) {
+    setGecici(g => ({
+      ...g,
+      ozellikler: g.ozellikler.filter(x => x !== o),
+      ozellikler_haric: g.ozellikler_haric.includes(o) ? g.ozellikler_haric.filter(x => x !== o) : [...g.ozellikler_haric, o],
+    }));
+  }
+  function toggleBinaYasi(b: string) {
+    setGecici(g => ({
+      ...g,
+      binaYaslari_haric: g.binaYaslari_haric.filter(x => x !== b),
+      binaYaslari: g.binaYaslari.includes(b) ? g.binaYaslari.filter(x => x !== b) : [...g.binaYaslari, b],
+    }));
+  }
+  function toggleBinaYasiHaric(b: string) {
+    setGecici(g => ({
+      ...g,
+      binaYaslari: g.binaYaslari.filter(x => x !== b),
+      binaYaslari_haric: g.binaYaslari_haric.includes(b) ? g.binaYaslari_haric.filter(x => x !== b) : [...g.binaYaslari_haric, b],
+    }));
+  }
+  function toggleBulunduguKat(k: string) {
+    setGecici(g => ({
+      ...g,
+      bulunduguKatlar_haric: g.bulunduguKatlar_haric.filter(x => x !== k),
+      bulunduguKatlar: g.bulunduguKatlar.includes(k) ? g.bulunduguKatlar.filter(x => x !== k) : [...g.bulunduguKatlar, k],
+    }));
+  }
+  function toggleBulunduguKatHaric(k: string) {
+    setGecici(g => ({
+      ...g,
+      bulunduguKatlar: g.bulunduguKatlar.filter(x => x !== k),
+      bulunduguKatlar_haric: g.bulunduguKatlar_haric.includes(k) ? g.bulunduguKatlar_haric.filter(x => x !== k) : [...g.bulunduguKatlar_haric, k],
     }));
   }
 
@@ -961,8 +1021,10 @@ export default function IlanlarScreen() {
                     <FilterSection title="Emlak Tipi">
                       <View style={styles.chipRow}>
                         {KATEGORILER.map(k => (
-                          <TouchableOpacity key={k} style={[styles.chip, gecici.kategoriler.includes(k) && styles.chipActive]} onPress={() => toggleKategori(k)}>
-                            <Text style={[styles.chipText, gecici.kategoriler.includes(k) && styles.chipTextActive]}>{k}</Text>
+                          <TouchableOpacity key={k}
+                            style={[styles.chip, gecici.kategoriler.includes(k) && styles.chipActive, gecici.kategoriler_haric.includes(k) && styles.chipHaric]}
+                            onPress={() => toggleKategori(k)} onLongPress={() => toggleKategoriHaric(k)} delayLongPress={500}>
+                            <Text style={[styles.chipText, gecici.kategoriler.includes(k) && styles.chipTextActive, gecici.kategoriler_haric.includes(k) && styles.chipHaricText]}>{k}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -1064,9 +1126,10 @@ export default function IlanlarScreen() {
                     <FilterSection title="Bina Yaşı">
                       <View style={styles.chipRow}>
                         {BINA_YASLARI.map(b => (
-                          <TouchableOpacity key={b} style={[styles.chip, gecici.binaYaslari.includes(b) && styles.chipActive]}
-                            onPress={() => setGecici(g => ({ ...g, binaYaslari: g.binaYaslari.includes(b) ? g.binaYaslari.filter(x => x !== b) : [...g.binaYaslari, b] }))}>
-                            <Text style={[styles.chipText, gecici.binaYaslari.includes(b) && styles.chipTextActive]}>{b}</Text>
+                          <TouchableOpacity key={b}
+                            style={[styles.chip, gecici.binaYaslari.includes(b) && styles.chipActive, gecici.binaYaslari_haric.includes(b) && styles.chipHaric]}
+                            onPress={() => toggleBinaYasi(b)} onLongPress={() => toggleBinaYasiHaric(b)} delayLongPress={500}>
+                            <Text style={[styles.chipText, gecici.binaYaslari.includes(b) && styles.chipTextActive, gecici.binaYaslari_haric.includes(b) && styles.chipHaricText]}>{b}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -1086,9 +1149,10 @@ export default function IlanlarScreen() {
                     <FilterSection title="Bulunduğu Kat">
                       <View style={styles.chipRow}>
                         {BULUNDUGU_KAT_DEGERLERI.map(k => (
-                          <TouchableOpacity key={k} style={[styles.chip, gecici.bulunduguKatlar.includes(k) && styles.chipActive]}
-                            onPress={() => setGecici(g => ({ ...g, bulunduguKatlar: g.bulunduguKatlar.includes(k) ? g.bulunduguKatlar.filter(x => x !== k) : [...g.bulunduguKatlar, k] }))}>
-                            <Text style={[styles.chipText, gecici.bulunduguKatlar.includes(k) && styles.chipTextActive]}>{k}</Text>
+                          <TouchableOpacity key={k}
+                            style={[styles.chip, gecici.bulunduguKatlar.includes(k) && styles.chipActive, gecici.bulunduguKatlar_haric.includes(k) && styles.chipHaric]}
+                            onPress={() => toggleBulunduguKat(k)} onLongPress={() => toggleBulunduguKatHaric(k)} delayLongPress={500}>
+                            <Text style={[styles.chipText, gecici.bulunduguKatlar.includes(k) && styles.chipTextActive, gecici.bulunduguKatlar_haric.includes(k) && styles.chipHaricText]}>{k}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -1098,8 +1162,10 @@ export default function IlanlarScreen() {
                       <FilterSection title="Özellikler">
                         <View style={styles.chipRow}>
                           {tumOzellikler.map(oz => (
-                            <TouchableOpacity key={oz.id} style={[styles.chip, gecici.ozellikler.includes(oz.id) && styles.chipActive]} onPress={() => toggleOzellik(oz.id)}>
-                              <Text style={[styles.chipText, gecici.ozellikler.includes(oz.id) && styles.chipTextActive]}>{oz.ad}</Text>
+                            <TouchableOpacity key={oz.id}
+                              style={[styles.chip, gecici.ozellikler.includes(oz.id) && styles.chipActive, gecici.ozellikler_haric.includes(oz.id) && styles.chipHaric]}
+                              onPress={() => toggleOzellik(oz.id)} onLongPress={() => toggleOzellikHaric(oz.id)} delayLongPress={500}>
+                              <Text style={[styles.chipText, gecici.ozellikler.includes(oz.id) && styles.chipTextActive, gecici.ozellikler_haric.includes(oz.id) && styles.chipHaricText]}>{oz.ad}</Text>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -1322,14 +1388,14 @@ export default function IlanlarScreen() {
                       {(paylasMusteriAra.length > 0 || paylasEtiketAra.length > 0) && (
                         <View style={{ borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.surfaceContainerLow }}>
                           {paylasMusteriler.filter(m => {
-                            const isimUygun = !paylasMusteriAra || `${m.ad} ${m.soyad}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
+                            const isimUygun = !paylasMusteriAra || `${m.ad}${m.soyad ? ` ${m.soyad}` : ''}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
                             const etiketUygun = !paylasEtiketAra || (m.etiketler ?? '').toLowerCase().includes(paylasEtiketAra.toLowerCase());
                             return isimUygun && etiketUygun;
                           }).map(m => (
                             <TouchableOpacity key={m.id} style={{ padding: Spacing.md, backgroundColor: paylasMusteri === m.id ? Colors.primaryFixed : Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}
-                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad} ${m.soyad}`); setPaylasEtiketAra(''); }}>
+                              onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad}${m.soyad ? ` ${m.soyad}` : ''}`); setPaylasEtiketAra(''); }}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                <Text style={{ fontSize: 14, color: paylasMusteri === m.id ? Colors.primary : Colors.onSurface, fontWeight: paylasMusteri === m.id ? '700' : '400' }}>{m.ad} {m.soyad}</Text>
+                                <Text style={{ fontSize: 14, color: paylasMusteri === m.id ? Colors.primary : Colors.onSurface, fontWeight: paylasMusteri === m.id ? '700' : '400' }}>{m.ad}{m.soyad ? ` ${m.soyad}` : ''}</Text>
                                 {m.etiketler ? <Text style={{ fontSize: 10, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.primaryFixed, color: Colors.primary, fontWeight: '600' }}>{m.etiketler.split(',')[0].trim()}</Text> : null}
                               </View>
                             </TouchableOpacity>
@@ -1721,8 +1787,10 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: { borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow },
   chipActive: { backgroundColor: Colors.primary },
+  chipHaric: { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
+  chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
 
   secimBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
