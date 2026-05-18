@@ -291,7 +291,7 @@ export default function IlanDetayScreen() {
     setLinkEtiketAra('');
     setLinkUrl(null);
     setLinkSaat('24');
-    const { data } = await supabase.from('musteriler').select('id, ad, soyad, etiketler, musteri_iletisim(ad, telefon)').eq('durum', 'Aktif').order('ad');
+    const { data } = await supabase.from('musteriler').select('id, ad, soyad, etiketler, musteri_iletisim(ad, telefon, tip)').eq('durum', 'Aktif').order('ad');
     if (data) setLinkMusteriler(data as any);
     setLinkModal(true);
   }
@@ -775,7 +775,7 @@ export default function IlanDetayScreen() {
                                   {[m.ad, m.soyad].filter(Boolean).join(' ')}
                                 </Text>
                                 {eslesen.map((k: any, i: number) => (
-                                  <Text key={i} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>↳ {k.ad}</Text>
+                                  <Text key={i} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>↳ {[k.tip, k.ad].filter(Boolean).join('  ')}</Text>
                                 ))}
                               </View>
                               {m.etiketler && (
