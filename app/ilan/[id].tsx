@@ -291,8 +291,8 @@ export default function IlanDetayScreen() {
     setLinkEtiketAra('');
     setLinkUrl(null);
     setLinkSaat('24');
-    const { data } = await supabase.from('musteriler').select('id, ad, soyad, etiketler').eq('durum', 'Aktif').order('ad');
-    if (data) setLinkMusteriler(data);
+    const { data } = await supabase.from('musteriler').select('id, ad, soyad, etiketler, musteri_iletisim(ad, telefon)').eq('durum', 'Aktif').order('ad');
+    if (data) setLinkMusteriler(data as any);
     setLinkModal(true);
   }
 
@@ -756,22 +756,28 @@ export default function IlanDetayScreen() {
                   </View>
                   {(linkMusteriAra || linkEtiketAra) && (
                     <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 160, marginBottom: 8 }}>
-                      {linkMusteriler.filter(m => {
-                        const isimEsles = !linkMusteriAra || `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
-                        const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
-                        return isimEsles && etiketEsles;
-                      }).length === 0
-                        ? <Text style={{ padding: 12, fontSize: 13, color: Colors.onSurfaceVariant }}>Bulunamadı</Text>
-                        : linkMusteriler.filter(m => {
-                            const isimEsles = !linkMusteriAra || `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(linkMusteriAra.toLowerCase());
-                            const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
-                            return isimEsles && etiketEsles;
-                          }).map(m => (
+                      {(() => {
+                        const q = linkMusteriAra.toLowerCase();
+                        const filtered = linkMusteriler.filter(m => {
+                          const isimEsles = !linkMusteriAra || `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(q);
+                          const ekEsles = linkMusteriAra !== '' && (m.musteri_iletisim ?? []).some((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(linkMusteriAra));
+                          const etiketEsles = !linkEtiketAra || (m.etiketler ?? '').toLowerCase().includes(linkEtiketAra.toLowerCase());
+                          return (isimEsles || ekEsles) && etiketEsles;
+                        });
+                        if (filtered.length === 0) return <Text style={{ padding: 12, fontSize: 13, color: Colors.onSurfaceVariant }}>Bulunamadı</Text>;
+                        return filtered.map(m => {
+                          const eslesen = linkMusteriAra !== '' ? (m.musteri_iletisim ?? []).filter((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(linkMusteriAra)) : [];
+                          return (
                             <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra([m.ad, m.soyad].filter(Boolean).join(' ')); setLinkEtiketAra(''); }}
                               style={{ padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.06)' : '#fff' }}>
-                              <Text style={{ fontSize: 13, fontWeight: linkSeciliMusteri === m.id ? '600' : '400', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>
-                                {[m.ad, m.soyad].filter(Boolean).join(' ')}
-                              </Text>
+                              <View style={{ flexDirection: 'column', gap: 2 }}>
+                                <Text style={{ fontSize: 13, fontWeight: linkSeciliMusteri === m.id ? '600' : '400', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>
+                                  {[m.ad, m.soyad].filter(Boolean).join(' ')}
+                                </Text>
+                                {eslesen.map((k: any, i: number) => (
+                                  <Text key={i} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>↳ {k.ad}</Text>
+                                ))}
+                              </View>
                               {m.etiketler && (
                                 <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap', flexShrink: 1, justifyContent: 'flex-end' }}>
                                   {m.etiketler.split(',').map((e: string) => e.trim()).filter(Boolean).map((e: string) => (
@@ -780,8 +786,9 @@ export default function IlanDetayScreen() {
                                 </View>
                               )}
                             </TouchableOpacity>
-                          ))
-                      }
+                          );
+                        });
+                      })()}
                     </View>
                   )}
                   {linkSeciliMusteri ? (
