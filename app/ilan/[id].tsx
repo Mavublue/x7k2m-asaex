@@ -291,7 +291,7 @@ export default function IlanDetayScreen() {
     setLinkEtiketAra('');
     setLinkUrl(null);
     setLinkSaat('24');
-    const { data } = await supabase.from('musteriler').select('id, ad, soyad, etiketler, musteri_iletisim(ad, telefon, tip)').eq('durum', 'Aktif').order('ad');
+    const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, butce_min, butce_max, etiketler, musteri_iletisim(ad, telefon, tip)').eq('durum', 'Aktif').order('ad');
     if (data) setLinkMusteriler(data as any);
     setLinkModal(true);
   }
@@ -774,8 +774,16 @@ export default function IlanDetayScreen() {
                                 <Text style={{ fontSize: 13, fontWeight: linkSeciliMusteri === m.id ? '600' : '400', color: linkSeciliMusteri === m.id ? Colors.primary : Colors.onSurface }}>
                                   {[m.ad, m.soyad].filter(Boolean).join(' ')}
                                 </Text>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                  {m.telefon ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {m.telefon}</Text> : null}
+                                  {(m.butce_min || m.butce_max) ? (
+                                    <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>
+                                      💰 {m.butce_min ? `₺${Number(m.butce_min).toLocaleString('tr-TR')}` : '?'} — {m.butce_max ? `₺${Number(m.butce_max).toLocaleString('tr-TR')}` : '?'}
+                                    </Text>
+                                  ) : null}
+                                </View>
                                 {eslesen.map((k: any, i: number) => (
-                                  <Text key={i} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>↳ {[k.tip, k.ad].filter(Boolean).join('  ')}</Text>
+                                  <Text key={i} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>↳ {[k.tip, k.ad].filter(Boolean).join('  ')}{k.telefon ? `  ${k.telefon}` : ''}</Text>
                                 ))}
                               </View>
                               {m.etiketler && (
