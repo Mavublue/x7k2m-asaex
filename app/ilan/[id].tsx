@@ -62,6 +62,8 @@ export default function IlanDetayScreen() {
   const [linkEtiketAra, setLinkEtiketAra] = useState('');
   const [linkSeciliMusteri, setLinkSeciliMusteri] = useState<string>('');
   const flatListRef = useRef<any>(null);
+  const thumbScrollRef = useRef<ScrollView>(null);
+  const [fullscreenFoto, setFullscreenFoto] = useState<string | null>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
   const [sosyalModal, setSosyalModal] = useState(false);
   const [sosyalMetin, setSosyalMetin] = useState('');
@@ -75,6 +77,12 @@ export default function IlanDetayScreen() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    const THUMB_CELL = 56 + 8;
+    const targetX = aktifFoto * THUMB_CELL - (SCREEN_WIDTH / 2 - 28);
+    thumbScrollRef.current?.scrollTo({ x: Math.max(0, targetX), animated: true });
+  }, [aktifFoto]);
 
   useEffect(() => {
     fetchIlan();
@@ -419,6 +427,11 @@ export default function IlanDetayScreen() {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 keyExtractor={(_, i) => i.toString()}
+                getItemLayout={(_, index) => ({
+                  length: SCREEN_WIDTH,
+                  offset: SCREEN_WIDTH * index,
+                  index,
+                })}
                 onMomentumScrollEnd={e => {
                   const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
                   setAktifFoto(index);
@@ -426,20 +439,20 @@ export default function IlanDetayScreen() {
                 renderItem={({ item }) => {
                   const gizli = (ilan.gizli_fotograflar ?? []).includes(item);
                   return (
-                    <View>
+                    <TouchableOpacity activeOpacity={0.95} onPress={() => setFullscreenFoto(item)}>
                       <R2Image source={item} style={styles.anaFoto} resizeMode="cover" />
                       {gizli && (
                         <View style={styles.gizliBadge}>
                           <Text style={styles.gizliBadgeText}>🚫 Müşteriye gizli</Text>
                         </View>
                       )}
-                    </View>
+                    </TouchableOpacity>
                   );
                 }}
               />
               {fotograflar.length > 1 && (
                 <View style={styles.thumbRowWrap}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
+                  <ScrollView ref={thumbScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
                     {fotograflar.map((f, i) => {
                       const gizli = (ilan.gizli_fotograflar ?? []).includes(f);
                       return (
@@ -983,6 +996,17 @@ export default function IlanDetayScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={!!fullscreenFoto} transparent animationType="fade" onRequestClose={() => setFullscreenFoto(null)}>
+        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={() => setFullscreenFoto(null)}>
+            <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
+          </TouchableOpacity>
+          {fullscreenFoto && (
+            <R2Image source={fullscreenFoto} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2 }} resizeMode="contain" />
+          )}
+        </View>
       </Modal>
 
     </SafeAreaView>
