@@ -300,7 +300,7 @@ export default function GorevlerScreen() {
                     const istek = (m.musteri_istekler ?? [])[0];
                     const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: '#f3f4f6', color: '#6b7280' };
                     return (
-                      <TouchableOpacity key={m.id} onPress={() => { if (!secili) setEkleMusteriIds(prev => [...prev, m.id]); setEkleMusteriArama(''); }}
+                      <TouchableOpacity key={m.id} onPress={() => { if (!secili) setEkleMusteriIds(prev => [...prev, m.id]); }}
                         style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: secili ? 'rgba(22,163,74,0.06)' : '#fff' }}>
                         {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
                         <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
