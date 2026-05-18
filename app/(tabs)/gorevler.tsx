@@ -284,10 +284,10 @@ export default function GorevlerScreen() {
             )}
             {/* Müşteri arama */}
             <View style={{ marginBottom: 8 }}>
-              <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} placeholder="Müşteri ekle (opsiyonel, çoklu)"
+              <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} onBlur={() => setTimeout(() => setEkleMusteriArama(''), 150)} placeholder="Müşteri ekle (opsiyonel, çoklu)"
                 style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
               {ekleMusteriArama.trim().length > 0 && (
-                <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
+                <View onStartShouldSetResponder={() => true} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
                   {musteriListesi.filter(m => {
                     const q = ekleMusteriArama.toLowerCase();
                     return `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(q) ||
