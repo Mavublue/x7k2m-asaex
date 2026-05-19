@@ -20,6 +20,18 @@ const ILLER = TURKIYE;
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
 const KAT_SAYILARI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];
 const BULUNDUGU_KATLAR = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
+const OZEL_KATLAR = new Set(['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', 'Çatı Katı', 'Müstakil', 'Villa Tipi']);
+function filterBulunduguKatlar(katSayisi: string) {
+  if (!katSayisi || katSayisi === '20+') return BULUNDUGU_KATLAR;
+  const max = parseInt(katSayisi);
+  return BULUNDUGU_KATLAR.filter(k => OZEL_KATLAR.has(k) || (k !== '20+' && parseInt(k) <= max));
+}
+function filterKatSayilari(bulunduguKat: string) {
+  if (!bulunduguKat || OZEL_KATLAR.has(bulunduguKat)) return KAT_SAYILARI;
+  if (bulunduguKat === '20+') return ['20+'];
+  const min = parseInt(bulunduguKat);
+  return KAT_SAYILARI.filter(k => k === '20+' || parseInt(k) >= min);
+}
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+0', '2+1', '2+2', '3+0', '3+1', '3+2', '3+3', '4+0', '4+1', '4+2', '4+3', '4+4', '5+0', '5+1', '5+2', '5+3', '5+4', '6+0', '6+1', '6+2', '6+3', '6+4', '7+0', '7+1', '7+2', '7+3', '7+4', '8+0', '8+1', '8+2', '8+3', '8+4', '9+0', '9+1', '9+2', '9+3', '9+4', '10+0', '10+1', '10+2', '10+3', '10+4', '10+'];
 const tipler = ['Satılık', 'Kiralık'];
 const kategoriler = ['Daire', 'Villa', 'Arsa', 'Tarla', 'İşyeri', 'Otel', 'Müstakil Ev', 'Rezidans'];
@@ -741,11 +753,16 @@ export default function IlanEkleScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Kat Sayısı Seçin</Text>
             <View style={styles.chipRow}>
-              {KAT_SAYILARI.map(k => (
+              {filterKatSayilari(bulunduguKat).map(k => (
                 <TouchableOpacity
                   key={k}
                   style={[styles.chip, katSayisi === k && styles.chipActive]}
-                  onPress={() => { setKatSayisi(katSayisi === k ? '' : k); setKatModal(false); }}
+                  onPress={() => {
+                    const v = katSayisi === k ? '' : k;
+                    setKatSayisi(v);
+                    if (v && v !== '20+' && bulunduguKat && !OZEL_KATLAR.has(bulunduguKat) && bulunduguKat !== '20+' && parseInt(bulunduguKat) > parseInt(v)) setBulunduguKat('');
+                    setKatModal(false);
+                  }}
                 >
                   <Text style={[styles.chipText, katSayisi === k && styles.chipTextActive]}>{k}</Text>
                 </TouchableOpacity>
@@ -763,11 +780,19 @@ export default function IlanEkleScreen() {
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Bulunduğu Kat Seçin</Text>
             <View style={styles.chipRow}>
-              {BULUNDUGU_KATLAR.map(k => (
+              {filterBulunduguKatlar(katSayisi).map(k => (
                 <TouchableOpacity
                   key={k}
                   style={[styles.chip, bulunduguKat === k && styles.chipActive]}
-                  onPress={() => { setBulunduguKat(bulunduguKat === k ? '' : k); setBulunduguKatModal(false); }}
+                  onPress={() => {
+                    const v = bulunduguKat === k ? '' : k;
+                    setBulunduguKat(v);
+                    if (v && !OZEL_KATLAR.has(v)) {
+                      if (v === '20+') { if (katSayisi && katSayisi !== '20+') setKatSayisi(''); }
+                      else if (katSayisi && katSayisi !== '20+' && parseInt(katSayisi) < parseInt(v)) setKatSayisi('');
+                    }
+                    setBulunduguKatModal(false);
+                  }}
                 >
                   <Text style={[styles.chipText, bulunduguKat === k && styles.chipTextActive]}>{k}</Text>
                 </TouchableOpacity>
