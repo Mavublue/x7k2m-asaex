@@ -748,7 +748,7 @@ export default function IlanDetayScreen() {
               </View>
 
               {!linkUrl ? (
-                <ScrollView style={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+                <ScrollView style={{ flex: 1, padding: 16 }} keyboardShouldPersistTaps="handled">
                   {/* Müşteri seç */}
                   <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 6 }}>Müşteri Seç</Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
@@ -768,7 +768,8 @@ export default function IlanDetayScreen() {
                     />
                   </View>
                   {(linkMusteriAra || linkEtiketAra) && (
-                    <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 160, marginBottom: 8 }}>
+                    <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 220, marginBottom: 8, overflow: 'hidden' }}>
+                      <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                       {(() => {
                         const q = linkMusteriAra.toLowerCase();
                         const filtered = linkMusteriler.filter(m => {
@@ -814,6 +815,7 @@ export default function IlanDetayScreen() {
                           );
                         });
                       })()}
+                      </ScrollView>
                     </View>
                   )}
                   {linkSeciliMusteri ? (

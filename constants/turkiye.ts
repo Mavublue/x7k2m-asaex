@@ -4,7 +4,11 @@ export type MahalleGrup = { semt: string | null; mahalleler: string[] };
 
 const RAW = mahalleler as Record<string, Record<string, MahalleGrup[]>>;
 
-export const IL_LISTESI = Object.keys(RAW).sort((a, b) => a.localeCompare(b, 'tr'));
+const ONCELIKLI = ['İstanbul', 'Ankara', 'İzmir'];
+export const IL_LISTESI = [
+  ...ONCELIKLI.filter(il => RAW[il]),
+  ...Object.keys(RAW).filter(il => !ONCELIKLI.includes(il)).sort((a, b) => a.localeCompare(b, 'tr')),
+];
 
 export const TURKIYE: Record<string, string[]> = Object.fromEntries(
   Object.entries(RAW).map(([il, ilceler]) => [il, Object.keys(ilceler).sort((a, b) => a.localeCompare(b, 'tr'))])
