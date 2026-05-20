@@ -91,6 +91,7 @@ export default function IlanDuzenleScreen() {
   const [brutM2, setBrutM2] = useState('');
   const [odaSayisi, setOdaSayisi] = useState('');
   const [tip, setTip] = useState('Satılık');
+  const [durum, setDurum] = useState('Aktif');
   const [secilenKategoriler, setSecilenKategoriler] = useState<string[]>(['Daire']);
   const [aciklama, setAciklama] = useState('');
   const [musteriAciklamasi, setMusteriAciklamasi] = useState('');
@@ -209,6 +210,7 @@ export default function IlanDuzenleScreen() {
         setBrutM2(ilan.brut_metrekare?.toString() ?? '');
         setOdaSayisi(ilan.oda_sayisi ?? '');
         setTip(ilan.tip);
+        setDurum((ilan as any).durum ?? 'Aktif');
         setSecilenKategoriler(ilan.kategori ? ilan.kategori.split(',').map(s => s.trim()).filter(Boolean) : []);
         setAciklama(ilan.aciklama ?? '');
         setMusteriAciklamasi(ilan.musteri_aciklamasi ?? '');
@@ -341,7 +343,7 @@ export default function IlanDuzenleScreen() {
       metrekare: netM2 ? parseFloat(netM2) : null,
       brut_metrekare: brutM2 ? parseFloat(brutM2) : null,
       oda_sayisi: odaSayisi || null,
-      tip, kategori: secilenKategoriler.join(', '),
+      tip, durum, kategori: secilenKategoriler.join(', '),
       aciklama: aciklama || null,
       musteri_aciklamasi: musteriAciklamasi || null,
       bina_yasi: binaYasi || null,
@@ -442,6 +444,16 @@ export default function IlanDuzenleScreen() {
 
           <FormGroup label="İlan Başlığı *">
             <TextInput style={[styles.input, submitted && !baslik && styles.inputErr]} value={baslik} onChangeText={setBaslik} placeholderTextColor={Colors.outlineVariant} />
+          </FormGroup>
+
+          <FormGroup label="İlan Durumu">
+            <View style={styles.chipRow}>
+              {['Aktif', 'İptal'].map(d => (
+                <TouchableOpacity key={d} style={[styles.chip, durum === d && styles.chipActive]} onPress={() => setDurum(d)}>
+                  <Text style={[styles.chipText, durum === d && styles.chipTextActive]}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </FormGroup>
 
           <FormGroup label="İlan Tipi *">
