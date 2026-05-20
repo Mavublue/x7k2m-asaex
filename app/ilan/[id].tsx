@@ -558,7 +558,14 @@ export default function IlanDetayScreen() {
               <View style={styles.ozellikKart}>
                 <Text style={styles.ozellikEmoji}>📐</Text>
                 <Text style={styles.ozellikDeger}>{ilan.metrekare}</Text>
-                <Text style={styles.ozellikLabel}>m²</Text>
+                <Text style={styles.ozellikLabel}>Net m²</Text>
+              </View>
+            )}
+            {ilan.brut_metrekare && (
+              <View style={styles.ozellikKart}>
+                <Text style={styles.ozellikEmoji}>📐</Text>
+                <Text style={styles.ozellikDeger}>{ilan.brut_metrekare}</Text>
+                <Text style={styles.ozellikLabel}>Brüt m²</Text>
               </View>
             )}
             {ilan.oda_sayisi && (
