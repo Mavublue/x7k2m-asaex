@@ -94,7 +94,7 @@ export default function DashboardScreen() {
     fetchBildirimler();
     if (bildirimModalPending.current) {
       bildirimModalPending.current = false;
-      setBildirimModal(true);
+      setTimeout(() => setBildirimModal(true), 300);
     }
   }, []));
 
