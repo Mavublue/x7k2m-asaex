@@ -3,8 +3,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Image, ActivityIndicator, Alert,
-  FlatList, Dimensions, Linking, Modal, TextInput, Platform, KeyboardAvoidingView, Keyboard,
+  FlatList, Dimensions, Linking, Modal, TextInput, Platform, KeyboardAvoidingView, Keyboard, Animated,
 } from 'react-native';
+import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
@@ -20,6 +21,64 @@ import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
+
+function ZoomableFoto({ source }: { source: string }) {
+  const baseScale = useRef(new Animated.Value(1)).current;
+  const pinchScale = useRef(new Animated.Value(1)).current;
+  const scale = useRef(Animated.multiply(baseScale, pinchScale)).current;
+  const lastScale = useRef(1);
+  const offsetX = useRef(new Animated.Value(0)).current;
+  const offsetY = useRef(new Animated.Value(0)).current;
+  const lastOffsetX = useRef(0);
+  const lastOffsetY = useRef(0);
+  const pinchRef = useRef<PinchGestureHandler>(null);
+  const panRef = useRef<PanGestureHandler>(null);
+
+  const onPinchEvent = Animated.event([{ nativeEvent: { scale: pinchScale } }], { useNativeDriver: true });
+
+  const onPinchStateChange = (e: any) => {
+    if (e.nativeEvent.oldState === State.ACTIVE) {
+      lastScale.current *= e.nativeEvent.scale;
+      if (lastScale.current < 1) {
+        lastScale.current = 1;
+        baseScale.setValue(1);
+        Animated.spring(offsetX, { toValue: 0, useNativeDriver: true }).start();
+        Animated.spring(offsetY, { toValue: 0, useNativeDriver: true }).start();
+        lastOffsetX.current = 0;
+        lastOffsetY.current = 0;
+      } else {
+        baseScale.setValue(lastScale.current);
+      }
+      pinchScale.setValue(1);
+    }
+  };
+
+  const onPanEvent = Animated.event(
+    [{ nativeEvent: { translationX: offsetX, translationY: offsetY } }],
+    { useNativeDriver: true }
+  );
+
+  const onPanStateChange = (e: any) => {
+    if (e.nativeEvent.oldState === State.ACTIVE) {
+      lastOffsetX.current += e.nativeEvent.translationX;
+      lastOffsetY.current += e.nativeEvent.translationY;
+      offsetX.setValue(lastOffsetX.current);
+      offsetY.setValue(lastOffsetY.current);
+    }
+  };
+
+  return (
+    <PanGestureHandler ref={panRef} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} simultaneousHandlers={[pinchRef]}>
+      <Animated.View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2 }}>
+        <PinchGestureHandler ref={pinchRef} onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange} simultaneousHandlers={[panRef]}>
+          <Animated.View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2, transform: [{ scale }, { translateX: offsetX }, { translateY: offsetY }] }}>
+            <R2Image source={source} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2 }} resizeMode="contain" />
+          </Animated.View>
+        </PinchGestureHandler>
+      </Animated.View>
+    </PanGestureHandler>
+  );
+}
 
 function buildDetayMapHtml(lat: number, lng: number) {
   return `<!DOCTYPE html><html>
@@ -1006,7 +1065,7 @@ export default function IlanDetayScreen() {
             <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
           </TouchableOpacity>
           {fullscreenFoto && (
-            <R2Image source={fullscreenFoto} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2 }} resizeMode="contain" />
+            <ZoomableFoto key={fullscreenFoto} source={fullscreenFoto} />
           )}
         </View>
       </Modal>
