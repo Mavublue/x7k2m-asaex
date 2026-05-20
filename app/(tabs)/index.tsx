@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
   bdBos: { padding: Spacing.xl * 2, alignItems: 'center' },
   bdBosText: { color: Colors.onSurfaceVariant, fontSize: 14 },
   bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: Radius.lg, padding: Spacing.md },
-  bdItemYeni: { backgroundColor: 'rgba(229,57,53,0.06)' },
+  bdItemYeni: { backgroundColor: 'rgba(229,57,53,0.18)' },
   bdIcon: { width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   bdFoto: { width: 48, height: 48, borderRadius: Radius.md },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
