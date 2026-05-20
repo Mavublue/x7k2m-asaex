@@ -63,6 +63,7 @@ export default function DashboardScreen() {
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const takipY = useRef(0);
+  const bildirimModalPending = useRef(false);
   const ilkFocus = useRef(true);
 
   useEffect(() => {
@@ -91,6 +92,10 @@ export default function DashboardScreen() {
     if (ilkFocus.current) { ilkFocus.current = false; return; }
     fetchDurum();
     fetchBildirimler();
+    if (bildirimModalPending.current) {
+      bildirimModalPending.current = false;
+      setBildirimModal(true);
+    }
   }, []));
 
   async function fetchDurum() {
@@ -270,17 +275,20 @@ export default function DashboardScreen() {
         setDetayListe([]);
       }
     } else if (b.tip === 'ilan') {
+      bildirimModalPending.current = true;
       setBildirimModal(false);
       setDetayBildirim(null);
       router.push(`/ilan/eslesen/${b.hedefId}` as any);
       return;
     } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz') {
+      bildirimModalPending.current = true;
       setBildirimModal(false);
       setDetayBildirim(null);
       router.push(`/musteri/${b.hedefId}` as any);
       return;
     } else if (b.tip === 'asistan') {
       if (b.hedefId) {
+        bildirimModalPending.current = true;
         setBildirimModal(false);
         setDetayBildirim(null);
         router.push(`/musteri/${b.hedefId}` as any);
