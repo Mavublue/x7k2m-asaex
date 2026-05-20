@@ -757,9 +757,8 @@ export default function DashboardScreen() {
 
       {/* Bildirim Modalı */}
       <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setBildirimModal(false); }}>
-        <View style={styles.bdModalOverlay}>
-          <TouchableOpacity style={styles.bdModalDimmer} onPress={() => { setDetayBildirim(null); setBildirimModal(false); }} />
-          <View style={styles.bdModalPanel}>
+        <TouchableOpacity style={styles.bdModalOverlay} activeOpacity={1} onPress={() => { setDetayBildirim(null); setBildirimModal(false); }}>
+          <View style={styles.bdModalPanel} onStartShouldSetResponder={() => true}>
             <View style={styles.bdModalHeader}>
               {detayBildirim ? (
                 <TouchableOpacity onPress={() => setDetayBildirim(null)}>
@@ -819,6 +818,7 @@ export default function DashboardScreen() {
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.bdMenuBtn}
+                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                             onPress={() => setMenuAcikId(menuAcikId === item.id ? null : item.id)}>
                             <Text style={styles.bdMenuText}>⋯</Text>
                           </TouchableOpacity>
@@ -955,7 +955,7 @@ export default function DashboardScreen() {
               }}
             />
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       <Modal visible={menuAcikId !== null} transparent animationType="fade" onRequestClose={() => setMenuAcikId(null)}>
@@ -1144,8 +1144,7 @@ const styles = StyleSheet.create({
   takipAd: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   takipTarih: { fontSize: 12, marginTop: 2 },
 
-  bdModalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  bdModalDimmer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  bdModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   bdModalPanel: { backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' },
   bdModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   bdModalBaslik: { fontSize: 17, fontWeight: '700', color: Colors.onSurface },
