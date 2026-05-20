@@ -206,6 +206,7 @@ export default function IlanDuzenleScreen() {
         setIlce(ilan.ilce ?? '');
         setMahalle(ilan.mahalle ?? '');
         setNetM2(ilan.metrekare?.toString() ?? '');
+        setBrutM2(ilan.brut_metrekare?.toString() ?? '');
         setOdaSayisi(ilan.oda_sayisi ?? '');
         setTip(ilan.tip);
         setSecilenKategoriler(ilan.kategori ? ilan.kategori.split(',').map(s => s.trim()).filter(Boolean) : []);
@@ -338,6 +339,7 @@ export default function IlanDuzenleScreen() {
       ilce: ilce || null,
       mahalle: mahalle || null,
       metrekare: netM2 ? parseFloat(netM2) : null,
+      brut_metrekare: brutM2 ? parseFloat(brutM2) : null,
       oda_sayisi: odaSayisi || null,
       tip, kategori: secilenKategoriler.join(', '),
       aciklama: aciklama || null,
