@@ -889,7 +889,7 @@ export default function DashboardScreen() {
               )
             )}
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Görev Panel */}
