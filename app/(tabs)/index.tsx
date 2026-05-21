@@ -60,6 +60,7 @@ export default function DashboardScreen() {
   const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
+  const [musteriDetay, setMusteriDetay] = useState<any | null>(null);
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const takipY = useRef(0);
@@ -258,6 +259,7 @@ export default function DashboardScreen() {
   async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}) {
     setDetayBildirim(b);
     setDetayListe([]);
+    setMusteriDetay(null);
     setDetayYukleniyor(true);
     if (!okundu.has(b.id)) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -275,25 +277,14 @@ export default function DashboardScreen() {
         setDetayListe([]);
       }
     } else if (b.tip === 'ilan') {
-      bildirimModalPending.current = true;
-      setBildirimModal(false);
-      setDetayBildirim(null);
-      router.push(`/ilan/eslesen/${b.hedefId}` as any);
-      return;
-    } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz') {
-      bildirimModalPending.current = true;
-      setBildirimModal(false);
-      setDetayBildirim(null);
-      router.push(`/musteri/${b.hedefId}` as any);
-      return;
-    } else if (b.tip === 'asistan') {
-      if (b.hedefId) {
-        bildirimModalPending.current = true;
-        setBildirimModal(false);
-        setDetayBildirim(null);
-        router.push(`/musteri/${b.hedefId}` as any);
-        return;
-      }
+      const [{ data: tumMusteriler }, { data: ilanData }] = await Promise.all([
+        supabase.from('musteriler').select('id, ad, soyad, etiketler, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
+        supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').eq('id', b.hedefId).single(),
+      ]);
+      if (ilanData) setDetayListe((tumMusteriler ?? []).filter((m: any) => eslesenMi(m, ilanData)));
+    } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz' || (b.tip === 'asistan' && b.hedefId)) {
+      const { data: mInfo } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler').eq('id', b.hedefId).single();
+      setMusteriDetay(mInfo ?? null);
     }
     setDetayYukleniyor(false);
   }
@@ -764,18 +755,18 @@ export default function DashboardScreen() {
       </ScrollView>
 
       {/* Bildirim Modalı */}
-      <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setBildirimModal(false); }}>
+      <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setMusteriDetay(null); setBildirimModal(false); }}>
         <View style={styles.bdModalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setBildirimModal(false); }} />
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setBildirimModal(false); }} />
           <View style={styles.bdModalPanel} onStartShouldSetResponder={() => true}>
             <View style={styles.bdModalHeader}>
               {detayBildirim ? (
-                <TouchableOpacity onPress={() => setDetayBildirim(null)}>
+                <TouchableOpacity onPress={() => { setDetayBildirim(null); setMusteriDetay(null); }}>
                   <Text style={styles.bdKapat}>←</Text>
                 </TouchableOpacity>
               ) : <View style={{ width: 32 }} />}
               <Text style={styles.bdModalBaslik}>
-                {detayBildirim ? detayBildirim.baslik : 'Bildirimler'}
+                {musteriDetay ? [musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ') : detayBildirim ? detayBildirim.baslik : 'Bildirimler'}
               </Text>
               <TouchableOpacity onPress={() => { setDetayBildirim(null); setBildirimModal(false); }}>
                 <Text style={styles.bdKapat}>✕</Text>
@@ -837,6 +828,36 @@ export default function DashboardScreen() {
                   />
                 );
               })()
+            ) : musteriDetay ? (
+              // Müşteri kartı (takip/gorev/sessiz/asistan)
+              <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: Spacing.md, backgroundColor: Colors.surfaceContainerLow, borderRadius: 14 }}>
+                  <View style={[styles.bdIcon, { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primaryFixed }]}>
+                    <Text style={{ fontWeight: '700', color: Colors.primary, fontSize: 20 }}>{musteriDetay.ad?.[0]?.toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface }}>{[musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ')}</Text>
+                    {musteriDetay.etiketler ? <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>#{musteriDetay.etiketler}</Text> : null}
+                    {musteriDetay.durum ? <Text style={{ fontSize: 12, color: musteriDetay.durum === 'Aktif' ? Colors.primary : Colors.onSurfaceVariant }}>{musteriDetay.durum}</Text> : null}
+                  </View>
+                  {musteriDetay.telefon ? (
+                    <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 18 }}>📞</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                {detayBildirim ? (
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, padding: Spacing.md }}>
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, lineHeight: 20 }}>{detayBildirim.alt}</Text>
+                  </View>
+                ) : null}
+                <TouchableOpacity style={{ backgroundColor: Colors.primary, borderRadius: 12, padding: Spacing.md, alignItems: 'center', marginTop: 4 }} onPress={() => {
+                  setDetayBildirim(null); setMusteriDetay(null); setBildirimModal(false);
+                  router.push(`/musteri/${musteriDetay.id}` as any);
+                }}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Müşteri Sayfasına Git →</Text>
+                </TouchableOpacity>
+              </ScrollView>
             ) : (
               // Detay: eşleşen liste
               detayYukleniyor ? (
