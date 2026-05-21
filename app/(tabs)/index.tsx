@@ -61,6 +61,8 @@ export default function DashboardScreen() {
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const [musteriDetay, setMusteriDetay] = useState<any | null>(null);
+  const [musteriDetayYukleniyor, setMusteriDetayYukleniyor] = useState(false);
+  const [ilanData, setIlanData] = useState<any | null>(null);
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const takipY = useRef(0);
@@ -260,6 +262,7 @@ export default function DashboardScreen() {
     setDetayBildirim(b);
     setDetayListe([]);
     setMusteriDetay(null);
+    setIlanData(null);
     setDetayYukleniyor(true);
     if (!okundu.has(b.id)) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -277,16 +280,44 @@ export default function DashboardScreen() {
         setDetayListe([]);
       }
     } else if (b.tip === 'ilan') {
-      const [{ data: tumMusteriler }, { data: ilanData }] = await Promise.all([
-        supabase.from('musteriler').select('id, ad, soyad, etiketler, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
+      const [{ data: tumMusteriler }, { data: ilan }] = await Promise.all([
+        supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
         supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').eq('id', b.hedefId).single(),
       ]);
-      if (ilanData) setDetayListe((tumMusteriler ?? []).filter((m: any) => eslesenMi(m, ilanData)));
+      setIlanData(ilan ?? null);
+      if (ilan) setDetayListe((tumMusteriler ?? []).filter((m: any) => eslesenMi(m, ilan)));
     } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz' || (b.tip === 'asistan' && b.hedefId)) {
-      const { data: mInfo } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler').eq('id', b.hedefId).single();
-      setMusteriDetay(mInfo ?? null);
+      const [{ data: mInfo }, { data: rpc }, { data: istekler }] = await Promise.all([
+        supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi').eq('id', b.hedefId).single(),
+        supabase.rpc('get_musteri_detay', { mid: b.hedefId }),
+        supabase.from('musteri_istekler').select('id, tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi').eq('musteri_id', b.hedefId),
+      ]);
+      if (mInfo) {
+        setMusteriDetay({
+          ...mInfo,
+          notlar: ((rpc?.notlar ?? []) as any[]).slice(0, 5),
+          iletisim: (rpc?.iletisim ?? []) as any[],
+          istekler: (istekler ?? []) as any[],
+        });
+      }
     }
     setDetayYukleniyor(false);
+  }
+
+  async function musteriDetayAc(m: any) {
+    setMusteriDetayYukleniyor(true);
+    setMusteriDetay({ ...m });
+    const [{ data: rpc }, { data: istekler }] = await Promise.all([
+      supabase.rpc('get_musteri_detay', { mid: m.id }),
+      supabase.from('musteri_istekler').select('id, tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi').eq('musteri_id', m.id),
+    ]);
+    setMusteriDetay({
+      ...m,
+      notlar: ((rpc?.notlar ?? []) as any[]).slice(0, 5),
+      iletisim: (rpc?.iletisim ?? []) as any[],
+      istekler: (istekler ?? []) as any[],
+    });
+    setMusteriDetayYukleniyor(false);
   }
 
   async function toggleOkundu(id: string) {
@@ -755,160 +786,333 @@ export default function DashboardScreen() {
       </ScrollView>
 
       {/* Bildirim Modalı */}
-      <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setMusteriDetay(null); setBildirimModal(false); }}>
+      <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }}>
         <View style={styles.bdModalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setBildirimModal(false); }} />
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }} />
           <View style={styles.bdModalPanel} onStartShouldSetResponder={() => true}>
             <View style={styles.bdModalHeader}>
-              {detayBildirim ? (
-                <TouchableOpacity onPress={() => { setDetayBildirim(null); setMusteriDetay(null); }}>
+              {(detayBildirim || musteriDetay) ? (
+                <TouchableOpacity onPress={() => {
+                  if (musteriDetay && detayBildirim?.tip === 'ilan') { setMusteriDetay(null); return; }
+                  setDetayBildirim(null); setMusteriDetay(null); setIlanData(null);
+                }}>
                   <Text style={styles.bdKapat}>←</Text>
                 </TouchableOpacity>
               ) : <View style={{ width: 32 }} />}
-              <Text style={styles.bdModalBaslik}>
+              <Text style={styles.bdModalBaslik} numberOfLines={1}>
                 {musteriDetay ? [musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ') : detayBildirim ? detayBildirim.baslik : 'Bildirimler'}
               </Text>
-              <TouchableOpacity onPress={() => { setDetayBildirim(null); setBildirimModal(false); }}>
+              <TouchableOpacity onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }}>
                 <Text style={styles.bdKapat}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {!detayBildirim ? (
-              // Bildirim listesi
-              (() => {
-                const gorunenler = bildirimler.filter(b => !silindi.has(b.id));
-                const sirali = [...gorunenler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
-                return sirali.length === 0 ? (
-                  <View style={styles.bdBos}>
-                    <Text style={styles.bdBosText}>Bildirim yok</Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    data={sirali}
-                    keyExtractor={b => b.id}
-                    contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
-                    ListHeaderComponent={(
-                      <TouchableOpacity onPress={tumunuOkunduYap} style={styles.bdTumuBtn}>
-                        <Text style={styles.bdTumuText}>Tümünü okundu yap</Text>
-                      </TouchableOpacity>
-                    )}
-                    renderItem={({ item }) => {
-                      const isOkundu = okundu.has(item.id);
-                      return (
-                        <View style={[styles.bdItem, !isOkundu && styles.bdItemYeni]}>
-                          {item.foto ? (
-                            <TouchableOpacity onPress={() => bildirimDetayAc(item)}>
-                              <R2Image source={item.foto!} size="sm" style={styles.bdFoto} />
+            {(() => {
+              const gorunenler = bildirimler.filter(b => !silindi.has(b.id));
+              const sirali = [...gorunenler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
+              return (
+                <View style={{ display: detayBildirim ? 'none' : 'flex', flexShrink: 1 }}>
+                  {sirali.length === 0 ? (
+                    <View style={styles.bdBos}>
+                      <Text style={styles.bdBosText}>Bildirim yok</Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={sirali}
+                      keyExtractor={b => b.id}
+                      contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
+                      ListHeaderComponent={(
+                        <TouchableOpacity onPress={tumunuOkunduYap} style={styles.bdTumuBtn}>
+                          <Text style={styles.bdTumuText}>Tümünü okundu yap</Text>
+                        </TouchableOpacity>
+                      )}
+                      renderItem={({ item }) => {
+                        const isOkundu = okundu.has(item.id);
+                        return (
+                          <View style={[styles.bdItem, !isOkundu && styles.bdItemYeni]}>
+                            {item.foto ? (
+                              <TouchableOpacity onPress={() => bildirimDetayAc(item)}>
+                                <R2Image source={item.foto!} size="sm" style={styles.bdFoto} />
+                              </TouchableOpacity>
+                            ) : (
+                              <TouchableOpacity style={[styles.bdIcon, {
+                                backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'gorev' ? '#fef3c7' : item.tip === 'sessiz' ? '#f3e8ff' : item.tip === 'asistan' ? '#e0f2fe' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
+                              }]} onPress={() => bildirimDetayAc(item)}>
+                                <Text style={{ fontSize: 16 }}>
+                                  {item.tip === 'takip' ? '⚠️' : item.tip === 'gorev' ? '📋' : item.tip === 'sessiz' ? '🔕' : item.tip === 'asistan' ? '🤖' : item.tip === 'musteri' ? '👤' : '🏠'}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }, { flex: 1 }]} numberOfLines={1}>{item.baslik}</Text>
+                                {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
+                              </View>
+                              <Text style={styles.bdAlt}>{item.alt}</Text>
                             </TouchableOpacity>
-                          ) : (
-                            <TouchableOpacity style={[styles.bdIcon, {
-                              backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'gorev' ? '#fef3c7' : item.tip === 'sessiz' ? '#f3e8ff' : item.tip === 'asistan' ? '#e0f2fe' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
-                            }]} onPress={() => bildirimDetayAc(item)}>
-                              <Text style={{ fontSize: 16 }}>
-                                {item.tip === 'takip' ? '⚠️' : item.tip === 'gorev' ? '📋' : item.tip === 'sessiz' ? '🔕' : item.tip === 'asistan' ? '🤖' : item.tip === 'musteri' ? '👤' : '🏠'}
-                              </Text>
+                            <TouchableOpacity
+                              style={styles.bdMenuBtn}
+                              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                              onPress={() => setMenuAcikId(menuAcikId === item.id ? null : item.id)}>
+                              <Text style={styles.bdMenuText}>⋯</Text>
                             </TouchableOpacity>
-                          )}
-                          <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                              <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }, { flex: 1 }]} numberOfLines={1}>{item.baslik}</Text>
-                              {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
-                            </View>
-                            <Text style={styles.bdAlt}>{item.alt}</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.bdMenuBtn}
-                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                            onPress={() => setMenuAcikId(menuAcikId === item.id ? null : item.id)}>
-                            <Text style={styles.bdMenuText}>⋯</Text>
-                          </TouchableOpacity>
-                        </View>
-                      );
-                    }}
-                  />
-                );
-              })()
-            ) : musteriDetay ? (
-              // Müşteri kartı (takip/gorev/sessiz/asistan)
-              <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: Spacing.md, backgroundColor: Colors.surfaceContainerLow, borderRadius: 14 }}>
-                  <View style={[styles.bdIcon, { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primaryFixed }]}>
-                    <Text style={{ fontWeight: '700', color: Colors.primary, fontSize: 20 }}>{musteriDetay.ad?.[0]?.toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface }}>{[musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ')}</Text>
-                    {musteriDetay.etiketler ? <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>#{musteriDetay.etiketler}</Text> : null}
-                    {musteriDetay.durum ? <Text style={{ fontSize: 12, color: musteriDetay.durum === 'Aktif' ? Colors.primary : Colors.onSurfaceVariant }}>{musteriDetay.durum}</Text> : null}
-                  </View>
-                  {musteriDetay.telefon ? (
-                    <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 18 }}>📞</Text>
-                    </TouchableOpacity>
-                  ) : null}
+                          </View>
+                        );
+                      }}
+                    />
+                  )}
                 </View>
-                {detayBildirim ? (
-                  <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, padding: Spacing.md }}>
-                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, lineHeight: 20 }}>{detayBildirim.alt}</Text>
+              );
+            })()}
+            {!detayBildirim ? null : musteriDetay ? (
+              // Müşteri detayı (Ek Kişiler + İstekler + Notlar)
+              musteriDetayYukleniyor ? (
+                <View style={styles.bdBos}><ActivityIndicator color={Colors.primary} /></View>
+              ) : (
+                <ScrollView contentContainerStyle={{ padding: Spacing.md, gap: Spacing.lg }}>
+                  {/* Bildirim sebebi */}
+                  {detayBildirim && detayBildirim.tip !== 'ilan' ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: -8 }}>
+                      <Text style={{ fontSize: 14 }}>
+                        {detayBildirim.tip === 'takip' ? '⚠️' : detayBildirim.tip === 'gorev' ? '📋' : detayBildirim.tip === 'sessiz' ? '🔕' : '🤖'}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', flex: 1 }}>{detayBildirim.alt}</Text>
+                    </View>
+                  ) : null}
+
+                  {/* Header kartı */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.md, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: Colors.surfaceContainerLow }}>
+                    <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontWeight: '700', color: '#fff', fontSize: 17 }}>
+                        {`${(musteriDetay.ad ?? '').charAt(0)}${(musteriDetay.soyad ?? '').charAt(0)}`.toUpperCase() || '?'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: Colors.onSurface }}>{[musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ')}</Text>
+                        {musteriDetay.etiketler ? <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '600' }}>#{musteriDetay.etiketler}</Text> : null}
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
+                        {musteriDetay.durum ? (
+                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: musteriDetay.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: musteriDetay.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }}>{musteriDetay.durum}</Text>
+                          </View>
+                        ) : null}
+                        {musteriDetay.musteri_tipi && musteriDetay.musteri_tipi !== 'Bireysel' ? (
+                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f3f4f6' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280' }}>{musteriDetay.musteri_tipi}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                    <View style={{ gap: 6, alignItems: 'flex-end' }}>
+                      {musteriDetay.telefon ? (
+                        <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 15 }}>📞</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      <TouchableOpacity onPress={() => {
+                        setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false);
+                        router.push(`/musteri/${musteriDetay.id}` as any);
+                      }} style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#E53935', borderRadius: 8 }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Detay →</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Ek Kişiler */}
+                  {(musteriDetay.iletisim ?? []).length > 0 ? (
+                    <View>
+                      <Text style={styles.bdSectionTitle}>Ek Kişiler</Text>
+                      {(musteriDetay.iletisim ?? []).map((k: any) => (
+                        <View key={k.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 6 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', flex: 1 }}>{k.ad}</Text>
+                          {k.tip ? <Text style={{ fontSize: 11, color: '#9ca3af' }}>{k.tip}</Text> : null}
+                          {k.telefon ? (
+                            <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${k.telefon}`); }}>
+                              <Text style={{ fontSize: 11, color: '#6b7280' }}>📞 {k.telefon}</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {/* İstekler */}
+                  {(musteriDetay.istekler ?? []).length > 0 ? (
+                    <View>
+                      <Text style={styles.bdSectionTitle}>İstekler</Text>
+                      {(musteriDetay.istekler ?? []).map((istek: any, idx: number) => (
+                        <View key={istek.id} style={{ backgroundColor: '#fafafa', borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                            <View style={{ backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>#{idx + 1}</Text>
+                            </View>
+                            {(istek.butce_min || istek.butce_max) ? (
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.onSurface }}>
+                                {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '—'} – {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '—'}
+                              </Text>
+                            ) : null}
+                            {istek.tip ? istek.tip.split(',').map((t: string) => (
+                              <View key={t} style={styles.bdTipTag}><Text style={styles.bdTipTagText}>{t.trim()}</Text></View>
+                            )) : null}
+                          </View>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
+                            {istek.tercih_konum ? istek.tercih_konum.split('|').map((k: string) => (
+                              <View key={k} style={styles.bdKonumTag}><Text style={styles.bdKonumTagText}>{k.trim()}</Text></View>
+                            )) : null}
+                            {istek.min_oda ? <View style={styles.bdOdaTag}><Text style={styles.bdOdaTagText}>Min {istek.min_oda}</Text></View> : null}
+                            {istek.bina_yasi ? istek.bina_yasi.split(',').map((b: string) => (
+                              <View key={b} style={styles.bdYasTag}><Text style={styles.bdYasTagText}>{b.trim()}</Text></View>
+                            )) : null}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {/* Son Notlar */}
+                  {(musteriDetay.notlar ?? []).length > 0 ? (
+                    <View>
+                      <Text style={styles.bdSectionTitle}>Son Notlar</Text>
+                      {(musteriDetay.notlar ?? []).map((n: any) => (
+                        <View key={n.id} style={{ backgroundColor: 'rgba(254,243,199,0.7)', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 12, marginBottom: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#92400e', marginBottom: 4 }}>{n.tarih ? new Date(n.tarih).toLocaleDateString('tr-TR') : ''}</Text>
+                          <Text style={{ fontSize: 12, color: '#78350f', lineHeight: 18 }}>{n.icerik}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </ScrollView>
+              )
+            ) : detayYukleniyor ? (
+              <View style={styles.bdBos}><ActivityIndicator color={Colors.primary} /></View>
+            ) : detayBildirim?.tip === 'asistan' && !detayBildirim.hedefId ? (
+              <View style={{ padding: Spacing.xl }}>
+                <Text style={{ fontSize: 14, color: Colors.onSurface, lineHeight: 22 }}>{detayBildirim.alt}</Text>
+              </View>
+            ) : detayBildirim?.tip === 'ilan' ? (
+              // İlan detay: foto kart + eşleşen müşteriler
+              <ScrollView contentContainerStyle={{ padding: Spacing.md }}>
+                {ilanData ? (
+                  <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    {ilanData.fotograflar?.[0] ? (
+                      <R2Image source={ilanData.fotograflar[0]} size="lg" style={{ width: '100%', height: 180 }} />
+                    ) : null}
+                    <View style={{ padding: 14 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <View style={{ flex: 1, marginRight: 10 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#6b7280', letterSpacing: 0.7, marginBottom: 4 }}>
+                            {`${ilanData.tip ?? ''}${ilanData.kategori ? ` · ${ilanData.kategori}` : ''}`.toUpperCase()}
+                          </Text>
+                          <Text style={{ fontSize: 15, fontWeight: '800', color: Colors.onSurface, lineHeight: 20 }} numberOfLines={2}>{ilanData.baslik}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 17, fontWeight: '800', color: '#E53935' }}>₺{Number(ilanData.fiyat).toLocaleString('tr-TR')}</Text>
+                          {ilanData.portfoy_no ? <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>#{ilanData.portfoy_no}</Text> : null}
+                        </View>
+                      </View>
+                      {[ilanData.mahalle, ilanData.ilce, ilanData.konum].filter(Boolean).join(', ') ? (
+                        <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>📍 {[ilanData.mahalle, ilanData.ilce, ilanData.konum].filter(Boolean).join(', ')}</Text>
+                      ) : null}
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                        {ilanData.oda_sayisi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.oda_sayisi}</Text></View> : null}
+                        {ilanData.metrekare ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.metrekare} m²</Text></View> : null}
+                        {ilanData.bina_yasi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.bina_yasi}</Text></View> : null}
+                        {ilanData.bulundugu_kat ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.bulundugu_kat}. kat</Text></View> : null}
+                      </View>
+                      <View style={{ borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 10, alignItems: 'flex-end' }}>
+                        <TouchableOpacity onPress={() => {
+                          setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false);
+                          router.push(`/ilan/${ilanData.id}` as any);
+                        }} style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>İlanı Görüntüle →</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </View>
                 ) : null}
-                <TouchableOpacity style={{ backgroundColor: Colors.primary, borderRadius: 12, padding: Spacing.md, alignItems: 'center', marginTop: 4 }} onPress={() => {
-                  setDetayBildirim(null); setMusteriDetay(null); setBildirimModal(false);
-                  router.push(`/musteri/${musteriDetay.id}` as any);
-                }}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Müşteri Sayfasına Git →</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            ) : (
-              // Detay: eşleşen liste
-              detayYukleniyor ? (
-                <View style={styles.bdBos}><ActivityIndicator color={Colors.primary} /></View>
-              ) : detayBildirim?.tip === 'asistan' && !detayBildirim.hedefId ? (
-                <View style={{ padding: Spacing.xl }}>
-                  <Text style={{ fontSize: 14, color: Colors.onSurface, lineHeight: 22 }}>{detayBildirim.alt}</Text>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.onSurface }}>Eşleşen Müşteriler</Text>
+                  <View style={{ backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{detayListe.length}</Text>
+                  </View>
                 </View>
-              ) : detayListe.length === 0 ? (
-                <View style={styles.bdBos}><Text style={styles.bdBosText}>Eşleşen bulunamadı</Text></View>
-              ) : (
-                <FlatList
-                  data={detayListe}
-                  keyExtractor={d => d.id}
-                  contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.bdDetayItem} onPress={() => {
-                      setDetayBildirim(null);
-                      setBildirimModal(false);
-                      if (detayBildirim.tip === 'musteri') router.push(`/ilan/${item.id}` as any);
-                      else router.push(`/musteri/${item.id}` as any);
-                    }}>
-                      {detayBildirim.tip === 'musteri' ? (
-                        <>
-                          {item.fotograflar?.[0]
-                            ? <R2Image source={item.fotograflar[0]} size="sm" style={styles.bdDetayFoto} />
-                            : <View style={[styles.bdDetayFoto, { backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }]}><Text>🏠</Text></View>
-                          }
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.bdBaslik} numberOfLines={1}>{item.baslik}</Text>
-                            <Text style={styles.bdAlt}>₺{Number(item.fiyat).toLocaleString('tr-TR')} · {item.konum}{item.ilce ? `, ${item.ilce}` : ''}</Text>
+
+                {detayListe.length === 0 ? (
+                  <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, paddingVertical: 20 }}>Eşleşen müşteri bulunamadı.</Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {detayListe.map((m: any) => {
+                      const initials = `${(m.ad ?? '').charAt(0)}${(m.soyad ?? '').charAt(0)}`.toUpperCase() || '?';
+                      const istekler: any[] = m.musteri_istekler ?? [];
+                      const tipler = Array.from(new Set(istekler.flatMap((i: any) => i.tip ? i.tip.split(',').map((t: string) => t.trim()) : [])));
+                      const konumlar = Array.from(new Set(istekler.flatMap((i: any) => i.tercih_konum ? i.tercih_konum.split('|').map((k: string) => k.trim()) : [])));
+                      const butceler = istekler.flatMap((i: any) => [
+                        i.butce_min ? `min ₺${Number(i.butce_min).toLocaleString('tr-TR')}` : null,
+                        i.butce_max ? `max ₺${Number(i.butce_max).toLocaleString('tr-TR')}` : null,
+                      ]).filter(Boolean) as string[];
+                      return (
+                        <TouchableOpacity key={m.id} onPress={() => musteriDetayAc(m)} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#6b7280', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{initials}</Text>
                           </View>
-                        </>
-                      ) : (
-                        <>
-                          <View style={[styles.bdIcon, { backgroundColor: Colors.primaryFixed }]}>
-                            <Text style={{ fontWeight: '700', color: Colors.primary }}>{item.ad?.[0]?.toUpperCase()}</Text>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface }}>{[m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
+                              {m.etiketler ? <Text style={{ fontSize: 10, color: '#9ca3af', fontWeight: '600' }}>#{m.etiketler}</Text> : null}
+                              {m.durum ? (
+                                <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '600', color: m.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }}>{m.durum}</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                              {tipler.slice(0, 3).map(t => <View key={t} style={styles.bdTipTag}><Text style={styles.bdTipTagText}>{t}</Text></View>)}
+                              {konumlar.slice(0, 2).map(k => <View key={k} style={styles.bdKonumTag}><Text style={styles.bdKonumTagText}>{k}</Text></View>)}
+                              {butceler.slice(0, 2).map((b, i) => <View key={i} style={styles.bdButceTag}><Text style={styles.bdButceTagText}>{b}</Text></View>)}
+                            </View>
                           </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.bdBaslik}>{[item.ad, item.soyad].filter(Boolean).join(' ')}</Text>
-                            <Text style={styles.bdAlt}>
-                              {(() => { const i0 = item.musteri_istekler?.[0]; return i0?.butce_min || i0?.butce_max ? `₺${i0.butce_min ? Number(i0.butce_min).toLocaleString('tr-TR') : '?'} – ₺${i0.butce_max ? Number(i0.butce_max).toLocaleString('tr-TR') : '?'}` : ''; })()}
-                            </Text>
-                          </View>
-                        </>
-                      )}
-                      <Text style={{ color: Colors.onSurfaceVariant, fontSize: 18 }}>›</Text>
-                    </TouchableOpacity>
-                  )}
-                />
-              )
+                          {m.telefon ? (
+                            <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${m.telefon}`); }} style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 14 }}>📞</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          <Text style={{ color: '#d1d5db', fontSize: 18 }}>›</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            ) : detayListe.length === 0 ? (
+              <View style={styles.bdBos}><Text style={styles.bdBosText}>Eşleşen bulunamadı</Text></View>
+            ) : (
+              // Müşteri tipi bildirim → ilan listesi
+              <FlatList
+                data={detayListe}
+                keyExtractor={d => d.id}
+                contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.bdDetayItem} onPress={() => {
+                    setDetayBildirim(null);
+                    setIlanData(null);
+                    setBildirimModal(false);
+                    router.push(`/ilan/${item.id}` as any);
+                  }}>
+                    {item.fotograflar?.[0]
+                      ? <R2Image source={item.fotograflar[0]} size="sm" style={styles.bdDetayFoto} />
+                      : <View style={[styles.bdDetayFoto, { backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }]}><Text>🏠</Text></View>
+                    }
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.bdBaslik} numberOfLines={1}>{item.baslik}</Text>
+                      <Text style={styles.bdAlt}>₺{Number(item.fiyat).toLocaleString('tr-TR')} · {item.konum}{item.ilce ? `, ${item.ilce}` : ''}</Text>
+                    </View>
+                    <Text style={{ color: Colors.onSurfaceVariant, fontSize: 18 }}>›</Text>
+                  </TouchableOpacity>
+                )}
+              />
             )}
           </View>
           {menuAcikId !== null && (
@@ -1199,4 +1403,17 @@ const styles = StyleSheet.create({
   bdTumuText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   bdDetayItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md, overflow: 'hidden' },
   bdDetayFoto: { width: 52, height: 52, borderRadius: Radius.md },
+  bdSectionTitle: { fontSize: 11, fontWeight: '700', color: '#6b7280', letterSpacing: 0.7, marginBottom: 8, textTransform: 'uppercase' },
+  bdTag: { backgroundColor: '#f3f4f6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  bdTagText: { fontSize: 11, fontWeight: '600', color: '#374151' },
+  bdTipTag: { backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  bdTipTagText: { fontSize: 10, fontWeight: '600', color: '#E53935' },
+  bdKonumTag: { backgroundColor: 'rgba(59,130,246,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  bdKonumTagText: { fontSize: 10, fontWeight: '600', color: '#1d4ed8' },
+  bdButceTag: { backgroundColor: 'rgba(58,170,110,0.12)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  bdButceTagText: { fontSize: 10, fontWeight: '600', color: '#3aaa6e' },
+  bdOdaTag: { backgroundColor: 'rgba(168,85,247,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  bdOdaTagText: { fontSize: 10, fontWeight: '600', color: '#7c3aed' },
+  bdYasTag: { backgroundColor: 'rgba(249,115,22,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  bdYasTagText: { fontSize: 10, fontWeight: '600', color: '#c2410c' },
 });
