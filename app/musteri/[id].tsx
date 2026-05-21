@@ -240,9 +240,17 @@ export default function MusteriDetayScreen() {
       const ilanIdx = ODALAR_ORDER.indexOf(ilan.oda_sayisi);
       if (minIdx >= 0 && ilanIdx >= 0 && ilanIdx < minIdx) return false;
     }
-    if (istek.bina_yasi && ilan.bina_yasi) {
+    if (istek.bina_yasi) {
       const list = istek.bina_yasi.split(',').map((s: string) => s.trim());
-      if (list.length && !list.includes(ilan.bina_yasi)) return false;
+      if (list.length && (!ilan.bina_yasi || !list.includes(ilan.bina_yasi))) return false;
+    }
+    if (istek.kat_sayisi) {
+      const list = istek.kat_sayisi.split(',').map((s: string) => s.trim());
+      if (list.length && (!ilan.kat_sayisi || !list.includes(ilan.kat_sayisi))) return false;
+    }
+    if (istek.bulundugu_kat) {
+      const list = istek.bulundugu_kat.split(',').map((s: string) => s.trim());
+      if (list.length && (!ilan.bulundugu_kat || !list.includes(ilan.bulundugu_kat))) return false;
     }
     return true;
   }
