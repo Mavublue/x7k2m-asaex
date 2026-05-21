@@ -963,7 +963,7 @@ export default function DashboardScreen() {
               }}
             />
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       <Modal visible={menuAcikId !== null} transparent animationType="fade" onRequestClose={() => setMenuAcikId(null)}>
