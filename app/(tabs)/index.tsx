@@ -765,7 +765,8 @@ export default function DashboardScreen() {
 
       {/* Bildirim Modalı */}
       <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setBildirimModal(false); }}>
-        <TouchableOpacity style={styles.bdModalOverlay} activeOpacity={1} onPress={() => { setDetayBildirim(null); setBildirimModal(false); }}>
+        <View style={styles.bdModalOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setBildirimModal(false); }} />
           <View style={styles.bdModalPanel} onStartShouldSetResponder={() => true}>
             <View style={styles.bdModalHeader}>
               {detayBildirim ? (
@@ -889,7 +890,24 @@ export default function DashboardScreen() {
               )
             )}
           </View>
-        </TouchableOpacity>
+          {menuAcikId !== null && (
+            <TouchableOpacity style={[StyleSheet.absoluteFillObject, styles.bdMenuOverlay]} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
+              <View style={styles.bdMenuPopup}>
+                {menuAcikId && okundu.has(menuAcikId) && (
+                  <>
+                    <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
+                      <Text style={styles.bdMenuItemText}>Okunmadı yap</Text>
+                    </TouchableOpacity>
+                    <View style={styles.bdMenuSep} />
+                  </>
+                )}
+                <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) bildirimSil(menuAcikId); setMenuAcikId(null); }}>
+                  <Text style={[styles.bdMenuItemText, { color: '#E53935' }]}>Sil</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
       </Modal>
 
       {/* Görev Panel */}
@@ -966,23 +984,6 @@ export default function DashboardScreen() {
         </View>
       </Modal>
 
-      <Modal visible={menuAcikId !== null} transparent animationType="fade" onRequestClose={() => setMenuAcikId(null)}>
-        <TouchableOpacity style={styles.bdMenuOverlay} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
-          <View style={styles.bdMenuPopup}>
-            {menuAcikId && okundu.has(menuAcikId) && (
-              <>
-                <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
-                  <Text style={styles.bdMenuItemText}>Okunmadı yap</Text>
-                </TouchableOpacity>
-                <View style={styles.bdMenuSep} />
-              </>
-            )}
-            <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) bildirimSil(menuAcikId); setMenuAcikId(null); }}>
-              <Text style={[styles.bdMenuItemText, { color: '#E53935' }]}>Sil</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
     </SafeAreaView>
   );
