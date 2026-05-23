@@ -151,6 +151,7 @@ export default function MusteriEkleScreen() {
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
   const scrollRef = useRef<any>(null);
+  const notlarBoxY = useRef(0);
   const [loading, setLoading] = useState(false);
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
 
@@ -207,7 +208,7 @@ export default function MusteriEkleScreen() {
     setNotIcerik('');
     setNotTarih(new Date());
     setNotForm(true);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+    setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, notlarBoxY.current - 20), animated: true }), 200);
   }
   function notDuzenleAc(idx: number) {
     const n = yeniNotlar[idx];
@@ -572,7 +573,7 @@ export default function MusteriEkleScreen() {
           </View>
 
           {/* Notlar */}
-          <View style={styles.notlarBox}>
+          <View style={styles.notlarBox} onLayout={(e) => { notlarBoxY.current = e.nativeEvent.layout.y; }}>
             <View style={styles.notlarHeader}>
               <Text style={styles.notlarBaslik}>📝 Notlar {yeniNotlar.length > 0 ? `(${yeniNotlar.length})` : ''}</Text>
               {!notForm && (
@@ -591,7 +592,7 @@ export default function MusteriEkleScreen() {
                   onChangeText={setNotIcerik}
                   multiline
                   textAlignVertical="top"
-                  onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
+                  onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, notlarBoxY.current - 20), animated: true }), 300)}
                 />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <TouchableOpacity onPress={() => setShowPicker('date')} style={[styles.notInput, { flex: 1, minWidth: 160, justifyContent: 'center' }]}>
