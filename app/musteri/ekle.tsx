@@ -331,6 +331,7 @@ export default function MusteriEkleScreen() {
                   onChangeText={v => setEtiket(v.replace(/[#\s]/g, ''))}
                   autoCapitalize="none"
                   returnKeyType="done"
+                  keyboardType="number-pad"
                 />
                 <TouchableOpacity onPress={enKucukBosEtiket} disabled={etiketDolduruluyor}
                   style={{ paddingHorizontal: 6, paddingVertical: 6, marginLeft: 2 }}>

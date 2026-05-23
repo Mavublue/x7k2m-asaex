@@ -720,6 +720,7 @@ export default function MusteriDetayScreen() {
                       onChangeText={v => setEtiket(v.replace(/[#\s]/g, ''))}
                       autoCapitalize="none"
                       returnKeyType="done"
+                      keyboardType="number-pad"
                     />
                   </View>
                 </View>
