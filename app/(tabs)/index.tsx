@@ -414,7 +414,7 @@ export default function DashboardScreen() {
       .select('id, baslik, hedef_tarih, musteri_id, musteriler(ad, soyad, etiketler)')
       .eq('tamamlandi', false)
       .not('hedef_tarih', 'is', null)
-      .order('hedef_tarih', { ascending: true });
+      .order('hedef_tarih', { ascending: filtre !== 'bugun' });
 
     if (filtre === 'gecmis') {
       q = q.lt('hedef_tarih', new Date().toISOString());
