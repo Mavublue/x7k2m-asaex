@@ -509,23 +509,23 @@ export default function MusteriDetayScreen() {
     } else {
       const { error } = await supabase.from('musteri_notlar').insert({ musteri_id: id, icerik, tarih: tarihIso });
       if (error) { Alert.alert('Hata', error.message); return; }
-      // Yeni not → taahhüt analizi (arka planda, hata olsa bile devam)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/not-analiz`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-          body: JSON.stringify({ musteri_id: id, not_icerik: icerik }),
-        }).then(async (res) => {
-          if (!res.ok) return;
-          const d = await res.json();
-          if (d.gorev && d.baslik) {
-            const defaultSaat = new Date(); defaultSaat.setHours(7, 0, 0, 0);
-            setGorevOneriSaat(defaultSaat);
-            setGorevOneriModal({ baslik: d.baslik, tarih: d.tarih ?? null, rowId: d.rowId ?? null });
-          }
-        }).catch(() => {});
-      }
+      // Yeni not → taahhüt analizi (geçici kapatıldı)
+      // const { data: { session } } = await supabase.auth.getSession();
+      // if (session) {
+      //   fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/not-analiz`, {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      //     body: JSON.stringify({ musteri_id: id, not_icerik: icerik }),
+      //   }).then(async (res) => {
+      //     if (!res.ok) return;
+      //     const d = await res.json();
+      //     if (d.gorev && d.baslik) {
+      //       const defaultSaat = new Date(); defaultSaat.setHours(7, 0, 0, 0);
+      //       setGorevOneriSaat(defaultSaat);
+      //       setGorevOneriModal({ baslik: d.baslik, tarih: d.tarih ?? null, rowId: d.rowId ?? null });
+      //     }
+      //   }).catch(() => {});
+      // }
     }
     setNotEkle(false);
     setNotEditId(null);
