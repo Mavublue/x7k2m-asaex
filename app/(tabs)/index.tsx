@@ -54,10 +54,8 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
-  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}[]>([]);
-  const [okundu, setOkundu] = useState<Set<string>>(new Set());
-  const [silindi, setSilindi] = useState<Set<string>>(new Set());
-  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}|null>(null);
+  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}[]>([]);
+  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const [musteriDetay, setMusteriDetay] = useState<any | null>(null);
@@ -70,16 +68,13 @@ export default function DashboardScreen() {
   const ilkFocus = useRef(true);
 
   useEffect(() => {
-    fetchDurum();
     fetchBildirimler();
     fetchData();
     fetchGorevDashboard('bugun');
 
     const channel = supabase.channel('bildirim-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'asistan_oneriler' }, () => fetchBildirimler())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => { fetchBildirimler(); fetchGorevDashboard(gorevFiltre); })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'musteriler' }, () => fetchBildirimler())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilanlar' }, () => fetchBildirimler())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler' }, () => fetchBildirimler())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => fetchGorevDashboard(gorevFiltre))
       .subscribe();
 
     const appStateSub = AppState.addEventListener('change', (state) => {
@@ -93,29 +88,12 @@ export default function DashboardScreen() {
     fetchData();
     fetchGorevDashboard(gorevFiltre);
     if (ilkFocus.current) { ilkFocus.current = false; return; }
-    fetchDurum();
     fetchBildirimler();
     if (bildirimModalPending.current) {
       bildirimModalPending.current = false;
       setTimeout(() => setBildirimModal(true), 300);
     }
   }, []));
-
-  async function fetchDurum() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase.from('bildirim_okundu').select('bildirim_id, silindi').eq('user_id', user.id);
-    if (data) {
-      const o = new Set<string>();
-      const s = new Set<string>();
-      data.forEach((r: any) => {
-        if (r.silindi) s.add(r.bildirim_id);
-        else o.add(r.bildirim_id);
-      });
-      setOkundu(o);
-      setSilindi(s);
-    }
-  }
 
   const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
   function istekEslesiyor(istek: any, ilan: any): boolean {
@@ -179,99 +157,83 @@ export default function DashboardScreen() {
     return istekler.some(istek => istekEslesiyor(istek, ilan));
   }
 
-  async function fetchBildirimler() {
-    const liste: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}[] = [];
-    const bugun = new Date().toISOString().split('T')[0];
-
-    const yediGunOnce = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-    const yediGunOnceTarih = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-    const [
-      { data: tumMusteriler, error: mErr },
-      { data: tumIlanlar, error: iErr },
-      { data: tumGorevler },
-      { data: uzunSuredir },
-      { data: aiOneriler },
-    ] = await Promise.all([
-      supabase.from('musteriler').select('id, ad, soyad, etiketler, takip_tarihi, olusturma_tarihi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
-      supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, olusturma_tarihi, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)'),
-      supabase.from('musteri_gorevler').select('id, baslik, hedef_tarih, musteri_id, musteriler(id, ad, soyad, etiketler)').eq('tamamlandi', false).not('hedef_tarih', 'is', null).lte('hedef_tarih', new Date().toISOString()),
-      supabase.from('musteriler').select('id, ad, soyad, etiketler, guncelleme_tarihi, olusturma_tarihi').eq('durum', 'Aktif').lt('guncelleme_tarihi', yediGunOnce),
-      supabase.from('asistan_oneriler').select('id, musteri_id, mesaj, tip, created_at').gte('created_at', yediGunOnceTarih).order('created_at', { ascending: false }),
-    ]);
-
-    if (mErr || iErr) {
-      console.log('Bildirim hata:', mErr?.message, iErr?.message);
-      return;
-    }
-
-    const ilanlar = tumIlanlar ?? [];
-    const musteriler = tumMusteriler ?? [];
-
-    // AI asistan önerileri
-    for (const a of aiOneriler ?? []) {
-      const temizMesaj = a.mesaj.replace(/[#*_`]/g, '').trim();
-      if (a.musteri_id) {
-        const m = musteriler.find((x: any) => x.id === a.musteri_id);
-        const musteriLabel = m ? [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ') : '?';
-        liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: musteriLabel, alt: temizMesaj, hedefId: a.musteri_id, tarih: a.created_at });
-      } else {
-        const slotBaslik = a.tip === 'sabah' ? '🌅 Sabah Özeti' : a.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti';
-        liste.push({ id: `ai-${a.id}`, tip: 'asistan', baslik: slotBaslik, alt: temizMesaj, hedefId: '', tarih: a.created_at });
+  function mapBildirim(b: any): {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any} {
+    const veri = b.veri ?? {};
+    const ilan = b.ilan;
+    const musteri = b.musteri;
+    const gorev = b.gorev;
+    const musteriLabel = musteri ? [musteri.etiketler ? `#${musteri.etiketler}` : null, musteri.ad, musteri.soyad].filter(Boolean).join(' ') : '';
+    let baslik = ''; let alt = ''; let foto: string | null = null; let hedefId = '';
+    switch (b.tip) {
+      case 'eslesme-ilan':
+        baslik = ilan?.baslik ?? 'İlan';
+        alt = `${veri.eslesen_count ?? 0} uygun müşteri eşleşiyor`;
+        foto = ilan?.fotograflar?.[0] ?? null;
+        hedefId = b.ilan_id ?? '';
+        break;
+      case 'fiyat-indi':
+        baslik = ilan?.baslik ?? 'İlan';
+        alt = `Fiyat ₺${Number(veri.eski_fiyat ?? 0).toLocaleString('tr-TR')} → ₺${Number(veri.yeni_fiyat ?? 0).toLocaleString('tr-TR')} · ${veri.eslesen_count ?? 0} müşteri uyuyor`;
+        foto = ilan?.fotograflar?.[0] ?? null;
+        hedefId = b.ilan_id ?? '';
+        break;
+      case 'eslesme-musteri':
+        baslik = musteriLabel || '?';
+        alt = `${veri.eslesen_count ?? 0} uygun ilan eşleşiyor`;
+        hedefId = b.musteri_id ?? '';
+        break;
+      case 'takip': {
+        baslik = musteriLabel || '?';
+        const t = veri.takip_tarihi;
+        if (t) { const [y, mo, d] = String(t).split('-'); alt = `Takip tarihi: ${d}.${mo}.${y}`; }
+        else alt = 'Takip tarihi geldi';
+        hedefId = b.musteri_id ?? '';
+        break;
+      }
+      case 'sessiz':
+        baslik = musteriLabel || '?';
+        alt = '7+ gündür iletişim yok';
+        hedefId = b.musteri_id ?? '';
+        break;
+      case 'gorev-gecikti':
+        baslik = musteriLabel || '?';
+        alt = `Gecikmiş görev: "${veri.baslik ?? gorev?.baslik ?? ''}"`;
+        hedefId = b.musteri_id ?? '';
+        break;
+      case 'asistan': {
+        const mesaj = String(veri.mesaj ?? '').replace(/[#*_`]/g, '').trim();
+        if (b.musteri_id) { baslik = musteriLabel || '?'; alt = mesaj; }
+        else { baslik = veri.tip === 'sabah' ? '🌅 Sabah Özeti' : veri.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti'; alt = mesaj; }
+        hedefId = b.musteri_id ?? '';
+        break;
       }
     }
-
-    // Gecikmiş görevler
-    for (const g of tumGorevler ?? []) {
-      const m = (g as any).musteriler;
-      const isim = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
-      liste.push({ id: `gorev-${g.id}`, tip: 'gorev', baslik: isim, alt: `Gecikmiş görev: "${g.baslik}"`, hedefId: g.musteri_id, tarih: g.hedef_tarih });
-    }
-
-    // 7+ gün iletişim yok
-    for (const m of uzunSuredir ?? []) {
-      const isim = [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ');
-      liste.push({ id: `sessiz-${m.id}`, tip: 'sessiz', baslik: isim, alt: '7+ gündür iletişim yok', hedefId: m.id, tarih: m.olusturma_tarihi ?? '' });
-    }
-
-    // Takip
-    for (const m of musteriler) {
-      if (m.takip_tarihi && m.takip_tarihi <= bugun) {
-        const [y, mo, d] = m.takip_tarihi.split('-');
-        liste.push({ id: `takip-${m.id}`, tip: 'takip', baslik: [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' '), alt: `Takip tarihi: ${d}.${mo}.${y}`, hedefId: m.id, tarih: m.olusturma_tarihi ?? m.takip_tarihi });
-      }
-    }
-
-    // Müşteri → ilan eşleşmesi
-    for (const m of musteriler) {
-      const eslesen = ilanlar.filter(i => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `musteri-${m.id}`, tip: 'musteri', baslik: [m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' '), alt: `${eslesen.length} uygun ilan eşleşiyor`, hedefId: m.id, tarih: m.olusturma_tarihi ?? '', foto: (eslesen[0] as any)?.fotograflar?.[0] ?? null });
-    }
-
-    // İlan → müşteri eşleşmesi
-    for (const i of ilanlar) {
-      const eslesen = musteriler.filter(m => eslesenMi(m, i));
-      if (eslesen.length > 0) liste.push({ id: `ilan-${i.id}`, tip: 'ilan', baslik: i.baslik, alt: `${eslesen.length} uygun müşteri eşleşiyor`, hedefId: i.id, tarih: i.olusturma_tarihi ?? '', foto: (i as any).fotograflar?.[0] ?? null });
-    }
-
-    setBildirimler(liste);
+    return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri };
   }
 
-  async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null}) {
+  async function fetchBildirimler() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data } = await supabase
+      .from('bildirimler')
+      .select('id, tip, ilan_id, musteri_id, gorev_id, asistan_oneri_id, veri, okundu_at, silindi_at, created_at, ilan:ilanlar(id, baslik, fotograflar, fiyat), musteri:musteriler(id, ad, soyad, etiketler), gorev:musteri_gorevler(id, baslik, hedef_tarih)')
+      .eq('user_id', session.user.id)
+      .is('silindi_at', null)
+      .order('created_at', { ascending: false });
+    setBildirimler((data ?? []).map(mapBildirim));
+  }
+
+  async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}) {
     setDetayBildirim(b);
     setDetayListe([]);
     setMusteriDetay(null);
     setIlanData(null);
     setDetayYukleniyor(true);
-    if (!okundu.has(b.id)) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setOkundu(prev => new Set([...prev, b.id]));
-        supabase.from('bildirim_okundu').upsert({ user_id: session.user.id, bildirim_id: b.id, silindi: false }, { onConflict: 'user_id,bildirim_id' }).then(() => {});
-      }
+    if (!b.okundu) {
+      setBildirimler(prev => prev.map(x => x.id === b.id ? { ...x, okundu: true } : x));
+      supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).eq('id', b.id).then(() => {});
     }
-    if (b.tip === 'musteri') {
+    if (b.tip === 'eslesme-musteri') {
       const { data: istekler } = await supabase.from('musteri_istekler').select('*, musteri_istek_ozellikler(ozellik_id)').eq('musteri_id', b.hedefId);
       if (istekler?.length) {
         const { data } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif');
@@ -279,14 +241,14 @@ export default function DashboardScreen() {
       } else {
         setDetayListe([]);
       }
-    } else if (b.tip === 'ilan') {
+    } else if (b.tip === 'eslesme-ilan' || b.tip === 'fiyat-indi') {
       const [{ data: tumMusteriler }, { data: ilan }] = await Promise.all([
         supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
         supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').eq('id', b.hedefId).single(),
       ]);
       setIlanData(ilan ?? null);
       if (ilan) setDetayListe((tumMusteriler ?? []).filter((m: any) => eslesenMi(m, ilan)));
-    } else if (b.tip === 'takip' || b.tip === 'gorev' || b.tip === 'sessiz' || (b.tip === 'asistan' && b.hedefId)) {
+    } else if (b.tip === 'takip' || b.tip === 'gorev-gecikti' || b.tip === 'sessiz' || (b.tip === 'asistan' && b.hedefId)) {
       const [{ data: mInfo }, { data: rpc }, { data: istekler }] = await Promise.all([
         supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi').eq('id', b.hedefId).single(),
         supabase.rpc('get_musteri_detay', { mid: b.hedefId }),
@@ -321,37 +283,23 @@ export default function DashboardScreen() {
   }
 
   async function toggleOkundu(id: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const isOkundu = okundu.has(id);
-    setOkundu(prev => {
-      const next = new Set(prev);
-      if (isOkundu) next.delete(id); else next.add(id);
-      return next;
-    });
-    if (isOkundu) {
-      await supabase.from('bildirim_okundu').delete().eq('user_id', user.id).eq('bildirim_id', id);
-    } else {
-      await supabase.from('bildirim_okundu').upsert({ user_id: user.id, bildirim_id: id, silindi: false }, { onConflict: 'user_id,bildirim_id' });
-    }
+    const b = bildirimler.find(x => x.id === id);
+    if (!b) return;
+    const yeni = !b.okundu;
+    setBildirimler(prev => prev.map(x => x.id === id ? { ...x, okundu: yeni } : x));
+    await supabase.from('bildirimler').update({ okundu_at: yeni ? new Date().toISOString() : null }).eq('id', id);
   }
 
   async function bildirimSil(id: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setSilindi(prev => new Set([...prev, id]));
-    setOkundu(prev => { const n = new Set(prev); n.delete(id); return n; });
-    await supabase.from('bildirim_okundu').upsert({ user_id: user.id, bildirim_id: id, silindi: true }, { onConflict: 'user_id,bildirim_id' });
+    setBildirimler(prev => prev.filter(x => x.id !== id));
+    await supabase.from('bildirimler').update({ silindi_at: new Date().toISOString() }).eq('id', id);
   }
 
   async function tumunuOkunduYap() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ids = bildirimler.filter(b => !silindi.has(b.id)).map(b => b.id);
-    if (ids.length === 0) return;
-    setOkundu(new Set(ids));
-    const rows = ids.map(id => ({ user_id: user.id, bildirim_id: id, silindi: false }));
-    await supabase.from('bildirim_okundu').upsert(rows, { onConflict: 'user_id,bildirim_id' });
+    const ids = bildirimler.filter(b => !b.okundu).map(b => b.id);
+    if (!ids.length) return;
+    setBildirimler(prev => prev.map(x => ({ ...x, okundu: true })));
+    await supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).in('id', ids);
   }
 
   async function onRefresh() {
@@ -505,9 +453,9 @@ export default function DashboardScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <TouchableOpacity style={styles.bildirimWrap} onPress={() => setBildirimModal(true)}>
               <Text style={styles.bildirimIcon}>🔔</Text>
-              {bildirimler.filter(b => !silindi.has(b.id) && !okundu.has(b.id)).length > 0 && (
+              {bildirimler.filter(b => !b.okundu).length > 0 && (
                 <View style={styles.bildirimBadge}>
-                  <Text style={styles.bildirimBadgeText}>{bildirimler.filter(b => !silindi.has(b.id) && !okundu.has(b.id)).length}</Text>
+                  <Text style={styles.bildirimBadgeText}>{bildirimler.filter(b => !b.okundu).length}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -793,7 +741,7 @@ export default function DashboardScreen() {
             <View style={styles.bdModalHeader}>
               {(detayBildirim || musteriDetay) ? (
                 <TouchableOpacity onPress={() => {
-                  if (musteriDetay && detayBildirim?.tip === 'ilan') { setMusteriDetay(null); return; }
+                  if (musteriDetay && (detayBildirim?.tip === 'eslesme-ilan' || detayBildirim?.tip === 'fiyat-indi')) { setMusteriDetay(null); return; }
                   setDetayBildirim(null); setMusteriDetay(null); setIlanData(null);
                 }}>
                   <Text style={styles.bdKapat}>←</Text>
@@ -808,8 +756,7 @@ export default function DashboardScreen() {
             </View>
 
             {(() => {
-              const gorunenler = bildirimler.filter(b => !silindi.has(b.id));
-              const sirali = [...gorunenler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
+              const sirali = [...bildirimler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
               return (
                 <View style={{ display: detayBildirim ? 'none' : 'flex', flexShrink: 1 }}>
                   {sirali.length === 0 ? (
@@ -827,7 +774,7 @@ export default function DashboardScreen() {
                         </TouchableOpacity>
                       )}
                       renderItem={({ item }) => {
-                        const isOkundu = okundu.has(item.id);
+                        const isOkundu = item.okundu;
                         return (
                           <View style={[styles.bdItem, !isOkundu && styles.bdItemYeni]}>
                             {item.foto ? (
@@ -836,10 +783,10 @@ export default function DashboardScreen() {
                               </TouchableOpacity>
                             ) : (
                               <TouchableOpacity style={[styles.bdIcon, {
-                                backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'gorev' ? '#fef3c7' : item.tip === 'sessiz' ? '#f3e8ff' : item.tip === 'asistan' ? '#e0f2fe' : item.tip === 'musteri' ? Colors.primaryFixed : '#f0fdf4'
+                                backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'gorev-gecikti' ? '#fef3c7' : item.tip === 'sessiz' ? '#f3e8ff' : item.tip === 'asistan' ? '#e0f2fe' : item.tip === 'eslesme-musteri' ? Colors.primaryFixed : item.tip === 'fiyat-indi' ? '#ffedd5' : '#f0fdf4'
                               }]} onPress={() => bildirimDetayAc(item)}>
                                 <Text style={{ fontSize: 16 }}>
-                                  {item.tip === 'takip' ? '⚠️' : item.tip === 'gorev' ? '📋' : item.tip === 'sessiz' ? '🔕' : item.tip === 'asistan' ? '🤖' : item.tip === 'musteri' ? '👤' : '🏠'}
+                                  {item.tip === 'takip' ? '⚠️' : item.tip === 'gorev-gecikti' ? '📋' : item.tip === 'sessiz' ? '🔕' : item.tip === 'asistan' ? '🤖' : item.tip === 'eslesme-musteri' ? '👤' : item.tip === 'fiyat-indi' ? '💸' : '🏠'}
                                 </Text>
                               </TouchableOpacity>
                             )}
@@ -871,10 +818,10 @@ export default function DashboardScreen() {
               ) : (
                 <ScrollView contentContainerStyle={{ padding: Spacing.md, gap: Spacing.lg }}>
                   {/* Bildirim sebebi */}
-                  {detayBildirim && detayBildirim.tip !== 'ilan' ? (
+                  {detayBildirim && detayBildirim.tip !== 'eslesme-ilan' && detayBildirim.tip !== 'fiyat-indi' ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: -8 }}>
                       <Text style={{ fontSize: 14 }}>
-                        {detayBildirim.tip === 'takip' ? '⚠️' : detayBildirim.tip === 'gorev' ? '📋' : detayBildirim.tip === 'sessiz' ? '🔕' : '🤖'}
+                        {detayBildirim.tip === 'takip' ? '⚠️' : detayBildirim.tip === 'gorev-gecikti' ? '📋' : detayBildirim.tip === 'sessiz' ? '🔕' : '🤖'}
                       </Text>
                       <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', flex: 1 }}>{detayBildirim.alt}</Text>
                     </View>
@@ -991,9 +938,17 @@ export default function DashboardScreen() {
               <View style={{ padding: Spacing.xl }}>
                 <Text style={{ fontSize: 14, color: Colors.onSurface, lineHeight: 22 }}>{detayBildirim.alt}</Text>
               </View>
-            ) : detayBildirim?.tip === 'ilan' ? (
+            ) : (detayBildirim?.tip === 'eslesme-ilan' || detayBildirim?.tip === 'fiyat-indi') ? (
               // İlan detay: foto kart + eşleşen müşteriler
               <ScrollView contentContainerStyle={{ padding: Spacing.md }}>
+                {detayBildirim?.tip === 'fiyat-indi' && detayBildirim.veri ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#ffedd5', borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#fed7aa' }}>
+                    <Text style={{ fontSize: 18 }}>💸</Text>
+                    <Text style={{ flex: 1, fontSize: 12, color: '#9a3412', fontWeight: '600' }}>
+                      Fiyat ₺{Number(detayBildirim.veri.eski_fiyat ?? 0).toLocaleString('tr-TR')} → ₺{Number(detayBildirim.veri.yeni_fiyat ?? 0).toLocaleString('tr-TR')}
+                    </Text>
+                  </View>
+                ) : null}
                 {ilanData ? (
                   <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#e5e7eb' }}>
                     {ilanData.fotograflar?.[0] ? (
@@ -1118,7 +1073,7 @@ export default function DashboardScreen() {
           {menuAcikId !== null && (
             <TouchableOpacity style={[StyleSheet.absoluteFillObject, styles.bdMenuOverlay]} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
               <View style={styles.bdMenuPopup}>
-                {menuAcikId && okundu.has(menuAcikId) && (
+                {menuAcikId && bildirimler.find(b => b.id === menuAcikId)?.okundu && (
                   <>
                     <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
                       <Text style={styles.bdMenuItemText}>Okunmadı yap</Text>
