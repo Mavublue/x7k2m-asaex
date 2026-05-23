@@ -804,7 +804,7 @@ export default function IlanDetayScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={styles.modalOverlay}>
             <TouchableOpacity style={styles.modalDimmer} onPress={() => setLinkModal(false)} />
-            <View style={styles.modalPanel}>
+            <View style={[styles.modalPanel, { height: '85%' }]}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setLinkModal(false)}>
                   <Text style={styles.modalKapat}>✕</Text>
