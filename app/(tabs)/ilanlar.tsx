@@ -58,7 +58,7 @@ function buildMapHtml(ilanlar: Ilan[]) {
 <body><div id="map"></div>
 <script>
 var map=L.map('map',{zoomControl:false}).setView(${merkez},${zoom});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
+var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
 map.on('click',function(){window.ReactNativeWebView.postMessage(JSON.stringify({close:true}));});
 var cluster=L.markerClusterGroup({maxClusterRadius:40});
 var ms=${JSON.stringify(markers)},bs=[];

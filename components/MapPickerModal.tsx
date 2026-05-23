@@ -66,10 +66,10 @@ function buildPickerHtml(initLat?: number, initLng?: number) {
     });
 
     var map = L.map('map', { zoomControl: true }).setView(${center}, ${zoom});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM', maxZoom: 19 });
+    var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19 });
+    esri.addTo(map);
+    L.control.layers({ 'Uydu': esri, 'Sokak': osm }, null, { position: 'topright' }).addTo(map);
 
     ${initMarker}
 
