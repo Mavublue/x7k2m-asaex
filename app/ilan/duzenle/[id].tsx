@@ -316,6 +316,7 @@ export default function IlanDuzenleScreen() {
   }
 
   async function handleKaydet() {
+    if (loading) return;
     if (fotoYukleniyor) {
       Alert.alert('Bekleyin', 'Fotoğraflar henüz yükleniyor, lütfen bekleyin.');
       return;
@@ -368,8 +369,9 @@ export default function IlanDuzenleScreen() {
     }
     await supabase.from('ilan_ozellikler').delete().eq('ilan_id', id);
     if (secilenOzellikler.length) {
-      const rows = secilenOzellikler.map(oid => ({ ilan_id: id, ozellik_id: oid }));
-      const { error: jErr } = await supabase.from('ilan_ozellikler').insert(rows);
+      const uniqueIds = [...new Set(secilenOzellikler)];
+      const rows = uniqueIds.map(oid => ({ ilan_id: id, ozellik_id: oid }));
+      const { error: jErr } = await supabase.from('ilan_ozellikler').upsert(rows, { onConflict: 'ilan_id,ozellik_id', ignoreDuplicates: true });
       if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setLoading(false); return; }
     }
     Alert.alert('Kaydedildi', 'İlan güncellendi.', [

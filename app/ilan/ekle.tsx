@@ -241,6 +241,7 @@ export default function IlanEkleScreen() {
   }
 
   async function handleKaydet(taslak = false) {
+    if (loading) return;
     if (fotoYukleniyor) {
       Alert.alert('Bekleyin', 'Fotoğraflar henüz yükleniyor, lütfen bekleyin.');
       return;
@@ -254,7 +255,7 @@ export default function IlanEkleScreen() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.from('ilanlar').insert({
+    const { error } = await supabase.from('ilanlar').upsert({
       id: ilanId,
       portfoy_no: portfoyNo || null,
       baslik,
@@ -279,10 +280,11 @@ export default function IlanEkleScreen() {
       fotograflar: fotograflar.length > 0 ? fotograflar : null,
       gizli_fotograflar: gizliFotograflar.length > 0 ? gizliFotograflar : null,
       musteri_gizle: musteriGizle,
-    });
+    }, { onConflict: 'id' });
     if (!error && secilenOzellikler.length) {
-      const rows = secilenOzellikler.map(oid => ({ ilan_id: ilanId, ozellik_id: oid }));
-      const { error: jErr } = await supabase.from('ilan_ozellikler').insert(rows);
+      const uniqueIds = [...new Set(secilenOzellikler)];
+      const rows = uniqueIds.map(oid => ({ ilan_id: ilanId, ozellik_id: oid }));
+      const { error: jErr } = await supabase.from('ilan_ozellikler').upsert(rows, { onConflict: 'ilan_id,ozellik_id', ignoreDuplicates: true });
       if (jErr) { Alert.alert('Özellik kaydı hatası', jErr.message); setLoading(false); return; }
     }
     if (error) {
