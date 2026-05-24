@@ -11,6 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
 import { deleteIlanPhotos, copyIlanFiles } from '../../lib/r2';
 import { setDownloadProgress } from '../../lib/downloadProgress';
+import { renderSosyalMetin, type SosyalProfil } from '../../lib/sosyalMedya';
 
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
 
@@ -129,12 +130,20 @@ export default function IlanDetayScreen() {
   const [sosyalKaydediliyor, setSosyalKaydediliyor] = useState(false);
   const [sosyalKopyalandi, setSosyalKopyalandi] = useState(false);
   const [cogaltiyor, setCogaltiyor] = useState(false);
+  const [sosyalProfil, setSosyalProfil] = useState<SosyalProfil | null>(null);
+  const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
 
   const fetchIlan = useCallback(() => {
     supabase.from('ilanlar').select('*').eq('id', id).single().then(({ data }) => {
       if (data) setIlan(data);
       setLoading(false);
     });
+    supabase.from('ilan_ozellikler')
+      .select('ozellikler(ad)')
+      .eq('ilan_id', id)
+      .then(({ data }) => {
+        if (data) setOzellikAdlari(data.map((r: any) => r.ozellikler?.ad).filter(Boolean));
+      });
   }, [id]);
 
   useEffect(() => {
@@ -147,8 +156,11 @@ export default function IlanDetayScreen() {
     fetchIlan();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        supabase.from('profiller').select('telefon').eq('id', user.id).single().then(({ data }) => {
-          if (data?.telefon) setTelefon(data.telefon);
+        supabase.from('profiller').select('ad, soyad, telefon, sosyal_medya_sablonu').eq('id', user.id).single().then(({ data }) => {
+          if (data) {
+            if (data.telefon) setTelefon(data.telefon);
+            setSosyalProfil(data as SosyalProfil);
+          }
         });
       }
     });
@@ -157,26 +169,7 @@ export default function IlanDetayScreen() {
 
   function generateSosyalMetin(i: typeof ilan): string {
     if (!i) return '';
-    const emojiMap: Record<string, string> = {
-      Villa: '🏡', Daire: '🏢', Arsa: '🌿', Tarla: '🌾',
-      'İşyeri': '🏬', 'Müstakil Ev': '🏠', Otel: '🏨',
-    };
-    const emoji = emojiMap[i.kategori] ?? '🏠';
-    const lokasyon = [i.mahalle, i.ilce, i.konum].filter(Boolean).join(' / ');
-    const lines: string[] = [];
-    lines.push(`${emoji} ${i.baslik}`);
-    lines.push('');
-    lines.push(`💰 ${Number(i.fiyat).toLocaleString('tr-TR')} ₺`);
-    lines.push('');
-    if (lokasyon) lines.push(`✅ ${lokasyon.toUpperCase()}'DA`);
-    if (i.oda_sayisi) lines.push(`✅ ${i.oda_sayisi}`);
-    if (i.metrekare) lines.push(`✅ ${i.metrekare} NET M²`);
-    if (i.brut_metrekare) lines.push(`✅ ${i.brut_metrekare} BRÜT M²`);
-    if (i.bina_yasi) lines.push(`✅ ${i.bina_yasi} YAŞINDA`);
-    if (i.kat_sayisi) lines.push(`✅ ${i.kat_sayisi} KATLI`);
-    if (i.bulundugu_kat) lines.push(`✅ ${i.bulundugu_kat}. KAT`);
-    if (i.banyo_sayisi) lines.push(`✅ ${i.banyo_sayisi} BANYO`);
-    return lines.join('\n');
+    return renderSosyalMetin(i, ozellikAdlari, sosyalProfil);
   }
 
   async function handleCogalt() {

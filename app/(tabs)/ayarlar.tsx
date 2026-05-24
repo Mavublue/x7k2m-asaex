@@ -57,6 +57,7 @@ export default function AyarlarScreen() {
     { icon: '👤', label: 'Profil Bilgileri', sub: tamAd, onPress: () => router.push('/profil/duzenle' as any) },
     { icon: '🏢', label: 'Emlak Ofisi', sub: ofisAdi || 'Belirtilmemiş', onPress: () => router.push('/profil/duzenle' as any) },
     { icon: '✨', label: 'Özellik Yönetimi', sub: 'İlan özellikleri', onPress: () => router.push('/ozellikler' as any) },
+    { icon: '📱', label: 'Sosyal Medya Şablonu', sub: 'İlan paylaşım metni', onPress: () => router.push('/sosyal-medya-sablonu' as any) },
     { icon: '❓', label: 'Yardım & Destek', sub: '', onPress: () => {} },
   ];
 
