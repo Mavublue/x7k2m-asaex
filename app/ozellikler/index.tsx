@@ -1,15 +1,28 @@
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
+  View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
+import R2Image from '../../components/R2Image';
+import IlanDetayPopup from '../../components/IlanDetayPopup';
 
 type Ozellik = { id: string; ad: string; sayi: number };
-type IlanRef = { ilan_id: string; baslik: string; portfoy_no: string | null };
+type IlanRef = {
+  ilan_id: string;
+  baslik: string;
+  portfoy_no: string | null;
+  fiyat: number | null;
+  konum: string | null;
+  ilce: string | null;
+  mahalle: string | null;
+  oda_sayisi: string | null;
+  metrekare: number | null;
+  foto: string | null;
+};
 
 export default function OzelliklerScreen() {
   const [ozellikler, setOzellikler] = useState<Ozellik[]>([]);
@@ -22,6 +35,7 @@ export default function OzelliklerScreen() {
   const [acikIlanlar, setAcikIlanlar] = useState<IlanRef[]>([]);
   const [acikLoading, setAcikLoading] = useState(false);
   const [secilen, setSecilen] = useState<string[]>([]);
+  const [popupId, setPopupId] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     const [{ data: ozData }, { data: jData }] = await Promise.all([
@@ -47,12 +61,19 @@ export default function OzelliklerScreen() {
     setAcikLoading(true);
     const { data } = await supabase
       .from('ilan_ozellikler')
-      .select('ilan_id, ilanlar!inner(id, baslik, portfoy_no)')
+      .select('ilan_id, ilanlar!inner(id, baslik, portfoy_no, fiyat, konum, ilce, mahalle, oda_sayisi, metrekare, fotograflar)')
       .eq('ozellik_id', ozellikId);
     const liste: IlanRef[] = (data ?? []).map((r: any) => ({
       ilan_id: r.ilan_id,
       baslik: r.ilanlar?.baslik ?? '(Başlıksız)',
       portfoy_no: r.ilanlar?.portfoy_no ?? null,
+      fiyat: r.ilanlar?.fiyat ?? null,
+      konum: r.ilanlar?.konum ?? null,
+      ilce: r.ilanlar?.ilce ?? null,
+      mahalle: r.ilanlar?.mahalle ?? null,
+      oda_sayisi: r.ilanlar?.oda_sayisi ?? null,
+      metrekare: r.ilanlar?.metrekare ?? null,
+      foto: r.ilanlar?.fotograflar?.[0] ?? null,
     }));
     liste.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
     setAcikIlanlar(liste);
@@ -135,90 +156,118 @@ export default function OzelliklerScreen() {
     else setSecilen(acikIlanlar.map(i => i.ilan_id));
   }
 
+  function renderIlan(ilan: IlanRef) {
+    const secili = secilen.includes(ilan.ilan_id);
+    return (
+      <View key={ilan.ilan_id} style={[s.ilanKart, secili && s.ilanKartSecili]}>
+        <TouchableOpacity onPress={() => toggleSecim(ilan.ilan_id)} style={s.cbWrap}>
+          <Text style={s.cbText}>{secili ? '☑' : '☐'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setPopupId(ilan.ilan_id)}
+          style={s.ilanContent}
+          activeOpacity={0.7}
+        >
+          <View style={s.ilanFotoWrap}>
+            {ilan.foto ? (
+              <R2Image source={ilan.foto} style={s.ilanFoto} size="sm" />
+            ) : (
+              <Text style={{ fontSize: 20 }}>🏠</Text>
+            )}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={s.basRow}>
+              {ilan.portfoy_no && (
+                <View style={s.pnBadge}><Text style={s.pnText}>{ilan.portfoy_no}</Text></View>
+              )}
+              <Text style={s.ilanBaslik} numberOfLines={1}>{ilan.baslik}</Text>
+            </View>
+            <View style={s.metaRow}>
+              {ilan.fiyat != null && (
+                <Text style={s.fiyat}>{Number(ilan.fiyat).toLocaleString('tr-TR')} ₺</Text>
+              )}
+              <Text style={s.meta} numberOfLines={1}>
+                {[ilan.oda_sayisi, ilan.metrekare ? `${ilan.metrekare}m²` : null, ilan.ilce || ilan.konum]
+                  .filter(Boolean).join(' • ')}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => ilanCikar(ilan.ilan_id)} style={s.kaldirBtn}>
+          <Text style={s.kaldirBtnText}>Kaldır</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   function renderOzellik(item: Ozellik) {
     const acik = acikId === item.id;
     const duzenleniyor = duzenleId === item.id;
     return (
-      <View key={item.id} style={styles.ozellikWrap}>
-        <View style={styles.ozellikItem}>
+      <View key={item.id} style={s.ozellikWrap}>
+        <View style={s.ozellikItem}>
           {duzenleniyor ? (
             <>
               <TextInput
-                style={styles.duzenleInput}
+                style={s.duzenleInput}
                 value={duzenleAd}
                 onChangeText={setDuzenleAd}
                 onSubmitEditing={handleDuzenleKaydet}
                 autoFocus
                 returnKeyType="done"
               />
-              <TouchableOpacity style={styles.kaydetBtn} onPress={handleDuzenleKaydet}>
-                <Text style={styles.kaydetBtnText}>✓</Text>
+              <TouchableOpacity style={s.kaydetBtn} onPress={handleDuzenleKaydet}>
+                <Text style={s.kaydetBtnText}>✓</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iptalBtn} onPress={() => setDuzenleId(null)}>
-                <Text style={styles.iptalBtnText}>✕</Text>
+              <TouchableOpacity style={s.iptalBtn} onPress={() => setDuzenleId(null)}>
+                <Text style={s.iptalBtnText}>✕</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
               <TouchableOpacity
-                style={styles.adRow}
+                style={s.adRow}
                 onPress={() => item.sayi > 0 && acipIlanlariYukle(item.id)}
                 disabled={item.sayi === 0}
                 activeOpacity={item.sayi > 0 ? 0.6 : 1}
               >
-                <Text style={styles.expandIcon}>{item.sayi > 0 ? (acik ? '▾' : '▸') : ' '}</Text>
-                <Text style={styles.ozellikAd}>{item.ad}</Text>
-                <View style={[styles.sayiBadge, item.sayi === 0 && styles.sayiBadgeBos]}>
-                  <Text style={[styles.sayiBadgeText, item.sayi === 0 && styles.sayiBadgeBosText]}>{item.sayi}</Text>
+                <Text style={s.expandIcon}>{item.sayi > 0 ? (acik ? '▾' : '▸') : ' '}</Text>
+                <Text style={s.ozellikAd}>{item.ad}</Text>
+                <View style={[s.sayiBadge, item.sayi === 0 && s.sayiBadgeBos]}>
+                  <Text style={[s.sayiBadgeText, item.sayi === 0 && s.sayiBadgeBosText]}>{item.sayi}</Text>
                 </View>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.duzenleBtn} onPress={() => handleDuzenleBaslat(item.id, item.ad)}>
-                <Text style={styles.duzenleBtnText}>✎</Text>
+              <TouchableOpacity style={s.duzenleBtn} onPress={() => handleDuzenleBaslat(item.id, item.ad)}>
+                <Text style={s.duzenleBtnText}>✎</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.silBtn} onPress={() => handleSil(item.id, item.ad)}>
-                <Text style={styles.silBtnText}>✕</Text>
+              <TouchableOpacity style={s.silBtn} onPress={() => handleSil(item.id, item.ad)}>
+                <Text style={s.silBtnText}>✕</Text>
               </TouchableOpacity>
             </>
           )}
         </View>
 
         {acik && (
-          <View style={styles.expandBox}>
+          <View style={s.expandBox}>
             {acikLoading ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : acikIlanlar.length === 0 ? (
-              <Text style={styles.emptyMini}>Bağlı ilan yok.</Text>
+              <Text style={s.emptyMini}>Bağlı ilan yok.</Text>
             ) : (
               <>
-                <View style={styles.toplubar}>
-                  <TouchableOpacity onPress={tumunuSec} style={styles.tumSecBtn}>
-                    <Text style={styles.tumSecText}>
+                <View style={s.toplubar}>
+                  <TouchableOpacity onPress={tumunuSec} style={s.tumSecBtn}>
+                    <Text style={s.tumSecText}>
                       {secilen.length === acikIlanlar.length ? '☑' : '☐'} Tümü ({secilen.length}/{acikIlanlar.length})
                     </Text>
                   </TouchableOpacity>
                   {secilen.length > 0 && (
-                    <TouchableOpacity onPress={topluCikar} style={styles.topluBtn}>
-                      <Text style={styles.topluBtnText}>Kaldır ({secilen.length})</Text>
+                    <TouchableOpacity onPress={topluCikar} style={s.topluBtn}>
+                      <Text style={s.topluBtnText}>Kaldır ({secilen.length})</Text>
                     </TouchableOpacity>
                   )}
                 </View>
-                {acikIlanlar.map(ilan => {
-                  const secili = secilen.includes(ilan.ilan_id);
-                  return (
-                    <View key={ilan.ilan_id} style={styles.ilanRow}>
-                      <TouchableOpacity onPress={() => toggleSecim(ilan.ilan_id)} style={styles.cb}>
-                        <Text style={styles.cbText}>{secili ? '☑' : '☐'}</Text>
-                      </TouchableOpacity>
-                      {ilan.portfoy_no && (
-                        <View style={styles.pnBadge}><Text style={styles.pnText}>{ilan.portfoy_no}</Text></View>
-                      )}
-                      <Text style={styles.ilanBaslik} numberOfLines={1}>{ilan.baslik}</Text>
-                      <TouchableOpacity onPress={() => ilanCikar(ilan.ilan_id)} style={styles.kaldirBtn}>
-                        <Text style={styles.kaldirBtnText}>Kaldır</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
+                {acikIlanlar.map(renderIlan)}
               </>
             )}
           </View>
@@ -228,19 +277,19 @@ export default function OzelliklerScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.container} edges={['top']}>
+      <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.geri}>←</Text>
+          <Text style={s.geri}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Özellik Yönetimi</Text>
+        <Text style={s.headerTitle}>Özellik Yönetimi</Text>
         <View style={{ width: 32 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.ekleRow}>
+        <View style={s.ekleRow}>
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder="Yeni özellik ekle..."
             placeholderTextColor={Colors.outlineVariant}
             value={yeni}
@@ -248,29 +297,31 @@ export default function OzelliklerScreen() {
             onSubmitEditing={handleEkle}
             returnKeyType="done"
           />
-          <TouchableOpacity style={styles.ekleBtn} onPress={handleEkle} disabled={ekliyor}>
-            {ekliyor ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.ekleBtnText}>Ekle</Text>}
+          <TouchableOpacity style={s.ekleBtn} onPress={handleEkle} disabled={ekliyor}>
+            {ekliyor ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.ekleBtnText}>Ekle</Text>}
           </TouchableOpacity>
         </View>
 
         {loading ? (
-          <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
+          <View style={s.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
         ) : ozellikler.length === 0 ? (
-          <View style={styles.center}>
-            <Text style={styles.emptyText}>Henüz özellik eklenmedi</Text>
-            <Text style={styles.emptySubText}>İlanlarınızda kullanabileceğiniz özellikler ekleyin</Text>
+          <View style={s.center}>
+            <Text style={s.emptyText}>Henüz özellik eklenmedi</Text>
+            <Text style={s.emptySubText}>İlanlarınızda kullanabileceğiniz özellikler ekleyin</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.liste}>
+          <ScrollView contentContainerStyle={s.liste}>
             {ozellikler.map(renderOzellik)}
           </ScrollView>
         )}
       </KeyboardAvoidingView>
+
+      <IlanDetayPopup ilanId={popupId} onClose={() => setPopupId(null)} />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   header: {
@@ -320,24 +371,37 @@ const styles = StyleSheet.create({
 
   expandBox: {
     backgroundColor: Colors.surfaceContainerLow, borderBottomLeftRadius: Radius.lg, borderBottomRightRadius: Radius.lg,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, marginTop: -8, paddingTop: 14, gap: 6,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, marginTop: -8, paddingTop: 14, gap: 8,
   },
   toplubar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   tumSecBtn: { paddingVertical: 4, paddingHorizontal: 4 },
   tumSecText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
   topluBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 6 },
   topluBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  ilanRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+
+  ilanKart: {
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.surface, borderRadius: Radius.md,
-    paddingHorizontal: 10, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.surfaceContainerLow,
+    overflow: 'hidden',
   },
-  cb: { padding: 2 },
+  ilanKartSecili: { borderColor: Colors.primary, borderWidth: 1.5 },
+  cbWrap: { paddingHorizontal: 10, paddingVertical: 12 },
   cbText: { fontSize: 16, color: Colors.onSurface },
+  ilanContent: { flex: 1, flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 8, paddingRight: 8, minWidth: 0 },
+  ilanFotoWrap: { width: 60, height: 45, borderRadius: 6, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  ilanFoto: { width: 60, height: 45 },
+  basRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   pnBadge: { backgroundColor: Colors.surfaceContainerLow, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   pnText: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant },
-  ilanBaslik: { flex: 1, fontSize: 13, color: Colors.onSurface },
-  kaldirBtn: { borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, paddingHorizontal: 8, paddingVertical: 4 },
+  ilanBaslik: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.onSurface },
+  metaRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  fiyat: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  meta: { fontSize: 11, color: Colors.onSurfaceVariant, flex: 1 },
+  kaldirBtn: {
+    borderLeftWidth: 1, borderLeftColor: Colors.surfaceContainerLow,
+    paddingHorizontal: 12, paddingVertical: 14,
+  },
   kaldirBtnText: { fontSize: 11, fontWeight: '700', color: '#E53935' },
   emptyMini: { fontSize: 13, color: Colors.outlineVariant, textAlign: 'center', paddingVertical: 4 },
 });
