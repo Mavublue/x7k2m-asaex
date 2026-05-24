@@ -39,7 +39,7 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
       const { data } = await supabase.from('ilanlar').select('*').eq('id', ilanId).single();
       if (data) {
         setIlan(data as Ilan);
-        const fotos = (data.fotograflar ?? []) as string[];
+        const fotos = (data.fotograflar ?? []).slice(0, 3) as string[];
         if (fotos.length) ExpoImage.prefetch(fotos.map(mdUrl), 'disk');
       }
       const { data: ozData } = await supabase
