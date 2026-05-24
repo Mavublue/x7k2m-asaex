@@ -203,7 +203,7 @@ export default function MusteriDetayScreen() {
 
   const fetchTumOzellikler = useCallback(async () => {
     if (tumOzellikler.length > 0) return;
-    const { data } = await supabase.from('ozellikler').select('*').order('olusturma_tarihi');
+    const { data } = await supabase.from('ozellikler').select('*').order('ad');
     if (data) setTumOzellikler(data);
   }, [tumOzellikler.length]);
 

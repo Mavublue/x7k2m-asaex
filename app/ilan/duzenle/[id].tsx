@@ -187,7 +187,7 @@ export default function IlanDuzenleScreen() {
     .filter(g => g.mahalleler.length > 0);
 
   useEffect(() => {
-    supabase.from('ozellikler').select('*').order('olusturma_tarihi').then(({ data }) => {
+    supabase.from('ozellikler').select('*').order('ad').then(({ data }) => {
       if (data) setTumOzellikler(data);
     });
   }, []);

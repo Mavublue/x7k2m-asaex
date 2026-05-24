@@ -189,7 +189,7 @@ export default function MusteriEkleScreen() {
   }
 
   useEffect(() => {
-    supabase.from('ozellikler').select('*').order('olusturma_tarihi').then(({ data }) => {
+    supabase.from('ozellikler').select('*').order('ad').then(({ data }) => {
       if (data) setTumOzellikler(data);
     });
     (async () => {
