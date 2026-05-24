@@ -4,10 +4,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
 import { supabase } from '../lib/supabase';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import R2Image from './R2Image';
 import type { Ilan } from '../types';
+
+const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
+function mdUrl(key: string) {
+  if (!key) return '';
+  if (key.startsWith('http')) return key;
+  const dot = key.lastIndexOf('.');
+  return `${R2_BASE}/${key.slice(0, dot)}_md.jpg`;
+}
 
 type Props = { ilanId: string | null; onClose: () => void };
 
@@ -28,7 +37,11 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
     setAktif(0);
     (async () => {
       const { data } = await supabase.from('ilanlar').select('*').eq('id', ilanId).single();
-      if (data) setIlan(data as Ilan);
+      if (data) {
+        setIlan(data as Ilan);
+        const fotos = (data.fotograflar ?? []) as string[];
+        if (fotos.length) ExpoImage.prefetch(fotos.map(mdUrl), 'disk');
+      }
       const { data: ozData } = await supabase
         .from('ilan_ozellikler')
         .select('ozellikler!inner(ad)')
@@ -113,7 +126,7 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
                     getItemLayout={(_, i) => ({ length: IMG_W, offset: IMG_W * i, index: i })}
                     renderItem={({ item }) => (
                       <View style={{ width: IMG_W, height: IMG_H }}>
-                        <R2Image source={item} style={{ width: IMG_W, height: IMG_H }} size="lg" />
+                        <R2Image source={item} style={{ width: IMG_W, height: IMG_H }} size="md" />
                       </View>
                     )}
                   />
