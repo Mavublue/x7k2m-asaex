@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Modal, View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import R2Image from './R2Image';
@@ -11,13 +12,15 @@ import type { Ilan } from '../types';
 type Props = { ilanId: string | null; onClose: () => void };
 
 const W = Dimensions.get('window').width;
-const IMG_H = Math.round((W - 32) * 0.66);
+const IMG_W = W - 32;
+const IMG_H = Math.round(IMG_W * 0.66);
 
 export default function IlanDetayPopup({ ilanId, onClose }: Props) {
   const [ilan, setIlan] = useState<Ilan | null>(null);
   const [ozellikler, setOzellikler] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [aktif, setAktif] = useState(0);
+  const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (!ilanId) { setIlan(null); setOzellikler([]); setAktif(0); return; }
@@ -36,6 +39,34 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
   }, [ilanId]);
 
   const fotolar = ilan?.fotograflar ?? [];
+  const lokasyon = ilan ? [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ') : '';
+
+  function prev() {
+    if (fotolar.length <= 1) return;
+    const yeni = (aktif - 1 + fotolar.length) % fotolar.length;
+    setAktif(yeni);
+    listRef.current?.scrollToIndex({ index: yeni, animated: true });
+  }
+  function next() {
+    if (fotolar.length <= 1) return;
+    const yeni = (aktif + 1) % fotolar.length;
+    setAktif(yeni);
+    listRef.current?.scrollToIndex({ index: yeni, animated: true });
+  }
+
+  const detaylar = ilan ? [
+    ilan.portfoy_no && { l: 'Portföy No', v: ilan.portfoy_no },
+    ilan.kategori && { l: 'Kategori', v: ilan.kategori },
+    ilan.tip && { l: 'Tip', v: ilan.tip },
+    ilan.metrekare && { l: 'Net m²', v: `${ilan.metrekare} m²` },
+    ilan.brut_metrekare && { l: 'Brüt m²', v: `${ilan.brut_metrekare} m²` },
+    ilan.oda_sayisi && { l: 'Oda Sayısı', v: ilan.oda_sayisi },
+    ilan.banyo_sayisi != null && Number(ilan.banyo_sayisi) > 0 && { l: 'Banyo Sayısı', v: String(ilan.banyo_sayisi) },
+    ilan.bina_yasi && { l: 'Bina Yaşı', v: String(ilan.bina_yasi) },
+    ilan.kat_sayisi && { l: 'Kat Sayısı', v: String(ilan.kat_sayisi) },
+    ilan.bulundugu_kat && { l: 'Bulunduğu Kat', v: String(ilan.bulundugu_kat) },
+    lokasyon && { l: 'Konum', v: lokasyon },
+  ].filter(Boolean) as { l: string; v: string }[] : [];
 
   return (
     <Modal visible={!!ilanId} animationType="slide" onRequestClose={onClose} transparent={false}>
@@ -44,9 +75,19 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
           <Text style={s.headerTitle} numberOfLines={1}>
             İlan Detayı{ilan?.portfoy_no ? ` • ${ilan.portfoy_no}` : ''}
           </Text>
-          <TouchableOpacity onPress={onClose} style={s.kapatBtn}>
-            <Text style={s.kapatText}>✕</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {ilan && (
+              <TouchableOpacity
+                onPress={() => { onClose(); router.push(`/ilan/${ilan.id}` as any); }}
+                style={s.gitBtn}
+              >
+                <Text style={s.gitBtnText}>İlana Git →</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} style={s.kapatBtn}>
+              <Text style={s.kapatText}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {loading ? (
@@ -57,22 +98,39 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
           <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}>
             {fotolar.length > 0 && (
               <View style={{ marginBottom: Spacing.lg }}>
-                <FlatList
-                  data={fotolar}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={e => {
-                    const idx = Math.round(e.nativeEvent.contentOffset.x / (W - 32));
-                    setAktif(idx);
-                  }}
-                  keyExtractor={(_, i) => String(i)}
-                  renderItem={({ item }) => (
-                    <View style={{ width: W - 32, height: IMG_H, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Colors.surfaceContainerLow }}>
-                      <R2Image source={item} style={{ width: W - 32, height: IMG_H }} size="lg" />
-                    </View>
+                <View style={{ position: 'relative', width: IMG_W, height: IMG_H, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#1a1b21' }}>
+                  <FlatList
+                    ref={listRef}
+                    data={fotolar}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={e => {
+                      const idx = Math.round(e.nativeEvent.contentOffset.x / IMG_W);
+                      setAktif(idx);
+                    }}
+                    keyExtractor={(_, i) => String(i)}
+                    getItemLayout={(_, i) => ({ length: IMG_W, offset: IMG_W * i, index: i })}
+                    renderItem={({ item }) => (
+                      <View style={{ width: IMG_W, height: IMG_H }}>
+                        <R2Image source={item} style={{ width: IMG_W, height: IMG_H }} size="lg" />
+                      </View>
+                    )}
+                  />
+                  {fotolar.length > 1 && (
+                    <>
+                      <TouchableOpacity onPress={prev} style={[s.fotoOk, { left: 10 }]} hitSlop={10}>
+                        <Text style={s.fotoOkText}>‹</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={next} style={[s.fotoOk, { right: 10 }]} hitSlop={10}>
+                        <Text style={s.fotoOkText}>›</Text>
+                      </TouchableOpacity>
+                      <View style={s.fotoSayac}>
+                        <Text style={s.fotoSayacText}>{aktif + 1} / {fotolar.length}</Text>
+                      </View>
+                    </>
                   )}
-                />
+                </View>
                 {fotolar.length > 1 && (
                   <View style={s.dotRow}>
                     {fotolar.map((_, i) => (
@@ -83,40 +141,50 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
               </View>
             )}
 
+            {ilan.tip && (
+              <View style={s.tipBadge}>
+                <Text style={s.tipBadgeText}>{ilan.tip.toUpperCase()}</Text>
+              </View>
+            )}
             <Text style={s.baslik}>{ilan.baslik}</Text>
-            <Text style={s.lokasyon}>
-              {[ilan.konum, ilan.ilce, ilan.mahalle].filter(Boolean).join(' / ')}
-            </Text>
+            {lokasyon && <Text style={s.lokasyon}>📍 {lokasyon}</Text>}
             <Text style={s.fiyat}>{Number(ilan.fiyat).toLocaleString('tr-TR')} ₺</Text>
 
-            <View style={s.bilgiGrid}>
-              {ilan.oda_sayisi && <Bilgi e="Oda" d={ilan.oda_sayisi} />}
-              {ilan.metrekare && <Bilgi e="Net" d={`${ilan.metrekare} m²`} />}
-              {ilan.brut_metrekare && <Bilgi e="Brüt" d={`${ilan.brut_metrekare} m²`} />}
-              {ilan.bina_yasi && <Bilgi e="Bina Yaşı" d={String(ilan.bina_yasi)} />}
-              {ilan.kat_sayisi && <Bilgi e="Kat Sayısı" d={String(ilan.kat_sayisi)} />}
-              {ilan.bulundugu_kat && <Bilgi e="Bulunduğu Kat" d={String(ilan.bulundugu_kat)} />}
-              {ilan.banyo_sayisi != null && <Bilgi e="Banyo" d={String(ilan.banyo_sayisi)} />}
-              {ilan.kategori && <Bilgi e="Kategori" d={ilan.kategori} />}
-            </View>
+            {detaylar.length > 0 && (
+              <View style={s.detayKart}>
+                {detaylar.map(({ l, v }, i) => (
+                  <View key={l} style={[s.detayRow, i < detaylar.length - 1 && s.detayRowSinir]}>
+                    <Text style={s.detayL}>{l}</Text>
+                    <Text style={s.detayV}>{v}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {ozellikler.length > 0 && (
-              <View style={{ marginTop: Spacing.lg }}>
+              <View style={s.kart}>
                 <Text style={s.sectionLabel}>ÖZELLİKLER</Text>
                 <View style={s.chipRow}>
                   {ozellikler.map(o => (
                     <View key={o} style={s.chip}>
-                      <Text style={s.chipText}>{o}</Text>
+                      <Text style={s.chipText}>✓ {o}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
+            {ilan.musteri_aciklamasi && (
+              <View style={s.kart}>
+                <Text style={s.sectionLabel}>MÜŞTERİYE GÖSTERİLEN AÇIKLAMA</Text>
+                <Text style={s.aciklama}>{ilan.musteri_aciklamasi}</Text>
+              </View>
+            )}
+
             {ilan.aciklama && (
-              <View style={{ marginTop: Spacing.lg }}>
-                <Text style={s.sectionLabel}>AÇIKLAMA</Text>
-                <Text style={s.aciklama}>{ilan.aciklama}</Text>
+              <View style={s.notKart}>
+                <Text style={s.notLabel}>📝 NOTLAR (SADECE SEN GÖRÜYORSUN)</Text>
+                <Text style={s.notText}>{ilan.aciklama}</Text>
               </View>
             )}
           </ScrollView>
@@ -126,40 +194,66 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
   );
 }
 
-function Bilgi({ e, d }: { e: string; d: string }) {
-  return (
-    <View style={s.bilgiKart}>
-      <Text style={s.bilgiE}>{e}</Text>
-      <Text style={s.bilgiD}>{d}</Text>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
     paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md,
     borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow,
   },
-  headerTitle: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
+  headerTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
+  gitBtn: { backgroundColor: Colors.primary, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8 },
+  gitBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   kapatBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
   kapatText: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   bos: { fontSize: 14, color: Colors.outlineVariant },
-  baslik: { fontSize: 17, fontWeight: '700', color: Colors.onSurface, marginBottom: 4 },
-  lokasyon: { fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 10 },
-  fiyat: { fontSize: 22, fontWeight: '800', color: Colors.primary, marginBottom: 14 },
-  bilgiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bilgiKart: { backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 8, minWidth: 100, borderWidth: 1, borderColor: Colors.surfaceContainerLow },
-  bilgiE: { fontSize: 10, fontWeight: '700', color: Colors.outlineVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
-  bilgiD: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginTop: 2 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 8 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { backgroundColor: Colors.surfaceContainerLow, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  chipText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
-  aciklama: { fontSize: 13, color: Colors.onSurface, lineHeight: 20 },
+
+  fotoOk: {
+    position: 'absolute', top: '50%', marginTop: -22,
+    width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fotoOkText: { color: '#fff', fontSize: 26, fontWeight: '700', lineHeight: 28 },
+  fotoSayac: {
+    position: 'absolute', bottom: 12, right: 12,
+    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  fotoSayacText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   dotRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.outlineVariant },
   dotAktif: { backgroundColor: Colors.primary, width: 18 },
+
+  tipBadge: { alignSelf: 'flex-start', backgroundColor: '#1a1b21', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8 },
+  tipBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  baslik: { fontSize: 19, fontWeight: '700', color: Colors.onSurface, marginBottom: 4, lineHeight: 26 },
+  lokasyon: { fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 10 },
+  fiyat: { fontSize: 22, fontWeight: '700', color: Colors.onSurface, marginBottom: 14 },
+
+  detayKart: {
+    backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', borderWidth: 1.5,
+    borderRadius: Radius.lg, paddingHorizontal: 14, marginBottom: Spacing.md,
+  },
+  detayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, gap: 16 },
+  detayRowSinir: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.07)' },
+  detayL: { fontSize: 13, fontWeight: '700', color: '#1a1b21' },
+  detayV: { fontSize: 13, color: '#4b5563', flex: 1, textAlign: 'right' },
+
+  kart: {
+    backgroundColor: '#fff', borderColor: Colors.surfaceContainerLow, borderWidth: 1,
+    borderRadius: Radius.lg, padding: 14, marginBottom: Spacing.md,
+  },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 10 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { backgroundColor: '#f0f9f4', borderColor: '#bbf7d0', borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  chipText: { fontSize: 12, color: '#15803d', fontWeight: '600' },
+  aciklama: { fontSize: 13, color: '#374151', lineHeight: 22 },
+
+  notKart: {
+    backgroundColor: '#fffbeb', borderColor: '#fde68a', borderWidth: 1,
+    borderRadius: Radius.lg, padding: 14, marginBottom: Spacing.md,
+  },
+  notLabel: { fontSize: 11, fontWeight: '700', color: '#92400e', letterSpacing: 0.5, marginBottom: 8 },
+  notText: { fontSize: 13, color: '#451a03', lineHeight: 22 },
 });
