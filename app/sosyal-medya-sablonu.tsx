@@ -32,7 +32,7 @@ export default function SosyalMedyaSablonuScreen() {
       const { data } = await supabase.from('profiller')
         .select('ad, soyad, telefon, sosyal_medya_sablonu').eq('id', user.id).single();
       setProfil(data as SosyalProfil | null);
-      setSablon(data?.sosyal_medya_sablonu ?? '');
+      setSablon(data?.sosyal_medya_sablonu ?? DEFAULT_SOSYAL_SABLON);
       setLoading(false);
     });
   }, []);
@@ -59,7 +59,7 @@ export default function SosyalMedyaSablonuScreen() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
-    const deger = sablon.trim() ? sablon : null;
+    const deger = !sablon.trim() || sablon.trim() === DEFAULT_SOSYAL_SABLON.trim() ? null : sablon;
     const { error } = await supabase.from('profiller').update({ sosyal_medya_sablonu: deger }).eq('id', user.id);
     setSaving(false);
     if (error) Alert.alert('Hata', error.message);
