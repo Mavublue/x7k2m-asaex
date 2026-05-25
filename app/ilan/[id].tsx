@@ -205,7 +205,12 @@ export default function IlanDetayScreen() {
         const eskiYeni = new Map(yeniFotograflar.map((k: string, i: number) => [k, kopyalar[i]]));
         yeniGizliFotograflar = (yeniGizliFotograflar ?? []).map((k: string) => eskiYeni.get(k) ?? k);
         yeniFotograflar = kopyalar;
-      } catch { /* kopyalama başarısız olursa eski keyleri kullan */ }
+      } catch (e) {
+        console.error('R2 kopyalama hatası:', e);
+        Alert.alert('Hata', 'Fotoğraflar kopyalanamadı, çoğaltma iptal edildi. Tekrar deneyin.');
+        setCogaltiyor(false);
+        return;
+      }
     }
     const { error } = await supabase.from('ilanlar').insert({
       id: newId, user_id: session.user.id, portfoy_no,
