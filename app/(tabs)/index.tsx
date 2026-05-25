@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -8,6 +8,7 @@ import { router, useFocusEffect } from 'expo-router';
 import R2Image from '../../components/R2Image';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Eslesme } from '../../types';
 
@@ -54,8 +55,8 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
-  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}[]>([]);
-  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}|null>(null);
+  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}[]>([]);
+  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const [musteriDetay, setMusteriDetay] = useState<any | null>(null);
@@ -66,6 +67,8 @@ export default function DashboardScreen() {
   const takipY = useRef(0);
   const bildirimModalPending = useRef(false);
   const ilkFocus = useRef(true);
+
+  const sirali = useMemo(() => [...bildirimler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '')), [bildirimler]);
 
   useEffect(() => {
     fetchBildirimler();
@@ -157,7 +160,7 @@ export default function DashboardScreen() {
     return istekler.some(istek => istekEslesiyor(istek, ilan));
   }
 
-  function mapBildirim(b: any): {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any} {
+  function mapBildirim(b: any): {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]} {
     const veri = b.veri ?? {};
     const ilan = b.ilan;
     const musteri = b.musteri;
@@ -177,11 +180,30 @@ export default function DashboardScreen() {
         foto = ilan?.fotograflar?.[0] ?? null;
         hedefId = b.ilan_id ?? '';
         break;
-      case 'eslesme-musteri':
+      case 'eslesme-musteri': {
         baslik = musteriLabel || '?';
         alt = `${veri.eslesen_count ?? 0} uygun ilan eşleşiyor`;
         hedefId = b.musteri_id ?? '';
-        break;
+        const istekler: any[] = musteri?.musteri_istekler ?? [];
+        const tipler = [...new Set(istekler.flatMap((i: any) => i.tip ? i.tip.split(',').map((t: string) => t.trim()) : []))].filter(Boolean) as string[];
+        const konumlar = [...new Set(istekler.flatMap((i: any) => i.tercih_konum ? i.tercih_konum.split('|').map((k: string) => k.trim()) : []))].filter(Boolean) as string[];
+        const butceler = istekler.flatMap((i: any) => {
+          const min = i.butce_min ? `₺${Number(i.butce_min).toLocaleString('tr-TR')}` : null;
+          const max = i.butce_max ? `₺${Number(i.butce_max).toLocaleString('tr-TR')}` : null;
+          if (min && max) return [`${min} – ${max}`];
+          if (min) return [`min ${min}`];
+          if (max) return [`max ${max}`];
+          return [];
+        });
+        const odalar = [...new Set(istekler.map((i: any) => i.min_oda).filter(Boolean))] as string[];
+        const tags: {label:string;kind:'tip'|'konum'|'butce'|'oda'}[] = [
+          ...tipler.slice(0, 3).map(x => ({ label: x, kind: 'tip' as const })),
+          ...konumlar.slice(0, 2).map(x => ({ label: x, kind: 'konum' as const })),
+          ...butceler.slice(0, 2).map(x => ({ label: x, kind: 'butce' as const })),
+          ...odalar.slice(0, 1).map(x => ({ label: `Min ${x}`, kind: 'oda' as const })),
+        ];
+        return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri, tags };
+      }
       case 'takip': {
         baslik = musteriLabel || '?';
         const t = veri.takip_tarihi;
@@ -214,13 +236,20 @@ export default function DashboardScreen() {
   async function fetchBildirimler() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
+    const cacheKey = `app_bildirimler_${session.user.id}`;
+    const cached = await cacheGet<any[]>(cacheKey);
+    if (cached) setBildirimler(cached);
     const { data } = await supabase
       .from('bildirimler')
-      .select('id, tip, ilan_id, musteri_id, gorev_id, asistan_oneri_id, veri, okundu_at, silindi_at, created_at, ilan:ilanlar(id, baslik, fotograflar, fiyat), musteri:musteriler(id, ad, soyad, etiketler), gorev:musteri_gorevler(id, baslik, hedef_tarih)')
+      .select('id, tip, ilan_id, musteri_id, gorev_id, asistan_oneri_id, veri, okundu_at, silindi_at, created_at, ilan:ilanlar(id, baslik, fotograflar, fiyat), musteri:musteriler(id, ad, soyad, etiketler, telefon, durum, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda)), gorev:musteri_gorevler(id, baslik, hedef_tarih)')
       .eq('user_id', session.user.id)
       .is('silindi_at', null)
       .order('created_at', { ascending: false });
-    setBildirimler((data ?? []).map(mapBildirim));
+    if (data) {
+      const mapped = data.map(mapBildirim);
+      setBildirimler(mapped);
+      cacheSet(cacheKey, mapped);
+    }
   }
 
   async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}) {
@@ -234,10 +263,22 @@ export default function DashboardScreen() {
       supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).eq('id', b.id).then(() => {});
     }
     if (b.tip === 'eslesme-musteri') {
-      const { data: istekler } = await supabase.from('musteri_istekler').select('*, musteri_istek_ozellikler(ozellik_id)').eq('musteri_id', b.hedefId);
+      const [{ data: musteri }, { data: rpc }, { data: istekler }, { data: ilanlar }] = await Promise.all([
+        supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi').eq('id', b.hedefId).single(),
+        supabase.rpc('get_musteri_detay', { mid: b.hedefId }),
+        supabase.from('musteri_istekler').select('*, musteri_istek_ozellikler(ozellik_id)').eq('musteri_id', b.hedefId),
+        supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif'),
+      ]);
+      if (musteri) {
+        setMusteriDetay({
+          ...musteri,
+          notlar: ((rpc?.notlar ?? []) as any[]).slice(0, 5),
+          iletisim: (rpc?.iletisim ?? []) as any[],
+          istekler: (istekler ?? []) as any[],
+        });
+      }
       if (istekler?.length) {
-        const { data } = await supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif');
-        setDetayListe((data ?? []).filter((ilan: any) => (istekler ?? []).some((istek: any) => istekEslesiyor(istek, ilan))));
+        setDetayListe((ilanlar ?? []).filter((ilan: any) => (istekler ?? []).some((istek: any) => istekEslesiyor(istek, ilan))));
       } else {
         setDetayListe([]);
       }
@@ -756,9 +797,8 @@ export default function DashboardScreen() {
             </View>
 
             {(() => {
-              const sirali = [...bildirimler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
               return (
-                <View style={{ display: detayBildirim ? 'none' : 'flex', flexShrink: 1 }}>
+                <View style={{ display: detayBildirim ? 'none' : 'flex', flex: 1 }}>
                   {sirali.length === 0 ? (
                     <View style={styles.bdBos}>
                       <Text style={styles.bdBosText}>Bildirim yok</Text>
@@ -768,6 +808,9 @@ export default function DashboardScreen() {
                       data={sirali}
                       keyExtractor={b => b.id}
                       contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
+                      initialNumToRender={10}
+                      maxToRenderPerBatch={6}
+                      windowSize={15}
                       ListHeaderComponent={(
                         <TouchableOpacity onPress={tumunuOkunduYap} style={styles.bdTumuBtn}>
                           <Text style={styles.bdTumuText}>Tümünü okundu yap</Text>
@@ -796,6 +839,15 @@ export default function DashboardScreen() {
                                 {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
                               </View>
                               <Text style={styles.bdAlt}>{item.alt}</Text>
+                              {item.tags && item.tags.length > 0 ? (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                                  {item.tags.map((tg, i) => (
+                                    <View key={i} style={tg.kind === 'tip' ? styles.bdTipTag : tg.kind === 'konum' ? styles.bdKonumTag : tg.kind === 'oda' ? styles.bdOdaTag : styles.bdButceTag}>
+                                      <Text style={tg.kind === 'tip' ? styles.bdTipTagText : tg.kind === 'konum' ? styles.bdKonumTagText : tg.kind === 'oda' ? styles.bdOdaTagText : styles.bdButceTagText}>{tg.label}</Text>
+                                    </View>
+                                  ))}
+                                </View>
+                              ) : null}
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.bdMenuBtn}
@@ -818,7 +870,7 @@ export default function DashboardScreen() {
               ) : (
                 <ScrollView contentContainerStyle={{ padding: Spacing.md, gap: Spacing.lg }}>
                   {/* Bildirim sebebi */}
-                  {detayBildirim && detayBildirim.tip !== 'eslesme-ilan' && detayBildirim.tip !== 'fiyat-indi' ? (
+                  {detayBildirim && detayBildirim.tip !== 'eslesme-ilan' && detayBildirim.tip !== 'fiyat-indi' && detayBildirim.tip !== 'eslesme-musteri' ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: -8 }}>
                       <Text style={{ fontSize: 14 }}>
                         {detayBildirim.tip === 'takip' ? '⚠️' : detayBildirim.tip === 'gorev-gecikti' ? '📋' : detayBildirim.tip === 'sessiz' ? '🔕' : '🤖'}
@@ -928,6 +980,44 @@ export default function DashboardScreen() {
                           <Text style={{ fontSize: 12, color: '#78350f', lineHeight: 18 }}>{n.icerik}</Text>
                         </View>
                       ))}
+                    </View>
+                  ) : null}
+
+                  {/* Eşleşen İlanlar (sadece eslesme-musteri) */}
+                  {detayBildirim?.tip === 'eslesme-musteri' ? (
+                    <View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <Text style={styles.bdSectionTitle}>Eşleşen İlanlar</Text>
+                        <View style={{ backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1, marginTop: -8 }}>
+                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{detayListe.length}</Text>
+                        </View>
+                      </View>
+                      {detayListe.length === 0 ? (
+                        <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, paddingVertical: 16 }}>Eşleşen ilan bulunamadı.</Text>
+                      ) : (
+                        <View style={{ gap: 8 }}>
+                          {detayListe.map((item: any) => (
+                            <TouchableOpacity key={item.id} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); router.push(`/ilan/${item.id}` as any); }} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 10, flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                              {item.fotograflar?.[0]
+                                ? <R2Image source={item.fotograflar[0]} size="sm" style={{ width: 60, height: 60, borderRadius: 8 }} />
+                                : <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 20 }}>🏠</Text></View>
+                              }
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
+                                  <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, flex: 1 }} numberOfLines={1}>{item.baslik}</Text>
+                                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#E53935' }}>₺{Number(item.fiyat).toLocaleString('tr-TR')}</Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>📍 {[item.mahalle, item.ilce, item.konum].filter(Boolean).join(', ')}</Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                                  {item.kategori ? <View style={styles.bdTipTag}><Text style={styles.bdTipTagText}>{item.kategori}</Text></View> : null}
+                                  {item.oda_sayisi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{item.oda_sayisi}</Text></View> : null}
+                                  {item.bina_yasi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{item.bina_yasi}</Text></View> : null}
+                                </View>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
                     </View>
                   ) : null}
                 </ScrollView>
@@ -1044,7 +1134,6 @@ export default function DashboardScreen() {
             ) : detayListe.length === 0 ? (
               <View style={styles.bdBos}><Text style={styles.bdBosText}>Eşleşen bulunamadı</Text></View>
             ) : (
-              // Müşteri tipi bildirim → ilan listesi
               <FlatList
                 data={detayListe}
                 keyExtractor={d => d.id}
@@ -1346,6 +1435,14 @@ const styles = StyleSheet.create({
   bdFoto: { width: 48, height: 48, borderRadius: Radius.md },
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  bdTipTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(59,130,246,0.08)' },
+  bdTipTagText: { fontSize: 11, fontWeight: '600', color: '#2563eb' },
+  bdKonumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f0fdf4' },
+  bdKonumTagText: { fontSize: 11, fontWeight: '600', color: '#16a34a' },
+  bdButceTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#fff7ed' },
+  bdButceTagText: { fontSize: 11, fontWeight: '600', color: '#c2410c' },
+  bdOdaTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(124,58,237,0.08)' },
+  bdOdaTagText: { fontSize: 11, fontWeight: '600', color: '#7c3aed' },
   bdZaman: { fontSize: 11, color: Colors.outlineVariant, marginTop: 2 },
   bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   bdMenuText: { fontSize: 22, color: '#6b7280', fontWeight: '700', lineHeight: 24 },

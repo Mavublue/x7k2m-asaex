@@ -47,7 +47,7 @@ export default function AyarlarScreen() {
   async function handleLogout() {
     Alert.alert('Çıkış Yap', 'Hesabınızdan çıkmak istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
-      { text: 'Çıkış Yap', style: 'destructive', onPress: async () => { await cacheClear('panel_'); await cacheClear('ilan_'); await supabase.auth.signOut(); } },
+      { text: 'Çıkış Yap', style: 'destructive', onPress: async () => { await cacheClear('panel_'); await cacheClear('ilan_'); await cacheClear('app_'); await supabase.auth.signOut(); } },
     ]);
   }
 
