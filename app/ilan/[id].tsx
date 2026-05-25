@@ -23,6 +23,7 @@ import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
+import KolajModal from '../../components/KolajModal';
 import { Ilan } from '../../types';
 
 function ZoomableFoto({ source }: { source: string }) {
@@ -135,6 +136,7 @@ export default function IlanDetayScreen() {
   const [sosyalProfil, setSosyalProfil] = useState<SosyalProfil | null>(null);
   const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
   const [satildiModal, setSatildiModal] = useState(false);
+  const [kolajModal, setKolajModal] = useState(false);
 
   const fetchIlan = useCallback(() => {
     cacheGet<Ilan>(`ilan_${id}`).then(cached => {
@@ -782,6 +784,10 @@ export default function IlanDetayScreen() {
               <Text style={styles.menuItemText}>🏷  Satıldı Afişi</Text>
             </TouchableOpacity>
             <View style={styles.menuSep} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setKolajModal(true); }}>
+              <Text style={styles.menuItemText}>🖼  Kolaj</Text>
+            </TouchableOpacity>
+            <View style={styles.menuSep} />
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); linkModalAc(); }}>
               <Text style={styles.menuItemText}>🔗  Link Paylaş</Text>
             </TouchableOpacity>
@@ -1079,6 +1085,14 @@ export default function IlanDetayScreen() {
           ilan={ilan}
           visible={satildiModal}
           onClose={() => setSatildiModal(false)}
+        />
+      )}
+
+      {kolajModal && (
+        <KolajModal
+          ilan={ilan}
+          visible={kolajModal}
+          onClose={() => setKolajModal(false)}
         />
       )}
 
