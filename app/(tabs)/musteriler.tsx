@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
 
@@ -90,12 +91,21 @@ export default function MusterilerScreen() {
   }
 
   async function fetchMusteriler() {
-    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const cacheKey = `panel_musteriler_${session.user.id}`;
+    const cached = await cacheGet<MusteriListe[]>(cacheKey);
+    if (cached) { setMusteriler(cached); setFiltered(cached); setLoading(false); }
+    else setLoading(true);
     const { data } = await supabase
       .from('musteriler')
       .select('*, musteri_iletisim(ad, telefon, tip)')
       .order('olusturma_tarihi', { ascending: false });
-    if (data) { setMusteriler(data as MusteriListe[]); setFiltered(data as MusteriListe[]); }
+    if (data) {
+      setMusteriler(data as MusteriListe[]);
+      setFiltered(data as MusteriListe[]);
+      cacheSet(cacheKey, data);
+    }
     setLoading(false);
   }
 

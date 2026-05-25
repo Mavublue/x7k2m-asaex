@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import IlanDetayPopup from '../../components/IlanDetayPopup';
@@ -38,6 +39,11 @@ export default function OzelliklerScreen() {
   const [popupId, setPopupId] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const cacheKey = `panel_ozellikler_${session.user.id}`;
+    const cached = await cacheGet<Ozellik[]>(cacheKey);
+    if (cached) { setOzellikler(cached); setLoading(false); }
     const [{ data: ozData }, { data: jData }] = await Promise.all([
       supabase.from('ozellikler').select('id, ad').order('ad'),
       supabase.from('ilan_ozellikler').select('ozellik_id'),
@@ -45,7 +51,9 @@ export default function OzelliklerScreen() {
     if (ozData) {
       const sayim = new Map<string, number>();
       (jData ?? []).forEach((r: any) => sayim.set(r.ozellik_id, (sayim.get(r.ozellik_id) ?? 0) + 1));
-      setOzellikler(ozData.map(o => ({ id: o.id, ad: o.ad, sayi: sayim.get(o.id) ?? 0 })));
+      const liste = ozData.map(o => ({ id: o.id, ad: o.ad, sayi: sayim.get(o.id) ?? 0 }));
+      setOzellikler(liste);
+      cacheSet(cacheKey, liste);
     }
     setLoading(false);
   }, []);

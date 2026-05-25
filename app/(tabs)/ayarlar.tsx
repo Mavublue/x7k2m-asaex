@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { cacheClear } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
 export default function AyarlarScreen() {
@@ -46,7 +47,7 @@ export default function AyarlarScreen() {
   async function handleLogout() {
     Alert.alert('Çıkış Yap', 'Hesabınızdan çıkmak istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
-      { text: 'Çıkış Yap', style: 'destructive', onPress: () => supabase.auth.signOut() },
+      { text: 'Çıkış Yap', style: 'destructive', onPress: async () => { await cacheClear('panel_'); await cacheClear('ilan_'); await supabase.auth.signOut(); } },
     ]);
   }
 
