@@ -349,7 +349,7 @@ export default function SatildiAfisModal({ ilan, visible, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dimmer: { ...StyleSheet.absoluteFillObject },
-  panel: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '92%' },
+  panel: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   baslik: { fontSize: 16, fontWeight: '700', color: '#111' },
   kapat: { fontSize: 22, color: '#6b7280' },
