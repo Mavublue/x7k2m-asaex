@@ -19,8 +19,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
+import SatildiAfisModal from '../../components/SatildiAfisModal';
 import { Ilan } from '../../types';
 
 function ZoomableFoto({ source }: { source: string }) {
@@ -132,10 +134,14 @@ export default function IlanDetayScreen() {
   const [cogaltiyor, setCogaltiyor] = useState(false);
   const [sosyalProfil, setSosyalProfil] = useState<SosyalProfil | null>(null);
   const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
+  const [satildiModal, setSatildiModal] = useState(false);
 
   const fetchIlan = useCallback(() => {
+    cacheGet<Ilan>(`ilan_${id}`).then(cached => {
+      if (cached) { setIlan(cached); setLoading(false); }
+    });
     supabase.from('ilanlar').select('*').eq('id', id).single().then(({ data }) => {
-      if (data) setIlan(data);
+      if (data) { setIlan(data); cacheSet(`ilan_${id}`, data); }
       setLoading(false);
     });
     supabase.from('ilan_ozellikler')
@@ -767,6 +773,10 @@ export default function IlanDetayScreen() {
               <Text style={styles.menuItemText}>📱  Sosyal Medya Metni</Text>
             </TouchableOpacity>
             <View style={styles.menuSep} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setSatildiModal(true); }}>
+              <Text style={styles.menuItemText}>🏷  Satıldı Afişi</Text>
+            </TouchableOpacity>
+            <View style={styles.menuSep} />
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); linkModalAc(); }}>
               <Text style={styles.menuItemText}>🔗  Link Paylaş</Text>
             </TouchableOpacity>
@@ -1058,6 +1068,14 @@ export default function IlanDetayScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {satildiModal && (
+        <SatildiAfisModal
+          ilan={ilan}
+          visible={satildiModal}
+          onClose={() => setSatildiModal(false)}
+        />
+      )}
 
       <Modal visible={!!fullscreenFoto} transparent animationType="fade" onRequestClose={() => setFullscreenFoto(null)}>
         <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
