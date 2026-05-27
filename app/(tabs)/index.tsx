@@ -12,6 +12,17 @@ import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Eslesme } from '../../types';
 
+const FILTRE_SIRA = ['eslesme-ilan', 'eslesme-musteri', 'fiyat-indi', 'takip', 'gorev-gecikti', 'sessiz', 'asistan'];
+const FILTRE_BASLIK: Record<string, { baslik: string; ico: string }> = {
+  'eslesme-ilan': { baslik: 'Eşleşen Müşteriler', ico: '🏠' },
+  'eslesme-musteri': { baslik: 'Eşleşen İlanlar', ico: '👤' },
+  'fiyat-indi': { baslik: 'Fiyat İndirimleri', ico: '💸' },
+  'takip': { baslik: 'Takip Tarihleri', ico: '⚠️' },
+  'gorev-gecikti': { baslik: 'Gecikmiş Görevler', ico: '📋' },
+  'sessiz': { baslik: 'Hareketsiz', ico: '🔕' },
+  'asistan': { baslik: 'Asistan', ico: '🤖' },
+};
+
 function goreciZaman(iso: string): string {
   if (!iso) return '';
   const fark = Date.now() - new Date(iso).getTime();
@@ -63,12 +74,19 @@ export default function DashboardScreen() {
   const [musteriDetayYukleniyor, setMusteriDetayYukleniyor] = useState(false);
   const [ilanData, setIlanData] = useState<any | null>(null);
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
+  const [aktifFiltre, setAktifFiltre] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const takipY = useRef(0);
   const bildirimModalPending = useRef(false);
   const ilkFocus = useRef(true);
 
   const sirali = useMemo(() => [...bildirimler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '')), [bildirimler]);
+  const filtreliSirali = useMemo(() => aktifFiltre ? sirali.filter(b => b.tip === aktifFiltre) : sirali, [sirali, aktifFiltre]);
+  const filtreSayilar = useMemo(() => {
+    const s: Record<string, number> = {};
+    FILTRE_SIRA.forEach(t => { s[t] = sirali.filter(b => b.tip === t).length; });
+    return s;
+  }, [sirali]);
 
   useEffect(() => {
     fetchBildirimler();
@@ -803,18 +821,59 @@ export default function DashboardScreen() {
                     <View style={styles.bdBos}>
                       <Text style={styles.bdBosText}>Bildirim yok</Text>
                     </View>
+                  ) : filtreliSirali.length === 0 ? (
+                    <View style={[styles.bdBos, { flex: 0, paddingTop: 0 }]}>
+                      <View style={{ width: '100%', padding: Spacing.md, gap: 8 }}>
+                        <TouchableOpacity onPress={tumunuOkunduYap} style={{ alignSelf: 'flex-end' }}>
+                          <Text style={{ fontSize: 12, color: '#6b7280', textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : '#1a1b21' }}>Tümü ({sirali.length})</Text>
+                          </TouchableOpacity>
+                          {FILTRE_SIRA.filter(t => filtreSayilar[t] > 0).map(t => {
+                            const meta = FILTRE_BASLIK[t];
+                            const aktif = aktifFiltre === t;
+                            return (
+                              <TouchableOpacity key={t} onPress={() => setAktifFiltre(t)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktif ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Text style={{ fontSize: 12 }}>{meta.ico}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? '#fff' : '#1a1b21' }}>{meta.baslik} ({filtreSayilar[t]})</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                        <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, marginTop: 16 }}>Bu kategoride bildirim yok</Text>
+                      </View>
+                    </View>
                   ) : (
                     <FlatList
-                      data={sirali}
+                      data={filtreliSirali}
                       keyExtractor={b => b.id}
                       contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
                       initialNumToRender={10}
                       maxToRenderPerBatch={6}
                       windowSize={15}
                       ListHeaderComponent={(
-                        <TouchableOpacity onPress={tumunuOkunduYap} style={styles.bdTumuBtn}>
-                          <Text style={styles.bdTumuText}>Tümünü okundu yap</Text>
-                        </TouchableOpacity>
+                        <View style={{ gap: 8, marginBottom: 8 }}>
+                          <TouchableOpacity onPress={tumunuOkunduYap} style={{ alignSelf: 'flex-end' }}>
+                            <Text style={{ fontSize: 12, color: '#6b7280', textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                          </TouchableOpacity>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                            <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : '#1a1b21' }}>Tümü ({sirali.length})</Text>
+                            </TouchableOpacity>
+                            {FILTRE_SIRA.filter(t => filtreSayilar[t] > 0).map(t => {
+                              const meta = FILTRE_BASLIK[t];
+                              const aktif = aktifFiltre === t;
+                              return (
+                                <TouchableOpacity key={t} onPress={() => setAktifFiltre(t)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktif ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                  <Text style={{ fontSize: 12 }}>{meta.ico}</Text>
+                                  <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? '#fff' : '#1a1b21' }}>{meta.baslik} ({filtreSayilar[t]})</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
                       )}
                       renderItem={({ item }) => {
                         const isOkundu = item.okundu;
