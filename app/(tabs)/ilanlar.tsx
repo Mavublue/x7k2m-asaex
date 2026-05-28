@@ -450,6 +450,9 @@ export default function IlanlarScreen() {
       baslik: 'Filtrelenmiş İlanlar', expires_at: expiresAt, musteri_token: musteriToken,
     });
     if (error) { Alert.alert('Hata', error.message); setPaylasYukleniyor(false); return; }
+    await supabase.from('musteri_paylasim_gecmisi').insert(
+      ilanIds.map(ilanId => ({ user_id: session.user.id, musteri_id: paylasMusteri, ilan_id: ilanId }))
+    );
     setPaylasLink(`${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}`);
     setPaylasYukleniyor(false);
   }

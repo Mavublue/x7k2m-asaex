@@ -412,6 +412,10 @@ export default function IlanDetayScreen() {
       if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
     }
 
+    await supabase.from('musteri_paylasim_gecmisi').insert({
+      user_id: session.user.id, musteri_id: linkSeciliMusteri, ilan_id: id,
+    });
+
     setLinkUrl(`${process.env.EXPO_PUBLIC_WEB_URL}/${profilData?.slug}/${ilanData?.slug}?t=${token}`);
     setLinkYukleniyor(false);
   }

@@ -473,6 +473,9 @@ export default function MusteriDetayScreen() {
     const paketToken = `${adNorm || 'ilan'}-${suffix}`;
     const { error } = await supabase.from('paylasim_paketleri').insert({ token: paketToken, ilan_ids: linkSecimIds, emlakci_id: session.user.id, musteri_token: musteriToken, expires_at: expiresAt });
     if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    await supabase.from('musteri_paylasim_gecmisi').insert(
+      linkSecimIds.map(ilanId => ({ user_id: session.user.id, musteri_id: id, ilan_id: ilanId }))
+    );
     const url = `https://www.emlak-otomasyon.com/ozel-ilanlar/${paketToken}/${musteriToken}`;
     setLinkUrl(url);
     setLinkYukleniyor(false);
