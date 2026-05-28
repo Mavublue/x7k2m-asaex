@@ -5,7 +5,7 @@ import {
   StyleSheet, Image, ActivityIndicator, Alert,
   FlatList, Dimensions, Linking, Modal, TextInput, Platform, KeyboardAvoidingView, Keyboard, Animated,
 } from 'react-native';
-import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
@@ -15,7 +15,7 @@ import { renderSosyalMetin, type SosyalProfil } from '../../lib/sosyalMedya';
 
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
@@ -26,61 +26,80 @@ import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
 import { Ilan } from '../../types';
 
-function ZoomableFoto({ source }: { source: string }) {
-  const baseScale = useRef(new Animated.Value(1)).current;
-  const pinchScale = useRef(new Animated.Value(1)).current;
-  const scale = useRef(Animated.multiply(baseScale, pinchScale)).current;
-  const lastScale = useRef(1);
-  const offsetX = useRef(new Animated.Value(0)).current;
-  const offsetY = useRef(new Animated.Value(0)).current;
-  const lastOffsetX = useRef(0);
-  const lastOffsetY = useRef(0);
-  const pinchRef = useRef<PinchGestureHandler>(null);
-  const panRef = useRef<PanGestureHandler>(null);
+function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
+  fotos: string[]; initialIdx: number; onClose: () => void;
+  listRef: React.RefObject<FlatList<string> | null>;
+  thumbRef: React.RefObject<ScrollView | null>;
+}) {
+  const [idx, setIdx] = useState(initialIdx);
+  const translateY = useRef(new Animated.Value(0)).current;
+  const THUMB_W = 64 + 6;
 
-  const onPinchEvent = Animated.event([{ nativeEvent: { scale: pinchScale } }], { useNativeDriver: true });
+  useEffect(() => {
+    setIdx(initialIdx);
+    translateY.setValue(0);
+  }, [initialIdx]);
 
-  const onPinchStateChange = (e: any) => {
-    if (e.nativeEvent.oldState === State.ACTIVE) {
-      lastScale.current *= e.nativeEvent.scale;
-      if (lastScale.current < 1) {
-        lastScale.current = 1;
-        baseScale.setValue(1);
-        Animated.spring(offsetX, { toValue: 0, useNativeDriver: true }).start();
-        Animated.spring(offsetY, { toValue: 0, useNativeDriver: true }).start();
-        lastOffsetX.current = 0;
-        lastOffsetY.current = 0;
-      } else {
-        baseScale.setValue(lastScale.current);
-      }
-      pinchScale.setValue(1);
-    }
-  };
+  useEffect(() => {
+    const targetX = idx * THUMB_W - (SCREEN_WIDTH / 2 - 32);
+    thumbRef.current?.scrollTo({ x: Math.max(0, targetX), animated: true });
+  }, [idx]);
 
-  const onPanEvent = Animated.event(
-    [{ nativeEvent: { translationX: offsetX, translationY: offsetY } }],
-    { useNativeDriver: true }
-  );
-
+  const onPanEvent = Animated.event([{ nativeEvent: { translationY: translateY } }], { useNativeDriver: true });
   const onPanStateChange = (e: any) => {
     if (e.nativeEvent.oldState === State.ACTIVE) {
-      lastOffsetX.current += e.nativeEvent.translationX;
-      lastOffsetY.current += e.nativeEvent.translationY;
-      offsetX.setValue(lastOffsetX.current);
-      offsetY.setValue(lastOffsetY.current);
+      const dy = e.nativeEvent.translationY;
+      const vy = e.nativeEvent.velocityY;
+      if (dy > 120 || vy > 800) {
+        Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 180, useNativeDriver: true }).start(onClose);
+      } else {
+        Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+      }
     }
   };
 
+  const bgOpacity = translateY.interpolate({ inputRange: [0, SCREEN_HEIGHT], outputRange: [1, 0], extrapolate: 'clamp' });
+
   return (
-    <PanGestureHandler ref={panRef} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} simultaneousHandlers={[pinchRef]}>
-      <Animated.View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2 }}>
-        <PinchGestureHandler ref={pinchRef} onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange} simultaneousHandlers={[panRef]}>
-          <Animated.View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2, transform: [{ scale }, { translateX: offsetX }, { translateY: offsetY }] }}>
-            <R2Image source={source} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 1.2 }} resizeMode="contain" />
-          </Animated.View>
-        </PinchGestureHandler>
-      </Animated.View>
-    </PanGestureHandler>
+    <View style={{ flex: 1 }}>
+      <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#000', opacity: bgOpacity }} />
+      <PanGestureHandler onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} activeOffsetY={15} failOffsetX={[-20, 20]}>
+        <Animated.View style={{ flex: 1, transform: [{ translateY }] }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={onClose}>
+            <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
+          </TouchableOpacity>
+          <View style={{ position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center', zIndex: 5 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
+          </View>
+          <FlatList
+            ref={listRef}
+            data={fotos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={initialIdx}
+            getItemLayout={(_, i) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * i, index: i })}
+            keyExtractor={(_, i) => i.toString()}
+            onMomentumScrollEnd={e => setIdx(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
+            renderItem={({ item }) => (
+              <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
+                <R2Image source={item} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75 }} resizeMode="contain" />
+              </View>
+            )}
+          />
+          <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, height: 72, backgroundColor: 'rgba(0,0,0,0.35)', paddingVertical: 6 }}>
+            <ScrollView ref={thumbRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, alignItems: 'center', gap: 6 }}>
+              {fotos.map((f, i) => (
+                <TouchableOpacity key={i} onPress={() => { setIdx(i); listRef.current?.scrollToIndex({ index: i, animated: true }); }}
+                  style={{ width: 64, height: 56, borderRadius: 6, overflow: 'hidden', borderWidth: 2, borderColor: i === idx ? '#fff' : 'transparent', opacity: i === idx ? 1 : 0.55 }}>
+                  <R2Image source={f} style={{ width: '100%', height: '100%' }} resizeMode="cover" size="sm" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Animated.View>
+      </PanGestureHandler>
+    </View>
   );
 }
 
@@ -126,7 +145,9 @@ export default function IlanDetayScreen() {
   const [linkSeciliMusteri, setLinkSeciliMusteri] = useState<string>('');
   const flatListRef = useRef<any>(null);
   const thumbScrollRef = useRef<ScrollView>(null);
-  const [fullscreenFoto, setFullscreenFoto] = useState<string | null>(null);
+  const [fullscreenIdx, setFullscreenIdx] = useState<number | null>(null);
+  const fullscreenListRef = useRef<FlatList<string>>(null);
+  const fullscreenThumbRef = useRef<ScrollView>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
   const [sosyalModal, setSosyalModal] = useState(false);
   const [sosyalMetin, setSosyalMetin] = useState('');
@@ -508,7 +529,7 @@ export default function IlanDetayScreen() {
                 renderItem={({ item }) => {
                   const gizli = (ilan.gizli_fotograflar ?? []).includes(item);
                   return (
-                    <TouchableOpacity activeOpacity={0.95} onPress={() => setFullscreenFoto(item)}>
+                    <TouchableOpacity activeOpacity={0.95} onPress={() => setFullscreenIdx(aktifFoto)}>
                       <R2Image source={item} style={styles.anaFoto} resizeMode="cover" />
                       {gizli && (
                         <View style={styles.gizliBadge}>
@@ -1136,15 +1157,14 @@ export default function IlanDetayScreen() {
         />
       )}
 
-      <Modal visible={!!fullscreenFoto} transparent animationType="fade" onRequestClose={() => setFullscreenFoto(null)}>
-        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-          <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={() => setFullscreenFoto(null)}>
-            <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
-          </TouchableOpacity>
-          {fullscreenFoto && (
-            <ZoomableFoto key={fullscreenFoto} source={fullscreenFoto} />
-          )}
-        </View>
+      <Modal visible={fullscreenIdx !== null} transparent animationType="fade" onRequestClose={() => setFullscreenIdx(null)}>
+        <FullscreenGaleri
+          fotos={fotograflar}
+          initialIdx={fullscreenIdx ?? 0}
+          onClose={() => setFullscreenIdx(null)}
+          listRef={fullscreenListRef}
+          thumbRef={fullscreenThumbRef}
+        />
       </Modal>
 
     </SafeAreaView>
