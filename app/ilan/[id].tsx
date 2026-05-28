@@ -90,7 +90,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
           <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, height: 72, backgroundColor: 'rgba(0,0,0,0.35)', paddingVertical: 6 }}>
             <ScrollView ref={thumbRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, alignItems: 'center', gap: 6 }}>
               {fotos.map((f, i) => (
-                <TouchableOpacity key={i} onPress={() => { setIdx(i); listRef.current?.scrollToIndex({ index: i, animated: true }); }}
+                <TouchableOpacity key={i} onPress={() => { setIdx(i); listRef.current?.scrollToIndex({ index: i, animated: false }); }}
                   style={{ width: 64, height: 56, borderRadius: 6, overflow: 'hidden', borderWidth: 2, borderColor: i === idx ? '#fff' : 'transparent', opacity: i === idx ? 1 : 0.55 }}>
                   <R2Image source={f} style={{ width: '100%', height: '100%' }} resizeMode="cover" size="sm" />
                 </TouchableOpacity>
