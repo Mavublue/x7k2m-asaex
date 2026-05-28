@@ -84,7 +84,7 @@ function ZoomableFoto({ source }: { source: string }) {
   );
 }
 
-function buildDetayMapHtml(lat: number, lng: number) {
+function buildDetayMapHtml(lat: number, lng: number, emoji: string = '🏠') {
   return `<!DOCTYPE html><html>
 <head>
 <meta charset="utf-8"/>
@@ -97,7 +97,7 @@ function buildDetayMapHtml(lat: number, lng: number) {
 <script>
 var map=L.map('map',{zoomControl:true}).setView([${lat},${lng}],14);
 var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
-var icon=L.divIcon({html:'<div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))">🏠</div>',className:'',iconSize:[32,32],iconAnchor:[16,28]});
+var icon=L.divIcon({html:'<div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))">${emoji}</div>',className:'',iconSize:[32,32],iconAnchor:[16,28]});
 L.marker([${lat},${lng}],{icon:icon}).addTo(map);
 </script></body></html>`;
 }
@@ -632,11 +632,11 @@ export default function IlanDetayScreen() {
             ))}
           </View>
 
-          {/* Harita */}
+          {/* Harita - Birebir Konum (Emlakçı) */}
           {ilan.lat && ilan.lng ? (
             <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md }}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Konum</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Birebir Konum</Text>
                 <TouchableOpacity
                   style={styles.haritaBtn}
                   onPress={() => {
@@ -652,9 +652,45 @@ export default function IlanDetayScreen() {
                   <Text style={styles.haritaBtnText}>🗺 Haritada Aç</Text>
                 </TouchableOpacity>
               </View>
+              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: Spacing.md }}>Emlakçı konumu — müşteriye gösterilmez</Text>
               <View style={styles.mapBox}>
                 <WebView
-                  source={{ html: buildDetayMapHtml(ilan.lat, ilan.lng) }}
+                  source={{ html: buildDetayMapHtml(ilan.lat, ilan.lng, '🏠') }}
+                  style={styles.mapView}
+                  javaScriptEnabled
+                  domStorageEnabled
+                  originWhitelist={['*']}
+                  mixedContentMode="always"
+                  scrollEnabled
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {/* Harita - Müşteri Konumu */}
+          {ilan.musteri_lat && ilan.musteri_lng ? (
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Müşteri Konumu</Text>
+                <TouchableOpacity
+                  style={styles.haritaBtn}
+                  onPress={() => {
+                    const label = encodeURIComponent([ilan.konum, ilan.ilce].filter(Boolean).join(', '));
+                    const url = Platform.OS === 'ios'
+                      ? `maps:0,0?q=${label}@${ilan.musteri_lat},${ilan.musteri_lng}`
+                      : `geo:${ilan.musteri_lat},${ilan.musteri_lng}?q=${ilan.musteri_lat},${ilan.musteri_lng}(${label})`;
+                    Linking.openURL(url).catch(() =>
+                      Linking.openURL(`https://www.google.com/maps?q=${ilan.musteri_lat},${ilan.musteri_lng}`)
+                    );
+                  }}
+                >
+                  <Text style={styles.haritaBtnText}>🗺 Haritada Aç</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: Spacing.md }}>Müşteriye gösterilen tahmini konum</Text>
+              <View style={styles.mapBox}>
+                <WebView
+                  source={{ html: buildDetayMapHtml(ilan.musteri_lat, ilan.musteri_lng, '📍') }}
                   style={styles.mapView}
                   javaScriptEnabled
                   domStorageEnabled
