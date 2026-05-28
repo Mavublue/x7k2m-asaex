@@ -1482,7 +1482,7 @@ const styles = StyleSheet.create({
   takipTarih: { fontSize: 12, marginTop: 2 },
 
   bdModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  bdModalPanel: { backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' },
+  bdModalPanel: { backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '75%' },
   bdModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   bdModalBaslik: { fontSize: 17, fontWeight: '700', color: Colors.onSurface },
   bdKapat: { fontSize: 20, color: Colors.onSurfaceVariant, width: 32, textAlign: 'right' },
