@@ -108,12 +108,6 @@ export default function DashboardScreen() {
   useFocusEffect(useCallback(() => {
     fetchData();
     fetchGorevDashboard(gorevFiltre);
-    if (ilkFocus.current) { ilkFocus.current = false; return; }
-    fetchBildirimler();
-    if (bildirimModalPending.current) {
-      bildirimModalPending.current = false;
-      setTimeout(() => setBildirimModal(true), 300);
-    }
   }, []));
 
   const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
