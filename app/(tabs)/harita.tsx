@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
 
   popup: {
     position: 'absolute',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surfaceContainerLow,
     borderRadius: Radius.xl,
     flexDirection: 'row',
     alignItems: 'center',

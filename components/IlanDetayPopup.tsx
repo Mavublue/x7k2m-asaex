@@ -111,7 +111,7 @@ export default function IlanDetayPopup({ ilanId, onClose }: Props) {
           <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }}>
             {fotolar.length > 0 && (
               <View style={{ marginBottom: Spacing.lg }}>
-                <View style={{ position: 'relative', width: IMG_W, height: IMG_H, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: '#1a1b21' }}>
+                <View style={{ position: 'relative', width: IMG_W, height: IMG_H, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Colors.onSurface }}>
                   <FlatList
                     ref={listRef}
                     data={fotolar}
@@ -238,30 +238,30 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.outlineVariant },
   dotAktif: { backgroundColor: Colors.primary, width: 18 },
 
-  tipBadge: { alignSelf: 'flex-start', backgroundColor: '#1a1b21', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8 },
+  tipBadge: { alignSelf: 'flex-start', backgroundColor: Colors.onSurface, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8 },
   tipBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   baslik: { fontSize: 19, fontWeight: '700', color: Colors.onSurface, marginBottom: 4, lineHeight: 26 },
   lokasyon: { fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 10 },
   fiyat: { fontSize: 22, fontWeight: '700', color: Colors.onSurface, marginBottom: 14 },
 
   detayKart: {
-    backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', borderWidth: 1.5,
+    backgroundColor: 'rgba(34,197,94,0.12)', borderColor: '#bbf7d0', borderWidth: 1.5,
     borderRadius: Radius.lg, paddingHorizontal: 14, marginBottom: Spacing.md,
   },
   detayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, gap: 16 },
   detayRowSinir: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.07)' },
-  detayL: { fontSize: 13, fontWeight: '700', color: '#1a1b21' },
+  detayL: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
   detayV: { fontSize: 13, color: '#4b5563', flex: 1, textAlign: 'right' },
 
   kart: {
-    backgroundColor: '#fff', borderColor: Colors.surfaceContainerLow, borderWidth: 1,
+    backgroundColor: Colors.surfaceContainerLow, borderColor: Colors.surfaceContainerLow, borderWidth: 1,
     borderRadius: Radius.lg, padding: 14, marginBottom: Spacing.md,
   },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { backgroundColor: '#f0f9f4', borderColor: '#bbf7d0', borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
   chipText: { fontSize: 12, color: '#15803d', fontWeight: '600' },
-  aciklama: { fontSize: 13, color: '#374151', lineHeight: 22 },
+  aciklama: { fontSize: 13, color: Colors.onSurface, lineHeight: 22 },
 
   notKart: {
     backgroundColor: '#fffbeb', borderColor: '#fde68a', borderWidth: 1,

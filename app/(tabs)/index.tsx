@@ -561,7 +561,7 @@ export default function DashboardScreen() {
             </View>
           </View>
           {gorevDashboard.length === 0 ? (
-            <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? '#fff5f5' : '#f0fdf4', borderRadius: 10, alignItems: 'center' }}>
+            <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : 'rgba(34,197,94,0.12)', borderRadius: 10, alignItems: 'center' }}>
               <Text style={{ fontSize: 13, color: gorevFiltre === 'gecmis' ? '#ef4444' : '#16a34a', fontWeight: '500' }}>
                 {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}
               </Text>
@@ -578,7 +578,7 @@ export default function DashboardScreen() {
               const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
               return (
                 <TouchableOpacity key={g.id} onPress={() => router.push(`/musteri/${g.musteri_id}` as any)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? '#fff5f5' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? '#fecaca' : '#e5e7eb', borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a', marginBottom: 6 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a', marginBottom: 6 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>
                     <Text style={{ fontSize: 11, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 2 }}>
@@ -586,7 +586,7 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => gorevTamamlaDashboard(g.id)}
-                    style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
+                    style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(34,197,94,0.12)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)' }}>
                     <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
@@ -605,24 +605,24 @@ export default function DashboardScreen() {
         {/* Görev Düzenle Modal */}
         <Modal visible={!!editGorev} transparent animationType="fade" onRequestClose={() => setEditGorev(null)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+            <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
               <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 6 }}>✏️ Görevi Düzenle</Text>
-              {editGorev && (() => { const m = editGorev.musteriler; const lbl = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); return lbl ? <Text style={{ fontSize: 11, color: '#6b7280', marginBottom: 10 }}>{lbl}</Text> : null; })()}
+              {editGorev && (() => { const m = editGorev.musteriler; const lbl = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); return lbl ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginBottom: 10 }}>{lbl}</Text> : null; })()}
               <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı"
-                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                  <Text style={{ fontSize: 13, color: '#374151' }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: editSaatDate ? '#16a34a' : '#9ca3af' }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? 'rgba(134,239,172,0.5)' : Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: editSaatDate ? '#16a34a' : Colors.onSurfaceVariant }}>
                     {editSaatDate ? `⏰ ${String(editSaatDate.getHours()).padStart(2,'0')}:${String(editSaatDate.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
                   </Text>
                 </TouchableOpacity>
               </View>
               {editSaatDate && !showEditTarihPicker && !showEditSaatPicker && (
                 <TouchableOpacity onPress={() => setEditSaatDate(null)} style={{ marginBottom: 12, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
+                  <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>Saati kaldır ✕</Text>
                 </TouchableOpacity>
               )}
               {showEditTarihPicker && <>
@@ -639,8 +639,8 @@ export default function DashboardScreen() {
               </>}
               {!showEditTarihPicker && !showEditSaatPicker && (
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                  <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>İptal</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
                     <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
@@ -657,29 +657,29 @@ export default function DashboardScreen() {
         {/* Genel Görev Ekle Modal */}
         <Modal visible={genelGorevModal} transparent animationType="fade" onRequestClose={() => setGenelGorevModal(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+            <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
               <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Görev Ekle</Text>
               <TextInput value={genelBaslik} onChangeText={setGenelBaslik} placeholder="Görev başlığı"
-                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
               {genelMusteriId ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderWidth: 1, borderColor: '#86efac', borderRadius: 8, backgroundColor: '#f0fdf4', marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: 8, backgroundColor: 'rgba(34,197,94,0.12)', marginBottom: 8 }}>
                   <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600', flex: 1 }}>
                     {(() => { const m = musteriListesi.find(x => x.id === genelMusteriId); return [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); })()}
                   </Text>
                   <TouchableOpacity onPress={() => { setGenelMusteriId(null); setGenelMusteriArama(''); }}>
-                    <Text style={{ color: '#6b7280', fontSize: 14 }}>✕</Text>
+                    <Text style={{ color: Colors.onSurfaceVariant, fontSize: 14 }}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={{ marginBottom: 8 }}>
                   <TextInput value={genelMusteriArama} onChangeText={setGenelMusteriArama} placeholder="Müşteri ara (opsiyonel)"
-                    style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+                    style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13 }} />
                   {genelMusteriArama.trim().length > 0 && (
-                    <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 140, overflow: 'hidden' }}>
+                    <View style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, marginTop: 2, maxHeight: 140, overflow: 'hidden' }}>
                       {musteriListesi.filter(m => `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(genelMusteriArama.toLowerCase())).slice(0,6).map(m => (
                         <TouchableOpacity key={m.id} onPress={() => { setGenelMusteriId(m.id); setGenelMusteriArama(''); }}
-                          style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-                          <Text style={{ fontSize: 13, color: '#374151' }}>{[m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
+                          style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh }}>
+                          <Text style={{ fontSize: 13, color: Colors.onSurface }}>{[m.etiketler ? `#${m.etiketler}` : null, m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -687,18 +687,18 @@ export default function DashboardScreen() {
                 </View>
               )}
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGenelTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                  <Text style={{ fontSize: 13, color: '#374151' }}>📅 {genelTarihDate.toLocaleDateString('tr-TR')}</Text>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGenelTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {genelTarihDate.toLocaleDateString('tr-TR')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGenelSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: genelSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: genelSaatDate ? '#16a34a' : '#9ca3af' }}>
+                <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowGenelSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: genelSaatDate ? 'rgba(134,239,172,0.5)' : Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: genelSaatDate ? '#16a34a' : Colors.onSurfaceVariant }}>
                     {genelSaatDate ? `⏰ ${String(genelSaatDate.getHours()).padStart(2,'0')}:${String(genelSaatDate.getMinutes()).padStart(2,'0')}` : '⏰ Saat'}
                   </Text>
                 </TouchableOpacity>
               </View>
               {genelSaatDate && !showGenelTarihPicker && !showGenelSaatPicker && (
                 <TouchableOpacity onPress={() => setGenelSaatDate(null)} style={{ marginBottom: 10, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
+                  <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>Saati kaldır ✕</Text>
                 </TouchableOpacity>
               )}
               {showGenelTarihPicker && <>
@@ -716,12 +716,12 @@ export default function DashboardScreen() {
               {!showGenelTarihPicker && !showGenelSaatPicker && (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                   <TouchableOpacity onPress={() => { setGenelGorevModal(false); setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); }}
-                    style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                    style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>İptal</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={genelGorevEkle}
-                    style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: genelBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                    style={{ flex: 1, padding: 12, backgroundColor: genelBaslik.trim() ? '#16a34a' : Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: genelBaslik.trim() ? '#fff' : Colors.onSurfaceVariant, fontWeight: '700' }}>Ekle</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -732,12 +732,12 @@ export default function DashboardScreen() {
         {/* Görev Sil Onay */}
         <Modal visible={!!silOnayId} transparent animationType="fade" onRequestClose={() => setSilOnayId(null)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 320 }}>
+            <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 320 }}>
               <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 8 }}>🗑 Görevi Sil</Text>
-              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>Bu görev kalıcı olarak silinecek. Emin misiniz?</Text>
+              <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 20 }}>Bu görev kalıcı olarak silinecek. Emin misiniz?</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity onPress={() => setSilOnayId(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                <TouchableOpacity onPress={() => setSilOnayId(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => silOnayId && gorevSilDashboard(silOnayId)} style={{ flex: 1, padding: 12, backgroundColor: '#ef4444', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Sil</Text>
@@ -767,14 +767,14 @@ export default function DashboardScreen() {
                   style={[styles.takipKart, gecmis && styles.takipKartGecmis]}
                   onPress={() => router.push(`/musteri/${m.id}` as any)}
                 >
-                  <View style={[styles.takipAvatar, { backgroundColor: gecmis ? '#fee2e2' : Colors.primaryFixed }]}>
-                    <Text style={[styles.takipAvatarText, { color: gecmis ? '#991b1b' : Colors.primary }]}>
+                  <View style={[styles.takipAvatar, { backgroundColor: gecmis ? 'rgba(239,68,68,0.15)' : Colors.primaryFixed }]}>
+                    <Text style={[styles.takipAvatarText, { color: gecmis ? '#fca5a5' : Colors.primary }]}>
                       {m.ad?.[0]?.toUpperCase() ?? '?'}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.takipAd}>{[m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
-                    <Text style={[styles.takipTarih, { color: gecmis ? '#991b1b' : Colors.primary }]}>
+                    <Text style={[styles.takipTarih, { color: gecmis ? '#fca5a5' : Colors.primary }]}>
                       {gecmis ? '⚠️ Gecikmiş — ' : '📅 '}{tarih}
                     </Text>
                   </View>
@@ -819,24 +819,24 @@ export default function DashboardScreen() {
                     <View style={[styles.bdBos, { flex: 0, paddingTop: 0 }]}>
                       <View style={{ width: '100%', padding: Spacing.md, gap: 8 }}>
                         <TouchableOpacity onPress={tumunuOkunduYap} style={{ alignSelf: 'flex-end' }}>
-                          <Text style={{ fontSize: 12, color: '#6b7280', textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                          <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
                         </TouchableOpacity>
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                          <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' }}>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : '#1a1b21' }}>Tümü ({sirali.length})</Text>
+                          <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : Colors.onSurface }}>Tümü ({sirali.length})</Text>
                           </TouchableOpacity>
                           {FILTRE_SIRA.filter(t => filtreSayilar[t] > 0).map(t => {
                             const meta = FILTRE_BASLIK[t];
                             const aktif = aktifFiltre === t;
                             return (
-                              <TouchableOpacity key={t} onPress={() => setAktifFiltre(t)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktif ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <TouchableOpacity key={t} onPress={() => setAktifFiltre(t)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktif ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                                 <Text style={{ fontSize: 12 }}>{meta.ico}</Text>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? '#fff' : '#1a1b21' }}>{meta.baslik} ({filtreSayilar[t]})</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? '#fff' : Colors.onSurface }}>{meta.baslik} ({filtreSayilar[t]})</Text>
                               </TouchableOpacity>
                             );
                           })}
                         </View>
-                        <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, marginTop: 16 }}>Bu kategoride bildirim yok</Text>
+                        <Text style={{ textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 13, marginTop: 16 }}>Bu kategoride bildirim yok</Text>
                       </View>
                     </View>
                   ) : (
@@ -850,19 +850,19 @@ export default function DashboardScreen() {
                       ListHeaderComponent={(
                         <View style={{ gap: 8, marginBottom: 8 }}>
                           <TouchableOpacity onPress={tumunuOkunduYap} style={{ alignSelf: 'flex-end' }}>
-                            <Text style={{ fontSize: 12, color: '#6b7280', textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
                           </TouchableOpacity>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                            <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' }}>
-                              <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : '#1a1b21' }}>Tümü ({sirali.length})</Text>
+                            <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : Colors.onSurface }}>Tümü ({sirali.length})</Text>
                             </TouchableOpacity>
                             {FILTRE_SIRA.filter(t => filtreSayilar[t] > 0).map(t => {
                               const meta = FILTRE_BASLIK[t];
                               const aktif = aktifFiltre === t;
                               return (
-                                <TouchableOpacity key={t} onPress={() => setAktifFiltre(t)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktif ? '#1a1b21' : '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <TouchableOpacity key={t} onPress={() => setAktifFiltre(t)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktif ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                                   <Text style={{ fontSize: 12 }}>{meta.ico}</Text>
-                                  <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? '#fff' : '#1a1b21' }}>{meta.baslik} ({filtreSayilar[t]})</Text>
+                                  <Text style={{ fontSize: 12, fontWeight: '600', color: aktif ? '#fff' : Colors.onSurface }}>{meta.baslik} ({filtreSayilar[t]})</Text>
                                 </TouchableOpacity>
                               );
                             })}
@@ -879,7 +879,7 @@ export default function DashboardScreen() {
                               </TouchableOpacity>
                             ) : (
                               <TouchableOpacity style={[styles.bdIcon, {
-                                backgroundColor: item.tip === 'takip' ? '#fee2e2' : item.tip === 'gorev-gecikti' ? '#fef3c7' : item.tip === 'sessiz' ? '#f3e8ff' : item.tip === 'asistan' ? '#e0f2fe' : item.tip === 'eslesme-musteri' ? Colors.primaryFixed : item.tip === 'fiyat-indi' ? '#ffedd5' : '#f0fdf4'
+                                backgroundColor: item.tip === 'takip' ? 'rgba(239,68,68,0.15)' : item.tip === 'gorev-gecikti' ? 'rgba(234,179,8,0.18)' : item.tip === 'sessiz' ? 'rgba(168,85,247,0.18)' : item.tip === 'asistan' ? 'rgba(14,165,233,0.18)' : item.tip === 'eslesme-musteri' ? Colors.primaryFixed : item.tip === 'fiyat-indi' ? 'rgba(249,115,22,0.18)' : 'rgba(34,197,94,0.12)'
                               }]} onPress={() => bildirimDetayAc(item)}>
                                 <Text style={{ fontSize: 16 }}>
                                   {item.tip === 'takip' ? '⚠️' : item.tip === 'gorev-gecikti' ? '📋' : item.tip === 'sessiz' ? '🔕' : item.tip === 'asistan' ? '🤖' : item.tip === 'eslesme-musteri' ? '👤' : item.tip === 'fiyat-indi' ? '💸' : '🏠'}
@@ -933,7 +933,7 @@ export default function DashboardScreen() {
                   ) : null}
 
                   {/* Header kartı */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.md, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: Colors.surfaceContainerLow }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.md, backgroundColor: Colors.surfaceContainerLow, borderRadius: 14, borderWidth: 1, borderColor: Colors.surfaceContainerLow }}>
                     <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={{ fontWeight: '700', color: '#fff', fontSize: 17 }}>
                         {`${(musteriDetay.ad ?? '').charAt(0)}${(musteriDetay.soyad ?? '').charAt(0)}`.toUpperCase() || '?'}
@@ -942,24 +942,24 @@ export default function DashboardScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                         <Text style={{ fontSize: 15, fontWeight: '800', color: Colors.onSurface }}>{[musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ')}</Text>
-                        {musteriDetay.etiketler ? <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '600' }}>#{musteriDetay.etiketler}</Text> : null}
+                        {musteriDetay.etiketler ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600' }}>#{musteriDetay.etiketler}</Text> : null}
                       </View>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
                         {musteriDetay.durum ? (
-                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: musteriDetay.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }}>
-                            <Text style={{ fontSize: 10, fontWeight: '600', color: musteriDetay.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }}>{musteriDetay.durum}</Text>
+                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: musteriDetay.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : Colors.surfaceContainerHigh }}>
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: musteriDetay.durum === 'Aktif' ? '#3aaa6e' : Colors.onSurfaceVariant }}>{musteriDetay.durum}</Text>
                           </View>
                         ) : null}
                         {musteriDetay.musteri_tipi && musteriDetay.musteri_tipi !== 'Bireysel' ? (
-                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f3f4f6' }}>
-                            <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280' }}>{musteriDetay.musteri_tipi}</Text>
+                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.surfaceContainerHigh }}>
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.onSurfaceVariant }}>{musteriDetay.musteri_tipi}</Text>
                           </View>
                         ) : null}
                       </View>
                     </View>
                     <View style={{ gap: 6, alignItems: 'flex-end' }}>
                       {musteriDetay.telefon ? (
-                        <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                        <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
                           <Text style={{ fontSize: 15 }}>📞</Text>
                         </TouchableOpacity>
                       ) : null}
@@ -977,12 +977,12 @@ export default function DashboardScreen() {
                     <View>
                       <Text style={styles.bdSectionTitle}>Ek Kişiler</Text>
                       {(musteriDetay.iletisim ?? []).map((k: any) => (
-                        <View key={k.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 6 }}>
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', flex: 1 }}>{k.ad}</Text>
-                          {k.tip ? <Text style={{ fontSize: 11, color: '#9ca3af' }}>{k.tip}</Text> : null}
+                        <View key={k.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: Colors.surface, borderRadius: 8, marginBottom: 6 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, flex: 1 }}>{k.ad}</Text>
+                          {k.tip ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>{k.tip}</Text> : null}
                           {k.telefon ? (
                             <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${k.telefon}`); }}>
-                              <Text style={{ fontSize: 11, color: '#6b7280' }}>📞 {k.telefon}</Text>
+                              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text>
                             </TouchableOpacity>
                           ) : null}
                         </View>
@@ -995,7 +995,7 @@ export default function DashboardScreen() {
                     <View>
                       <Text style={styles.bdSectionTitle}>İstekler</Text>
                       {(musteriDetay.istekler ?? []).map((istek: any, idx: number) => (
-                        <View key={istek.id} style={{ backgroundColor: '#fafafa', borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                        <View key={istek.id} style={{ backgroundColor: '#fafafa', borderWidth: 1, borderColor: Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 }}>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                             <View style={{ backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
                               <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>#{idx + 1}</Text>
@@ -1046,11 +1046,11 @@ export default function DashboardScreen() {
                         </View>
                       </View>
                       {detayListe.length === 0 ? (
-                        <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, paddingVertical: 16 }}>Eşleşen ilan bulunamadı.</Text>
+                        <Text style={{ textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 13, paddingVertical: 16 }}>Eşleşen ilan bulunamadı.</Text>
                       ) : (
                         <View style={{ gap: 8 }}>
                           {detayListe.map((item: any) => (
-                            <TouchableOpacity key={item.id} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); router.push(`/ilan/${item.id}` as any); }} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 10, flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                            <TouchableOpacity key={item.id} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); router.push(`/ilan/${item.id}` as any); }} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, padding: 10, flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: Colors.outlineVariant }}>
                               {item.fotograflar?.[0]
                                 ? <R2Image source={item.fotograflar[0]} size="sm" style={{ width: 60, height: 60, borderRadius: 8 }} />
                                 : <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 20 }}>🏠</Text></View>
@@ -1060,7 +1060,7 @@ export default function DashboardScreen() {
                                   <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, flex: 1 }} numberOfLines={1}>{item.baslik}</Text>
                                   <Text style={{ fontSize: 13, fontWeight: '800', color: '#E53935' }}>₺{Number(item.fiyat).toLocaleString('tr-TR')}</Text>
                                 </View>
-                                <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>📍 {[item.mahalle, item.ilce, item.konum].filter(Boolean).join(', ')}</Text>
+                                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 }}>📍 {[item.mahalle, item.ilce, item.konum].filter(Boolean).join(', ')}</Text>
                                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
                                   {item.kategori ? <View style={styles.bdTipTag}><Text style={styles.bdTipTagText}>{item.kategori}</Text></View> : null}
                                   {item.oda_sayisi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{item.oda_sayisi}</Text></View> : null}
@@ -1090,7 +1090,7 @@ export default function DashboardScreen() {
               // İlan detay: foto kart + eşleşen müşteriler
               <ScrollView contentContainerStyle={{ padding: Spacing.md }}>
                 {detayBildirim?.tip === 'fiyat-indi' && detayBildirim.veri ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#ffedd5', borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#fed7aa' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: 'rgba(249,115,22,0.18)', borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(249,115,22,0.4)' }}>
                     <Text style={{ fontSize: 18 }}>💸</Text>
                     <Text style={{ flex: 1, fontSize: 12, color: '#9a3412', fontWeight: '600' }}>
                       Fiyat ₺{Number(detayBildirim.veri.eski_fiyat ?? 0).toLocaleString('tr-TR')} → ₺{Number(detayBildirim.veri.yeni_fiyat ?? 0).toLocaleString('tr-TR')}
@@ -1098,25 +1098,25 @@ export default function DashboardScreen() {
                   </View>
                 ) : null}
                 {ilanData ? (
-                  <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: Colors.outlineVariant }}>
                     {ilanData.fotograflar?.[0] ? (
                       <R2Image source={ilanData.fotograflar[0]} size="lg" style={{ width: '100%', height: 180 }} />
                     ) : null}
                     <View style={{ padding: 14 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                         <View style={{ flex: 1, marginRight: 10 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#6b7280', letterSpacing: 0.7, marginBottom: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.7, marginBottom: 4 }}>
                             {`${ilanData.tip ?? ''}${ilanData.kategori ? ` · ${ilanData.kategori}` : ''}`.toUpperCase()}
                           </Text>
                           <Text style={{ fontSize: 15, fontWeight: '800', color: Colors.onSurface, lineHeight: 20 }} numberOfLines={2}>{ilanData.baslik}</Text>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
                           <Text style={{ fontSize: 17, fontWeight: '800', color: '#E53935' }}>₺{Number(ilanData.fiyat).toLocaleString('tr-TR')}</Text>
-                          {ilanData.portfoy_no ? <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>#{ilanData.portfoy_no}</Text> : null}
+                          {ilanData.portfoy_no ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 }}>#{ilanData.portfoy_no}</Text> : null}
                         </View>
                       </View>
                       {[ilanData.mahalle, ilanData.ilce, ilanData.konum].filter(Boolean).join(', ') ? (
-                        <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>📍 {[ilanData.mahalle, ilanData.ilce, ilanData.konum].filter(Boolean).join(', ')}</Text>
+                        <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 10 }}>📍 {[ilanData.mahalle, ilanData.ilce, ilanData.konum].filter(Boolean).join(', ')}</Text>
                       ) : null}
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                         {ilanData.oda_sayisi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.oda_sayisi}</Text></View> : null}
@@ -1124,12 +1124,12 @@ export default function DashboardScreen() {
                         {ilanData.bina_yasi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.bina_yasi}</Text></View> : null}
                         {ilanData.bulundugu_kat ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{ilanData.bulundugu_kat}. kat</Text></View> : null}
                       </View>
-                      <View style={{ borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 10, alignItems: 'flex-end' }}>
+                      <View style={{ borderTopWidth: 1, borderTopColor: Colors.surfaceContainerHigh, paddingTop: 10, alignItems: 'flex-end' }}>
                         <TouchableOpacity onPress={() => {
                           setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false);
                           router.push(`/ilan/${ilanData.id}` as any);
-                        }} style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>İlanı Görüntüle →</Text>
+                        }} style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>İlanı Görüntüle →</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1144,7 +1144,7 @@ export default function DashboardScreen() {
                 </View>
 
                 {detayListe.length === 0 ? (
-                  <Text style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, paddingVertical: 20 }}>Eşleşen müşteri bulunamadı.</Text>
+                  <Text style={{ textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 13, paddingVertical: 20 }}>Eşleşen müşteri bulunamadı.</Text>
                 ) : (
                   <View style={{ gap: 8 }}>
                     {detayListe.map((m: any) => {
@@ -1157,17 +1157,17 @@ export default function DashboardScreen() {
                         i.butce_max ? `max ₺${Number(i.butce_max).toLocaleString('tr-TR')}` : null,
                       ]).filter(Boolean) as string[];
                       return (
-                        <TouchableOpacity key={m.id} onPress={() => musteriDetayAc(m)} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#6b7280', alignItems: 'center', justifyContent: 'center' }}>
+                        <TouchableOpacity key={m.id} onPress={() => musteriDetayAc(m)} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.onSurfaceVariant, alignItems: 'center', justifyContent: 'center' }}>
                             <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{initials}</Text>
                           </View>
                           <View style={{ flex: 1, minWidth: 0 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
                               <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface }}>{[m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
-                              {m.etiketler ? <Text style={{ fontSize: 10, color: '#9ca3af', fontWeight: '600' }}>#{m.etiketler}</Text> : null}
+                              {m.etiketler ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, fontWeight: '600' }}>#{m.etiketler}</Text> : null}
                               {m.durum ? (
-                                <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }}>
-                                  <Text style={{ fontSize: 9, fontWeight: '600', color: m.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }}>{m.durum}</Text>
+                                <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999, backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : Colors.surfaceContainerHigh }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '600', color: m.durum === 'Aktif' ? '#3aaa6e' : Colors.onSurfaceVariant }}>{m.durum}</Text>
                                 </View>
                               ) : null}
                             </View>
@@ -1178,7 +1178,7 @@ export default function DashboardScreen() {
                             </View>
                           </View>
                           {m.telefon ? (
-                            <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${m.telefon}`); }} style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' }}>
+                            <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${m.telefon}`); }} style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
                               <Text style={{ fontSize: 14 }}>📞</Text>
                             </TouchableOpacity>
                           ) : null}
@@ -1187,7 +1187,7 @@ export default function DashboardScreen() {
                               <Text style={{ fontSize: 14, color: '#fff' }}>🔗</Text>
                             </TouchableOpacity>
                           ) : null}
-                          <Text style={{ color: '#d1d5db', fontSize: 18 }}>›</Text>
+                          <Text style={{ color: Colors.outline, fontSize: 18 }}>›</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -1273,7 +1273,7 @@ export default function DashboardScreen() {
               keyExtractor={g => g.id}
               contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xl, gap: 6 }}
               ListEmptyComponent={
-                <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? '#fff5f5' : '#f0fdf4', borderRadius: 10, alignItems: 'center' }}>
+                <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : 'rgba(34,197,94,0.12)', borderRadius: 10, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: gorevFiltre === 'gecmis' ? '#ef4444' : '#16a34a', fontWeight: '500' }}>
                     {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}
                   </Text>
@@ -1290,7 +1290,7 @@ export default function DashboardScreen() {
                 const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
                 return (
                   <TouchableOpacity onPress={() => { setGorevPanel(false); router.push(`/musteri/${g.musteri_id}` as any); }}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? '#fff5f5' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? '#fecaca' : '#e5e7eb', borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a' }}>
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a' }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>
                       <Text style={{ fontSize: 11, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 2 }}>
@@ -1298,7 +1298,7 @@ export default function DashboardScreen() {
                       </Text>
                     </View>
                     <TouchableOpacity onPress={() => gorevTamamlaDashboard(g.id)}
-                      style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(34,197,94,0.12)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)' }}>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
@@ -1479,7 +1479,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm,
     borderLeftWidth: 3, borderLeftColor: Colors.primary,
   },
-  takipKartGecmis: { borderLeftColor: '#ef4444', backgroundColor: '#fff5f5' },
+  takipKartGecmis: { borderLeftColor: '#ef4444', backgroundColor: Colors.primaryFixed },
   takipAvatar: { width: 40, height: 40, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   takipAvatarText: { fontWeight: '700', fontSize: 16 },
   takipAd: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
@@ -1492,7 +1492,7 @@ const styles = StyleSheet.create({
   bdKapat: { fontSize: 20, color: Colors.onSurfaceVariant, width: 32, textAlign: 'right' },
   bdBos: { padding: Spacing.xl * 2, alignItems: 'center' },
   bdBosText: { color: Colors.onSurfaceVariant, fontSize: 14 },
-  bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: Radius.lg, padding: Spacing.md },
+  bdItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: Spacing.md },
   bdItemYeni: { backgroundColor: 'rgba(229,57,53,0.18)' },
   bdIcon: { width: 44, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   bdFoto: { width: 48, height: 48, borderRadius: Radius.md },
@@ -1500,7 +1500,7 @@ const styles = StyleSheet.create({
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   bdTipTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(59,130,246,0.08)' },
   bdTipTagText: { fontSize: 11, fontWeight: '600', color: '#2563eb' },
-  bdKonumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f0fdf4' },
+  bdKonumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(34,197,94,0.12)' },
   bdKonumTagText: { fontSize: 11, fontWeight: '600', color: '#16a34a' },
   bdButceTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#fff7ed' },
   bdButceTagText: { fontSize: 11, fontWeight: '600', color: '#c2410c' },
@@ -1508,19 +1508,19 @@ const styles = StyleSheet.create({
   bdOdaTagText: { fontSize: 11, fontWeight: '600', color: '#7c3aed' },
   bdZaman: { fontSize: 11, color: Colors.outlineVariant, marginTop: 2 },
   bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  bdMenuText: { fontSize: 22, color: '#6b7280', fontWeight: '700', lineHeight: 24 },
+  bdMenuText: { fontSize: 22, color: Colors.onSurfaceVariant, fontWeight: '700', lineHeight: 24 },
   bdMenuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' },
-  bdMenuPopup: { backgroundColor: '#fff', borderRadius: 12, minWidth: 220, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  bdMenuPopup: { backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, minWidth: 220, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   bdMenuItem: { paddingVertical: 14, paddingHorizontal: 18 },
   bdMenuItemText: { fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
-  bdMenuSep: { height: 1, backgroundColor: '#f3f4f6' },
-  bdTumuBtn: { alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
+  bdMenuSep: { height: 1, backgroundColor: Colors.surfaceContainerHigh },
+  bdTumuBtn: { alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14, backgroundColor: Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant, marginBottom: 8 },
   bdTumuText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   bdDetayItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md, overflow: 'hidden' },
   bdDetayFoto: { width: 52, height: 52, borderRadius: Radius.md },
-  bdSectionTitle: { fontSize: 11, fontWeight: '700', color: '#6b7280', letterSpacing: 0.7, marginBottom: 8, textTransform: 'uppercase' },
-  bdTag: { backgroundColor: '#f3f4f6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  bdTagText: { fontSize: 11, fontWeight: '600', color: '#374151' },
+  bdSectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.7, marginBottom: 8, textTransform: 'uppercase' },
+  bdTag: { backgroundColor: Colors.surfaceContainerHigh, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  bdTagText: { fontSize: 11, fontWeight: '600', color: Colors.onSurface },
   bdTipTag: { backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   bdTipTagText: { fontSize: 10, fontWeight: '600', color: '#E53935' },
   bdKonumTag: { backgroundColor: 'rgba(59,130,246,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },

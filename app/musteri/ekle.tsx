@@ -369,7 +369,7 @@ export default function MusteriEkleScreen() {
                 {ekKisiler.map((k, idx) => (
                   <View key={idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 10, gap: 8 }}>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Ad Soyad" placeholderTextColor={Colors.outlineVariant}
+                      <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceContainerLow }]} placeholder="Ad Soyad" placeholderTextColor={Colors.outlineVariant}
                         value={k.ad} onChangeText={v => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, ad: v } : x))} />
                       <TouchableOpacity onPress={() => setEkKisiler(p => p.filter((_, i) => i !== idx))}
                         style={{ width: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryFixed, borderRadius: Radius.lg }}>
@@ -382,7 +382,7 @@ export default function MusteriEkleScreen() {
                           onChange={(kk, nn) => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, kod: kk, numara: nn } : x))} />
                       </View>
                       <TouchableOpacity onPress={() => setTipModal(idx)}
-                        style={[styles.input, { width: 110, backgroundColor: '#fff', justifyContent: 'center' }]}>
+                        style={[styles.input, { width: 110, backgroundColor: Colors.surfaceContainerLow, justifyContent: 'center' }]}>
                         <Text style={{ fontSize: 14, color: Colors.onSurface }}>{k.tip} ▾</Text>
                       </TouchableOpacity>
                     </View>
@@ -402,9 +402,9 @@ export default function MusteriEkleScreen() {
               </TouchableOpacity>
             </View>
             {istekler.map((istek, idx) => (
-              <View key={idx} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: Radius.lg, overflow: 'hidden', marginTop: 8 }}>
+              <View key={idx} style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: Radius.lg, overflow: 'hidden', marginTop: 8 }}>
                 {/* Kart başlık */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.surfaceContainerHigh, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: '#E53935', letterSpacing: 0.5 }}>#{idx + 1} İSTEK</Text>
                   {istekler.length > 1 && (
                     <TouchableOpacity onPress={() => setIstekler(p => p.filter((_, i) => i !== idx))}>
@@ -413,11 +413,11 @@ export default function MusteriEkleScreen() {
                   )}
                 </View>
                 {/* Bütçe */}
-                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bütçe (₺)</Text>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Bütçe (₺)</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', gap: 8 }}>
                     <TextInput style={[styles.input, { flex: 1 }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
                       value={istek.butceMin} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMin: formatButce(v) } : x))} />
                     <TextInput style={[styles.input, { flex: 1 }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
@@ -425,11 +425,11 @@ export default function MusteriEkleScreen() {
                   </View>
                 </View>
                 {/* Portföy Tipi */}
-                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Portföy Tipi</Text>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Portföy Tipi</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {EMLAK_TIPLERI.map(t => { const s = istek.tipler.includes(t); const h = istek.tipler_haric.includes(t); return (
                       <TouchableOpacity key={t} style={[styles.chip, s && styles.chipActive, h && styles.chipHaric]}
                         onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, tipler: s ? x.tipler.filter(tt => tt !== t) : [...x.tipler, t], tipler_haric: x.tipler_haric.filter(tt => tt !== t) } : x))}
@@ -441,11 +441,11 @@ export default function MusteriEkleScreen() {
                   </View>
                 </View>
                 {/* Konum */}
-                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Tercih Konum</Text>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Tercih Konum</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10 }}>
                     <TouchableOpacity style={[styles.konumBox, istek.konumlar.length > 0 && styles.konumBoxAktif]}
                       onPress={() => { setActiveIstekIdx(idx); setKonumSearch(''); setFilterPage('il'); }}>
                       <Text style={[styles.konumBoxText, istek.konumlar.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
@@ -456,11 +456,11 @@ export default function MusteriEkleScreen() {
                   </View>
                 </View>
                 {/* Min Oda */}
-                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Min Oda</Text>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Min Oda</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {ODALAR.map(o => { const s = istek.minOda === o; return (
                       <TouchableOpacity key={o} style={[styles.chip, s && styles.chipActive]} onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, minOda: x.minOda === o ? '' : o } : x))}>
                         <Text style={[styles.chipText, s && styles.chipTextActive]}>{o}</Text>
@@ -469,11 +469,11 @@ export default function MusteriEkleScreen() {
                   </View>
                 </View>
                 {/* Bina Yaşı */}
-                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bina Yaşı</Text>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Bina Yaşı</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {BINA_YASLARI.map(y => { const s = istek.binaYaslari.includes(y); const h = istek.binaYaslari_haric.includes(y); return (
                       <TouchableOpacity key={y} style={[styles.chip, s && styles.chipActive, h && styles.chipHaric]}
                         onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, binaYaslari: s ? x.binaYaslari.filter(b => b !== y) : [...x.binaYaslari, y], binaYaslari_haric: x.binaYaslari_haric.filter(b => b !== y) } : x))}
@@ -485,11 +485,11 @@ export default function MusteriEkleScreen() {
                   </View>
                 </View>
                 {/* Kat Sayısı */}
-                <View style={{ borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Kat Sayısı</Text>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Kat Sayısı</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {KAT_SAYILARI.map(k => { const s = istek.katSayilari.includes(k); const h = istek.katSayilari_haric.includes(k); return (
                       <TouchableOpacity key={k} style={[styles.chip, s && styles.chipActive, h && styles.chipHaric]}
                         onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, katSayilari: s ? x.katSayilari.filter(ss => ss !== k) : [...x.katSayilari, k], katSayilari_haric: x.katSayilari_haric.filter(ss => ss !== k) } : x))}
@@ -501,11 +501,11 @@ export default function MusteriEkleScreen() {
                   </View>
                 </View>
                 {/* Bulunduğu Kat */}
-                <View style={{ borderBottomWidth: tumOzellikler.length > 0 ? 1 : 0, borderBottomColor: '#e5e7eb' }}>
-                  <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bulunduğu Kat</Text>
+                <View style={{ borderBottomWidth: tumOzellikler.length > 0 ? 1 : 0, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Bulunduğu Kat</Text>
                   </View>
-                  <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {BULUNDUGU_KATLAR.map(k => { const s = istek.bulunduguKatlar.includes(k); const h = istek.bulunduguKatlar_haric.includes(k); return (
                       <TouchableOpacity key={k} style={[styles.chip, s && styles.chipActive, h && styles.chipHaric]}
                         onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, bulunduguKatlar: s ? x.bulunduguKatlar.filter(ss => ss !== k) : [...x.bulunduguKatlar, k], bulunduguKatlar_haric: x.bulunduguKatlar_haric.filter(ss => ss !== k) } : x))}
@@ -519,10 +519,10 @@ export default function MusteriEkleScreen() {
                 {/* Özel İstekler */}
                 {tumOzellikler.length > 0 && (
                   <View>
-                    <View style={{ backgroundColor: '#f9fafb', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.8 }}>Özel İstekler</Text>
+                    <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Özel İstekler</Text>
                     </View>
-                    <View style={{ backgroundColor: '#fff', padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {tumOzellikler.map(oz => { const s = istek.ozelIstekler.includes(oz.id); const h = istek.ozelIstekler_haric.includes(oz.id); return (
                         <TouchableOpacity key={oz.id} style={[styles.chip, s && styles.chipActive, h && styles.chipHaric]}
                           onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, ozelIstekler: s ? x.ozelIstekler.filter(id => id !== oz.id) : [...x.ozelIstekler, oz.id], ozelIstekler_haric: x.ozelIstekler_haric.filter(id => id !== oz.id) } : x))}
@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outline },
   chipActive: { backgroundColor: Colors.primaryFixed, borderColor: Colors.primary },
-  chipHaric: { backgroundColor: '#fee2e2', borderColor: '#ef4444' },
+  chipHaric: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
   chipTextActive: { color: Colors.primary, fontWeight: '700' },
@@ -868,11 +868,11 @@ const styles = StyleSheet.create({
   notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#92400e', letterSpacing: 0.3 },
   notEkleBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
   notEkleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notForm: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
-  notInput: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: '#fff' },
+  notForm: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
+  notInput: { borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: Colors.surfaceContainerLow },
   notKaydetBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notKaydetBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notIptalBtnText: { color: Colors.onSurfaceVariant, fontSize: 12, fontWeight: '600' },
   notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
   notSatirHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

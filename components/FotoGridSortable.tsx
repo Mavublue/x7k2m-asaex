@@ -237,7 +237,7 @@ export default function FotoGridSortable({
         })}
 
         {pending.map(item => (
-          <View key={item.tempId} style={[styles.fotoKutu, { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.outlineVariant }]}>
+          <View key={item.tempId} style={[styles.fotoKutu, { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outlineVariant }]}>
             <Image source={{ uri: item.uri }} style={[styles.fotoImage, { opacity: 0.25 }]} />
             <View style={styles.fotoPendingOverlay}>
               <Text style={styles.fotoPendingPct}>%{item.percent}</Text>

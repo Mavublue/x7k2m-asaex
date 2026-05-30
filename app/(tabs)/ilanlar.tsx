@@ -856,7 +856,7 @@ export default function IlanlarScreen() {
       {/* Durum Modal */}
       <Modal visible={durumModal} animationType="fade" transparent onRequestClose={() => setDurumModal(false)}>
         <TouchableOpacity activeOpacity={1} onPress={() => setDurumModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <TouchableOpacity activeOpacity={1} style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360 }}>
+          <TouchableOpacity activeOpacity={1} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 24, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.onSurface, marginBottom: 16 }}>Durum Değiştir ({seciliIds.size} ilan)</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity onPress={() => topluDurum('Aktif')} disabled={topluIslem} style={{ flex: 1, paddingVertical: 14, backgroundColor: 'rgba(58,170,110,0.1)', borderWidth: 1, borderColor: '#3aaa6e', borderRadius: 8, alignItems: 'center' }}>
@@ -1228,7 +1228,7 @@ export default function IlanlarScreen() {
                         {expandable && ustuList.length > 1 && (
                           <TouchableOpacity
                             onPress={() => toggleOdaUstu(o)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: ustuTumu ? Colors.primary : Colors.outlineVariant, backgroundColor: ustuTumu ? Colors.primary : '#f3f4f6' }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: ustuTumu ? Colors.primary : Colors.outlineVariant, backgroundColor: ustuTumu ? Colors.primary : Colors.surfaceContainerHigh }}
                           >
                             <Text style={{ fontSize: 10, color: ustuTumu ? '#fff' : Colors.outline }}>↑</Text>
                             <Text style={{ fontSize: 11, fontWeight: '600', color: ustuTumu ? '#fff' : Colors.outline }}>{o} ve üstü</Text>
@@ -1491,7 +1491,7 @@ export default function IlanlarScreen() {
       {/* Rastgele Modal */}
       <Modal visible={rastgeleModal} transparent animationType="fade" onRequestClose={() => setRastgeleModal(false)}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setRastgeleModal(false)}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, width: 260, gap: 8 }}>
+          <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 20, width: 260, gap: 8 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.onSurface, marginBottom: 4, textAlign: 'center' }}>🎲 Rastgele İlan</Text>
             {(['Tümü', 'Görünür', 'Görünmez'] as const).map(mod => (
               <TouchableOpacity
@@ -1630,8 +1630,8 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: Colors.primaryFixed },
   tabText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   tabTextActive: { color: Colors.primary, fontWeight: '600' },
-  tabIptal: { backgroundColor: '#fee2e2' },
-  tabIptalText: { color: '#991b1b', fontWeight: '600' },
+  tabIptal: { backgroundColor: 'rgba(239,68,68,0.15)' },
+  tabIptalText: { color: '#fca5a5', fontWeight: '600' },
 
   etiketler: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xs, gap: 6, flexDirection: 'row', alignItems: 'flex-start' },
   etiket: { borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: Colors.primaryFixed },
@@ -1642,7 +1642,7 @@ const styles = StyleSheet.create({
   mapFull: { flex: 1 },
 
   floatingSearchWrap: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 10 },
-  floatingSearch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 24, paddingHorizontal: 14, paddingVertical: 11, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
+  floatingSearch: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 24, paddingHorizontal: 14, paddingVertical: 11, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
   floatingSearchIcon: { fontSize: 15 },
   floatingSearchText: { flex: 1, fontSize: 14, color: Colors.onSurface },
   floatingBadge: { backgroundColor: Colors.primary, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
@@ -1661,7 +1661,7 @@ const styles = StyleSheet.create({
   aramaModalSonuc: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg },
   mapPopup: {
     position: 'absolute',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surfaceContainerLow,
     borderRadius: Radius.xl,
     flexDirection: 'row', alignItems: 'center',
     overflow: 'hidden',
@@ -1798,7 +1798,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: { borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow },
   chipActive: { backgroundColor: Colors.primary },
-  chipHaric: { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#ef4444' },
+  chipHaric: { backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
   chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },

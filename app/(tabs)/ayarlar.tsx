@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
   menuSub: { fontSize: 13, color: Colors.onSurfaceVariant },
   menuArrow: { fontSize: 20, color: Colors.outlineVariant },
 
-  logoutBtn: { backgroundColor: '#fee2e2', borderRadius: Radius.full, paddingVertical: 16, alignItems: 'center', marginBottom: Spacing.xl },
-  logoutText: { color: '#991b1b', fontWeight: '700', fontSize: 15 },
+  logoutBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.full, paddingVertical: 16, alignItems: 'center', marginBottom: Spacing.xl },
+  logoutText: { color: '#fca5a5', fontWeight: '700', fontSize: 15 },
   version: { textAlign: 'center', fontSize: 12, color: Colors.outlineVariant },
 
   prefixKart: { backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg, gap: Spacing.md },

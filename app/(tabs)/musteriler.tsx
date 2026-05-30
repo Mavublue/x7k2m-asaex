@@ -166,7 +166,7 @@ export default function MusterilerScreen() {
           {musteriTipleri.map(t => (
             <TouchableOpacity
               key={t}
-              style={[styles.tab, activeTip === t && { backgroundColor: '#374151', borderColor: '#374151' }]}
+              style={[styles.tab, activeTip === t && { backgroundColor: Colors.onSurface, borderColor: Colors.onSurface }]}
               onPress={() => setActiveTip(t)}
             >
               <Text style={[styles.tabText, activeTip === t && { color: '#fff' }]}>{t}</Text>
@@ -177,7 +177,7 @@ export default function MusterilerScreen() {
 
       <Modal visible={siralamaAcik} transparent animationType="fade" onRequestClose={() => setSiralamaAcik(false)}>
         <TouchableOpacity activeOpacity={1} onPress={() => setSiralamaAcik(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 30 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 12, paddingVertical: 8 }}>
+          <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, paddingVertical: 8 }}>
             {(Object.keys(SIRALAMA_LABEL) as Siralama[]).map(k => (
               <TouchableOpacity key={k} onPress={() => { setSiralama(k); setSiralamaAcik(false); }} style={{ paddingVertical: 14, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 15, color: Colors.onSurface, fontWeight: siralama === k ? '700' : '500' }}>{SIRALAMA_LABEL[k]}</Text>
@@ -222,9 +222,9 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
     k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q)
   ) : [];
   const durumRenk = {
-    Aktif: { bg: '#dcfce7', text: '#166534' },
-    Beklemede: { bg: '#fef9c3', text: '#854d0e' },
-    İptal: { bg: '#fee2e2', text: '#991b1b' },
+    Aktif: { bg: 'rgba(34,197,94,0.18)', text: '#166534' },
+    Beklemede: { bg: 'rgba(234,179,8,0.15)', text: '#854d0e' },
+    İptal: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5' },
   }[musteri.durum] ?? { bg: Colors.surfaceContainerLow, text: Colors.onSurfaceVariant };
 
   const avatarColors = [
@@ -394,8 +394,8 @@ const styles = StyleSheet.create({
   konumFilterIcon: { fontSize: 14 },
   konumFilterText: { flex: 1, fontSize: 13, color: Colors.onSurfaceVariant },
   konumFilterChevron: { fontSize: 18, color: Colors.onSurfaceVariant },
-  konumTemizleBtn: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fee2e2', borderRadius: Radius.full },
-  konumTemizleText: { fontSize: 12, color: '#991b1b', fontWeight: '600' as const },
+  konumTemizleBtn: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.full },
+  konumTemizleText: { fontSize: 12, color: '#fca5a5', fontWeight: '600' as const },
   konumChipRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm, gap: 8 },
   konumChip: {
     flexDirection: 'row', alignItems: 'center',

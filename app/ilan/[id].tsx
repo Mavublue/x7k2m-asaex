@@ -808,10 +808,10 @@ export default function IlanDetayScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     {item.etiketler ? <View style={styles.etiketBadge}><Text style={styles.etiketBadgeText}>#{item.etiketler}</Text></View> : null}
                     <View style={[styles.durumBadge, {
-                      backgroundColor: item.durum === 'Aktif' ? '#dcfce7' : item.durum === 'Beklemede' ? '#fef9c3' : '#fee2e2'
+                      backgroundColor: item.durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : item.durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)'
                     }]}>
                       <Text style={[styles.durumBadgeText, {
-                        color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : '#991b1b'
+                        color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : '#fca5a5'
                       }]}>{item.durum}</Text>
                     </View>
                   </View>
@@ -908,18 +908,18 @@ export default function IlanDetayScreen() {
                       onChangeText={t => { setLinkMusteriAra(t); setLinkSeciliMusteri(''); }}
                       placeholder="İsim ara..."
                       placeholderTextColor={Colors.onSurfaceVariant}
-                      style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }}
+                      style={{ flex: 1, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }}
                     />
                     <TextInput
                       value={linkEtiketAra}
                       onChangeText={t => { setLinkEtiketAra(t); setLinkSeciliMusteri(''); }}
                       placeholder="Etiket ara..."
                       placeholderTextColor={Colors.onSurfaceVariant}
-                      style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }}
+                      style={{ flex: 1, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }}
                     />
                   </View>
                   {(linkMusteriAra || linkEtiketAra) && (
-                    <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, maxHeight: 220, marginBottom: 8, overflow: 'hidden' }}>
+                    <View style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, maxHeight: 220, marginBottom: 8, overflow: 'hidden' }}>
                       <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                       {(() => {
                         const q = linkMusteriAra.toLowerCase();
@@ -933,11 +933,11 @@ export default function IlanDetayScreen() {
                         return filtered.map(m => {
                           const eslesen = linkMusteriAra !== '' ? (m.musteri_iletisim ?? []).filter((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(linkMusteriAra)) : [];
                           const istek = (m.musteri_istekler ?? [])[0];
-                          const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: '#f3f4f6', color: '#6b7280' };
+                          const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: Colors.surfaceContainerHigh, color: Colors.onSurfaceVariant };
                           return (
                             <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra([m.ad, m.soyad].filter(Boolean).join(' ')); setLinkEtiketAra(''); }}
-                              style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.06)' : '#fff', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-                              {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
+                              style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.12)' : Colors.surfaceContainerLow, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh }}>
+                              {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: Colors.onSurface, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
                               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
                               </View>
@@ -951,7 +951,7 @@ export default function IlanDetayScreen() {
                                   {istek && (istek.butce_min || istek.butce_max) ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>💰 {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '?'} — {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '?'}</Text> : null}
                                 </View>
                                 {eslesen.length > 0 && (
-                                  <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#e5e7eb', borderStyle: 'dashed', gap: 3 }}>
+                                  <View style={{ marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.outlineVariant, borderStyle: 'dashed', gap: 3 }}>
                                     {eslesen.map((k: any, i: number) => (
                                       <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                         <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary }}>↳ {k.tip || 'Ek Kişi'}</Text>
@@ -981,8 +981,8 @@ export default function IlanDetayScreen() {
                     {[{ s: 1, label: '1 saat' }, { s: 24, label: '1 gün' }, { s: 72, label: '3 gün' }, { s: 168, label: '7 gün' }].map(({ s, label }) => (
                       <TouchableOpacity key={s} onPress={() => setLinkSaat(String(s))} style={{
                         paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, borderWidth: 1.5,
-                        borderColor: linkSaat === String(s) ? Colors.primary : '#e5e7eb',
-                        backgroundColor: linkSaat === String(s) ? 'rgba(229,57,53,0.08)' : '#fff',
+                        borderColor: linkSaat === String(s) ? Colors.primary : Colors.outlineVariant,
+                        backgroundColor: linkSaat === String(s) ? 'rgba(229,57,53,0.18)' : Colors.surfaceContainerLow,
                       }}>
                         <Text style={{ fontSize: 12, fontWeight: '600', color: linkSaat === String(s) ? Colors.primary : Colors.onSurfaceVariant }}>{label}</Text>
                       </TouchableOpacity>
@@ -993,10 +993,10 @@ export default function IlanDetayScreen() {
                       value={linkSaat}
                       onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
                       keyboardType="number-pad"
-                      style={{ width: 72, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
+                      style={{ width: 72, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 8, fontSize: 14, textAlign: 'center', color: Colors.onSurface }}
                     />
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>saat</Text>
-                    {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: '#9ca3af' }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
+                    {parseInt(linkSaat) >= 24 && <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>({Math.round(parseInt(linkSaat) / 24)} gün)</Text>}
                   </View>
                   <TouchableOpacity onPress={linkOlustur} disabled={linkYukleniyor} style={{
                     backgroundColor: Colors.primary, borderRadius: 8, padding: 14, alignItems: 'center',
@@ -1012,8 +1012,8 @@ export default function IlanDetayScreen() {
                   <Text style={{ fontSize: 13, color: '#3aaa6e', fontWeight: '600', marginBottom: 12 }}>
                     ✓ Link oluşturuldu — {Number(linkSaat) >= 24 ? `${Number(linkSaat) / 24} gün` : `${linkSaat} saat`} geçerli
                   </Text>
-                  <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-                    <Text style={{ fontSize: 12, color: '#374151' }} selectable>{linkUrl}</Text>
+                  <View style={{ backgroundColor: Colors.surfaceContainerHigh, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, color: Colors.onSurface }} selectable>{linkUrl}</Text>
                   </View>
                   <TouchableOpacity onPress={linkKopyala} style={{
                     backgroundColor: linkKopyalandi ? '#3aaa6e' : Colors.primary,
@@ -1036,7 +1036,7 @@ export default function IlanDetayScreen() {
                     );
                   })()}
                   <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); setLinkSeciliMusteri(''); setLinkMusteriAra(''); setLinkEtiketAra(''); }} style={{
-                    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, alignItems: 'center',
+                    borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 12, alignItems: 'center',
                   }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
                   </TouchableOpacity>
@@ -1081,10 +1081,10 @@ export default function IlanDetayScreen() {
                     )}
                   </View>
                   <View style={[styles.durumBadge, {
-                    backgroundColor: item.durum === 'Aktif' ? '#dcfce7' : item.durum === 'Beklemede' ? '#fef9c3' : '#fee2e2'
+                    backgroundColor: item.durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : item.durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)'
                   }]}>
                     <Text style={[styles.durumBadgeText, {
-                      color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : '#991b1b'
+                      color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : '#fca5a5'
                     }]}>{item.durum}</Text>
                   </View>
                 </TouchableOpacity>
@@ -1119,7 +1119,7 @@ export default function IlanDetayScreen() {
                   multiline
                   style={{
                     borderWidth: 1.5,
-                    borderColor: '#e5e7eb',
+                    borderColor: Colors.outlineVariant,
                     borderRadius: 10,
                     padding: 12,
                     fontSize: 13,
@@ -1132,7 +1132,7 @@ export default function IlanDetayScreen() {
                 />
                 {sosyalMetin.trim() !== generateSosyalMetin(ilan).trim() && (
                   <TouchableOpacity onPress={() => setSosyalMetin(generateSosyalMetin(ilan))} style={{ marginBottom: 12 }}>
-                    <Text style={{ fontSize: 12, color: '#9ca3af' }}>↺ Otomatik metne sıfırla</Text>
+                    <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>↺ Otomatik metne sıfırla</Text>
                   </TouchableOpacity>
                 )}
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
@@ -1154,7 +1154,7 @@ export default function IlanDetayScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={{ fontSize: 11, color: '#9ca3af', lineHeight: 16, marginBottom: 24 }}>
+                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, lineHeight: 16, marginBottom: 24 }}>
                   Düzenleyip Kaydet&apos;e basarsan bu ilana özel saklanır.
                 </Text>
               </ScrollView>

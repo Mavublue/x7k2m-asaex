@@ -120,7 +120,7 @@ export default function EslesenMusterilerScreen() {
   const konum = [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ');
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }}>
       <FlatList
         data={musteriler}
         keyExtractor={m => m.id}
@@ -190,8 +190,8 @@ export default function EslesenMusterilerScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 5 }}>
                   <Text style={s.musteriAd}>{m.ad}{m.soyad ? ` ${m.soyad}` : ''}</Text>
                   {m.etiketler ? <Text style={s.etiket}>#{m.etiketler}</Text> : null}
-                  <View style={[s.durumBadge, { backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
-                    <Text style={[s.durumText, { color: m.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{m.durum}</Text>
+                  <View style={[s.durumBadge, { backgroundColor: m.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : Colors.surfaceContainerHigh }]}>
+                    <Text style={[s.durumText, { color: m.durum === 'Aktif' ? '#3aaa6e' : Colors.onSurfaceVariant }]}>{m.durum}</Text>
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
@@ -205,7 +205,7 @@ export default function EslesenMusterilerScreen() {
                   <Text style={{ fontSize: 16 }}>📞</Text>
                 </TouchableOpacity>
               )}
-              <Text style={{ color: '#d1d5db', fontSize: 20 }}>›</Text>
+              <Text style={{ color: Colors.outline, fontSize: 20 }}>›</Text>
             </TouchableOpacity>
           );
         }}
@@ -227,8 +227,8 @@ export default function EslesenMusterilerScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.sheetAd}>{secili.ad}{secili.soyad ? ` ${secili.soyad}` : ''}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                  <View style={[s.durumBadge, { backgroundColor: secili.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : '#f3f4f6' }]}>
-                    <Text style={[s.durumText, { color: secili.durum === 'Aktif' ? '#3aaa6e' : '#6b7280' }]}>{secili.durum}</Text>
+                  <View style={[s.durumBadge, { backgroundColor: secili.durum === 'Aktif' ? 'rgba(58,170,110,0.12)' : Colors.surfaceContainerHigh }]}>
+                    <Text style={[s.durumText, { color: secili.durum === 'Aktif' ? '#3aaa6e' : Colors.onSurfaceVariant }]}>{secili.durum}</Text>
                   </View>
                   {secili.musteri_tipi && secili.musteri_tipi !== 'Bireysel' && (
                     <View style={s.durumBadge}><Text style={s.durumText}>{secili.musteri_tipi}</Text></View>
@@ -261,11 +261,11 @@ export default function EslesenMusterilerScreen() {
                   <Text style={s.sectionTitle}>Ek Kişiler</Text>
                   {(detay?.iletisim ?? []).map((k: any) => (
                     <View key={k.id} style={s.ekKisiRow}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', flex: 1 }}>{k.ad}</Text>
-                      {k.tip ? <Text style={{ fontSize: 12, color: '#9ca3af' }}>{k.tip}</Text> : null}
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.onSurface, flex: 1 }}>{k.ad}</Text>
+                      {k.tip ? <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>{k.tip}</Text> : null}
                       {k.telefon ? (
                         <TouchableOpacity onPress={() => Linking.openURL(`tel:${k.telefon}`)}>
-                          <Text style={{ fontSize: 12, color: '#6b7280' }}>📞 {k.telefon}</Text>
+                          <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>📞 {k.telefon}</Text>
                         </TouchableOpacity>
                       ) : null}
                     </View>
@@ -282,7 +282,7 @@ export default function EslesenMusterilerScreen() {
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
                         <View style={s.istekNo}><Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>#{idx + 1}</Text></View>
                         {(istek.butce_min || istek.butce_max) && (
-                          <Text style={{ fontSize: 14, fontWeight: '800', color: '#1a1b21' }}>
+                          <Text style={{ fontSize: 14, fontWeight: '800', color: Colors.onSurface }}>
                             {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '—'}
                             {' – '}
                             {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '—'}
@@ -330,38 +330,38 @@ export default function EslesenMusterilerScreen() {
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  ilanKart: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: '#e5e7eb', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  ilanKart: { backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: Colors.outlineVariant, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   ilanFoto: { width: '100%', height: 210 },
   ilanBody: { padding: 18 },
-  ilanTip: { fontSize: 11, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 4 },
-  ilanBaslik: { fontSize: 18, fontWeight: '800', color: '#1a1b21', lineHeight: 24 },
+  ilanTip: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 4 },
+  ilanBaslik: { fontSize: 18, fontWeight: '800', color: Colors.onSurface, lineHeight: 24 },
   ilanFiyat: { fontSize: 22, fontWeight: '800', color: '#E53935' },
-  portfoyNo: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
-  ilanKonum: { fontSize: 13, color: '#6b7280', marginBottom: 10 },
+  portfoyNo: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
+  ilanKonum: { fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 10 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 2 },
-  tag: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: '#f3f4f6', borderRadius: 999 },
-  tagText: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  ilanFooter: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#f3f4f6', alignItems: 'flex-end' },
-  ilanBtn: { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: '#f3f4f6', borderRadius: 8 },
-  ilanBtnText: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  tag: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 999 },
+  tagText: { fontSize: 12, fontWeight: '600', color: Colors.onSurface },
+  ilanFooter: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerHigh, alignItems: 'flex-end' },
+  ilanBtn: { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 8 },
+  ilanBtnText: { fontSize: 13, fontWeight: '600', color: Colors.onSurface },
 
   listHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  listHeaderText: { fontSize: 16, fontWeight: '700', color: '#1a1b21' },
+  listHeaderText: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   badge: { backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2 },
   badgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  empty: { textAlign: 'center', color: '#9ca3af', fontSize: 14, paddingVertical: 32 },
+  empty: { textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 14, paddingVertical: 32 },
 
-  musteriKart: { backgroundColor: '#fff', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e5e7eb' },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#6b7280', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  musteriKart: { backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, borderWidth: 1, borderColor: Colors.outlineVariant },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.onSurfaceVariant, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  musteriAd: { fontSize: 14, fontWeight: '700', color: '#1a1b21' },
-  etiket: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
-  durumBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f3f4f6' },
-  durumText: { fontSize: 11, fontWeight: '600', color: '#6b7280' },
-  telMiniBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  musteriAd: { fontSize: 14, fontWeight: '700', color: Colors.onSurface },
+  etiket: { fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600' },
+  durumBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.surfaceContainerHigh },
+  durumText: { fontSize: 11, fontWeight: '600', color: Colors.onSurfaceVariant },
+  telMiniBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
   tipTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(59,130,246,0.08)' },
   tipTagText: { fontSize: 11, fontWeight: '600', color: '#2563eb' },
-  konumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#f0fdf4' },
+  konumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(34,197,94,0.12)' },
   konumTagText: { fontSize: 11, fontWeight: '600', color: '#16a34a' },
   butceTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#fff7ed' },
   butceTagText: { fontSize: 11, fontWeight: '600', color: '#c2410c' },
@@ -371,19 +371,19 @@ const s = StyleSheet.create({
   yasTagText: { fontSize: 11, fontWeight: '600', color: '#d97706' },
 
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82%' },
-  sheetHandle: { width: 40, height: 4, backgroundColor: '#e5e7eb', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 6 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.surfaceContainerLow, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '82%' },
+  sheetHandle: { width: 40, height: 4, backgroundColor: Colors.outlineVariant, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 6 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh },
   sheetAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   sheetAvatarText: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  sheetAd: { fontSize: 16, fontWeight: '800', color: '#1a1b21' },
-  telBtn: { width: 38, height: 38, borderRadius: 8, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  sheetAd: { fontSize: 16, fontWeight: '800', color: Colors.onSurface },
+  telBtn: { width: 38, height: 38, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
   detayBtn: { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#E53935', borderRadius: 8 },
   detayBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 },
-  ekKisiRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 6 },
-  istekKart: { backgroundColor: '#fafafa', borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 },
+  ekKisiRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: Colors.surface, borderRadius: 8, marginBottom: 6 },
+  istekKart: { backgroundColor: '#fafafa', borderWidth: 1, borderColor: Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 },
   istekNo: { paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#E53935', borderRadius: 999 },
   notKart: { backgroundColor: 'rgba(254,243,199,0.7)', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 12, marginBottom: 6 },
   notTarih: { fontSize: 11, fontWeight: '600', color: '#92400e', marginBottom: 4 },

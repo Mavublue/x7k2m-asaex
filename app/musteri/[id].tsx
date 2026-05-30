@@ -691,14 +691,14 @@ export default function MusteriDetayScreen() {
 
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <View style={[styles.durumBadge, {
-                backgroundColor: durum === 'Aktif' ? '#dcfce7' : durum === 'Beklemede' ? '#fef9c3' : '#fee2e2'
+                backgroundColor: durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)'
               }]}>
                 <Text style={[styles.durumBadgeText, {
-                  color: durum === 'Aktif' ? '#166534' : durum === 'Beklemede' ? '#854d0e' : '#991b1b'
+                  color: durum === 'Aktif' ? '#166534' : durum === 'Beklemede' ? '#854d0e' : '#fca5a5'
                 }]}>{durum}</Text>
               </View>
               {etiket ? <View style={styles.etiketBadge}><Text style={styles.etiketBadgeText}>#{etiket}</Text></View> : null}
-              {musteriTipi && musteriTipi !== 'Bireysel' ? <View style={{ backgroundColor: '#f3f4f6', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}><Text style={{ fontSize: 11, fontWeight: '700', color: '#374151' }}>{musteriTipi}</Text></View> : null}
+              {musteriTipi && musteriTipi !== 'Bireysel' ? <View style={{ backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}><Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>{musteriTipi}</Text></View> : null}
             </View>
           </View>
 
@@ -755,7 +755,7 @@ export default function MusteriDetayScreen() {
                     {ekKisiler.map((k, idx) => (
                       <View key={idx} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: 10, gap: 8 }}>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Ad Soyad" placeholderTextColor={Colors.outlineVariant}
+                          <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceContainerLow }]} placeholder="Ad Soyad" placeholderTextColor={Colors.outlineVariant}
                             value={k.ad} onChangeText={v => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, ad: v } : x))} />
                           <TouchableOpacity onPress={() => setEkKisiler(p => p.filter((_, i) => i !== idx))}
                             style={{ width: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryFixed, borderRadius: Radius.lg }}>
@@ -768,7 +768,7 @@ export default function MusteriDetayScreen() {
                               onChange={(kk, nn) => setEkKisiler(p => p.map((x, i) => i === idx ? { ...x, kod: kk, numara: nn } : x))} />
                           </View>
                           <TouchableOpacity onPress={() => setTipModal(idx)}
-                            style={[styles.input, { width: 110, backgroundColor: '#fff', justifyContent: 'center' }]}>
+                            style={[styles.input, { width: 110, backgroundColor: Colors.surfaceContainerLow, justifyContent: 'center' }]}>
                             <Text style={{ fontSize: 14, color: Colors.onSurface }}>{k.tip} ▾</Text>
                           </TouchableOpacity>
                         </View>
@@ -813,9 +813,9 @@ export default function MusteriDetayScreen() {
                       })}
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                      <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceContainerLow }]} placeholder="Min ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
                         value={istek.butceMin} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMin: formatButce(v) } : x))} />
-                      <TextInput style={[styles.input, { flex: 1, backgroundColor: '#fff' }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
+                      <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceContainerLow }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
                         value={istek.butceMax} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMax: formatButce(v) } : x))} />
                     </View>
                     {istek.konumlar.map((k, ki) => (
@@ -1327,10 +1327,10 @@ export default function MusteriDetayScreen() {
                       <TouchableOpacity key={s} onPress={() => setEslesSort(s)} style={{
                         paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
                         borderWidth: 1.5,
-                        borderColor: eslesSort === s ? '#E53935' : '#e5e7eb',
-                        backgroundColor: eslesSort === s ? 'rgba(229,57,53,0.08)' : '#fff',
+                        borderColor: eslesSort === s ? '#E53935' : Colors.outlineVariant,
+                        backgroundColor: eslesSort === s ? 'rgba(229,57,53,0.18)' : Colors.surfaceContainerLow,
                       }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: eslesSort === s ? '#E53935' : '#6b7280' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: eslesSort === s ? '#E53935' : Colors.onSurfaceVariant }}>
                           {s === 'tarih' ? 'Tarih' : s === 'fiyat_artan' ? 'Fiyat ↑' : 'Fiyat ↓'}
                         </Text>
                       </TouchableOpacity>
@@ -1720,13 +1720,13 @@ export default function MusteriDetayScreen() {
       {/* AI Görev Önerisi Modal */}
       <Modal visible={!!gorevOneriModal} transparent animationType="fade" onRequestClose={() => setGorevOneriModal(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+          <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700', marginBottom: 6 }}>🤖 Görev Önerisi</Text>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1b21', marginBottom: 4 }}>{gorevOneriModal?.baslik}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.onSurface, marginBottom: 4 }}>{gorevOneriModal?.baslik}</Text>
             {gorevOneriModal?.tarih && (
-              <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
+              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
             )}
-            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Hatırlatma saati:</Text>
+            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 6 }}>Hatırlatma saati:</Text>
             {!showGorevOneriSaatPicker ? (
               <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
                 style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
@@ -1740,8 +1740,8 @@ export default function MusteriDetayScreen() {
             )}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity onPress={() => setGorevOneriModal(null)}
-                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>Hayır</Text>
+                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>Hayır</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={async () => {
                 if (!gorevOneriModal) return;
@@ -1943,13 +1943,13 @@ function GorevlerBox({
 }
 
 const gorevStyles = StyleSheet.create({
-  box: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
+  box: { backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   baslik: { fontSize: 13, fontWeight: '700', color: '#166534', letterSpacing: 0.3 },
   ekleBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#16a34a', borderRadius: Radius.sm },
   ekleBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
   form: { marginBottom: 8 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#86efac', borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface },
+  input: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface },
   kaydetBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#16a34a', borderRadius: Radius.sm },
   kaydetBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
   iptalBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.sm },
@@ -1981,7 +1981,7 @@ const styles = StyleSheet.create({
   kaydetText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   duzenleBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 6 },
   duzenleBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
-  silBtn: { backgroundColor: '#fee2e2', borderRadius: Radius.full, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  silBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.full, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   silBtnText: { fontSize: 14 },
   linkBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   linkBtnText: { fontSize: 14 },
@@ -2024,9 +2024,9 @@ const styles = StyleSheet.create({
   },
   elleBadge: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
   elleBadgeText: { fontSize: 10, color: Colors.primary, fontWeight: '700' },
-  zatenBadge: { backgroundColor: '#fef3c7', borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
+  zatenBadge: { backgroundColor: 'rgba(234,179,8,0.18)', borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
   zatenBadgeText: { fontSize: 10, color: '#d97706', fontWeight: '700' },
-  iptalBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center' },
+  iptalBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center' },
   iptalBtnText: { fontSize: 14, color: '#ef4444' },
   ilanFoto: { width: 64, height: 64 },
   ilanFotoPlaceholder: { width: 64, height: 64, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
@@ -2053,7 +2053,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outline },
   chipActive: { backgroundColor: Colors.primaryFixed, borderColor: Colors.primary },
-  chipHaric: { backgroundColor: '#fee2e2', borderColor: '#ef4444' },
+  chipHaric: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: Colors.primary, fontWeight: '700' },
   chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
@@ -2100,11 +2100,11 @@ const styles = StyleSheet.create({
   notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#92400e', letterSpacing: 0.3 },
   notEkleBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
   notEkleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notForm: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
-  notInput: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: '#fff' },
+  notForm: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
+  notInput: { borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: Colors.surfaceContainerLow },
   notKaydetBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notKaydetBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notIptalBtnText: { color: Colors.onSurfaceVariant, fontSize: 12, fontWeight: '600' },
   notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
   notSatirHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

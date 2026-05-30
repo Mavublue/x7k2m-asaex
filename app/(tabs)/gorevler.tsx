@@ -167,7 +167,7 @@ export default function GorevlerScreen() {
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
         {([['gecmis','Gecikmiş'],['bugun','Bugün'],['yarin','Yarın'],['7gun','7 Gün'],['tumu','Tümü'],['yapilan','Yapılanlar']] as [GorevFiltre, string][]).map(([f, label]) => (
           <TouchableOpacity key={f} onPress={() => { setGorevFiltre(f); fetchGorevler(f); }}
-            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : f === 'yapilan' ? '#6b7280' : '#16a34a') : Colors.surfaceContainerHigh }}>
+            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, backgroundColor: gorevFiltre === f ? (f === 'gecmis' ? '#ef4444' : f === 'yapilan' ? Colors.onSurfaceVariant : '#16a34a') : Colors.surfaceContainerHigh }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: gorevFiltre === f ? '#fff' : (f === 'gecmis' && gecmisCount > 0 ? '#ef4444' : Colors.onSurfaceVariant) }}>
               {label}{f === 'gecmis' && gecmisCount > 0 && gorevFiltre !== 'gecmis' ? ` (${gecmisCount})` : ''}
             </Text>
@@ -181,8 +181,8 @@ export default function GorevlerScreen() {
         contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 32, gap: 8 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
         ListEmptyComponent={
-          <View style={{ padding: 20, backgroundColor: gorevFiltre === 'gecmis' ? '#fff5f5' : gorevFiltre === 'yapilan' ? '#f3f4f6' : '#f0fdf4', borderRadius: 12, alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, color: gorevFiltre === 'gecmis' ? '#ef4444' : gorevFiltre === 'yapilan' ? '#6b7280' : '#16a34a', fontWeight: '500' }}>
+          <View style={{ padding: 20, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : gorevFiltre === 'yapilan' ? Colors.surfaceContainerHigh : 'rgba(34,197,94,0.12)', borderRadius: 12, alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, color: gorevFiltre === 'gecmis' ? '#ef4444' : gorevFiltre === 'yapilan' ? Colors.onSurfaceVariant : '#16a34a', fontWeight: '500' }}>
               {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : gorevFiltre === 'yapilan' ? 'Henüz tamamlanmış görev yok' : 'Aktif görev yok 🎉'}
             </Text>
           </View>
@@ -197,21 +197,21 @@ export default function GorevlerScreen() {
           const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
           return (
             <TouchableOpacity onPress={() => g.musteri_id && router.push(`/musteri/${g.musteri_id}` as any)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? '#fff5f5' : yapilan ? '#f9fafb' : Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: gecmis ? '#fecaca' : '#e5e7eb', borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : yapilan ? '#9ca3af' : '#16a34a' }}>
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : yapilan ? Colors.surface : Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : yapilan ? Colors.onSurfaceVariant : '#16a34a' }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: yapilan ? '#6b7280' : Colors.onSurface, textDecorationLine: yapilan ? 'line-through' : 'none' }}>{g.baslik}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: yapilan ? Colors.onSurfaceVariant : Colors.onSurface, textDecorationLine: yapilan ? 'line-through' : 'none' }}>{g.baslik}</Text>
                 <Text style={{ fontSize: 12, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 3 }}>
                   {musteriLabel || '—'}{tarihStr ? ` · 📅 ${tarihStr}` : ''}
                 </Text>
               </View>
               {yapilan ? (
                 <TouchableOpacity onPress={() => gorevGeriAl(g.id)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f3f4f6', borderRadius: 6, borderWidth: 1, borderColor: '#d1d5db' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#6b7280' }}>↺</Text>
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>↺</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => gorevTamamla(g.id)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0fdf4', borderRadius: 6, borderWidth: 1, borderColor: '#86efac' }}>
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(34,197,94,0.12)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)' }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
                 </TouchableOpacity>
               )}
@@ -230,23 +230,23 @@ export default function GorevlerScreen() {
       {/* Görev Düzenle Modal */}
       <Modal visible={!!editGorev} transparent animationType="fade" onRequestClose={() => { if (showEditTarihPicker) { setShowEditTarihPicker(false); return; } if (showEditSaatPicker) { setShowEditSaatPicker(false); return; } setEditGorev(null); }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+          <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 10 }}>✏️ Görevi Düzenle</Text>
             <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı"
-              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+              style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                <Text style={{ fontSize: 13, color: '#374151' }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
+              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8 }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: editSaatDate ? '#16a34a' : '#9ca3af' }}>
+              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: editSaatDate ? 'rgba(134,239,172,0.5)' : Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: editSaatDate ? '#16a34a' : Colors.onSurfaceVariant }}>
                   {editSaatDate ? `⏰ ${pad(editSaatDate.getHours())}:${pad(editSaatDate.getMinutes())}` : '⏰ Saat'}
                 </Text>
               </TouchableOpacity>
             </View>
             {editSaatDate && (
               <TouchableOpacity onPress={() => setEditSaatDate(null)} style={{ marginBottom: 12, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
+                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>Saati kaldır ✕</Text>
               </TouchableOpacity>
             )}
             {showEditTarihPicker && <>
@@ -263,8 +263,8 @@ export default function GorevlerScreen() {
             </>}
             {!showEditTarihPicker && !showEditSaatPicker && (
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                <TouchableOpacity onPress={() => setEditGorev(null)} style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={gorevDuzenleKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#3b82f6', borderRadius: 8, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
@@ -278,18 +278,18 @@ export default function GorevlerScreen() {
       {/* Görev Ekle Modal */}
       <Modal visible={ekleModal} transparent animationType="fade" onRequestClose={() => setEkleModal(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+          <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Görev Ekle</Text>
             <TextInput value={ekleBaslik} onChangeText={setEkleBaslik} placeholder="Görev başlığı"
-              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+              style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
             {/* Seçili müşteriler chips */}
             {ekleMusteriIds.length > 0 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {musteriListesi.filter(m => ekleMusteriIds.includes(m.id)).map(m => (
-                  <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(22,163,74,0.08)', borderWidth: 1, borderColor: '#86efac', borderRadius: 99 }}>
+                  <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(22,163,74,0.08)', borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: 99 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#166534' }}>{[m.etiketler ? `#${m.etiketler.split(',')[0].trim()}` : null, m.ad, m.soyad].filter(Boolean).join(' ')}</Text>
                     <TouchableOpacity onPress={() => setEkleMusteriIds(prev => prev.filter(id => id !== m.id))}>
-                      <Text style={{ color: '#6b7280', fontSize: 13, marginLeft: 2 }}>✕</Text>
+                      <Text style={{ color: Colors.onSurfaceVariant, fontSize: 13, marginLeft: 2 }}>✕</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -298,9 +298,9 @@ export default function GorevlerScreen() {
             {/* Müşteri arama */}
             <View style={{ marginBottom: 8 }}>
               <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} onBlur={() => setTimeout(() => setEkleMusteriArama(''), 150)} placeholder="Müşteri ekle (opsiyonel, çoklu)"
-                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13 }} />
+                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13 }} />
               {ekleMusteriArama.trim().length > 0 && (
-                <View onStartShouldSetResponder={() => true} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
+                <View onStartShouldSetResponder={() => true} style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
                   {musteriListesi.filter(m => {
                     const q = ekleMusteriArama.toLowerCase();
                     return `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(q) ||
@@ -311,11 +311,11 @@ export default function GorevlerScreen() {
                     const secili = ekleMusteriIds.includes(m.id);
                     const eslesen = (m.musteri_iletisim ?? []).filter((k: any) => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(ekleMusteriArama.trim()));
                     const istek = (m.musteri_istekler ?? [])[0];
-                    const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: '#f3f4f6', color: '#6b7280' };
+                    const durumRenk = m.durum === 'Aktif' ? { bg: 'rgba(58,170,110,0.1)', color: '#3aaa6e' } : { bg: Colors.surfaceContainerHigh, color: Colors.onSurfaceVariant };
                     return (
                       <TouchableOpacity key={m.id} onPress={() => { setEkleMusteriIds(prev => secili ? prev.filter(id => id !== m.id) : [...prev, m.id]); }}
-                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: secili ? 'rgba(22,163,74,0.06)' : '#fff' }}>
-                        {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
+                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: secili ? 'rgba(22,163,74,0.12)' : Colors.surfaceContainerLow }}>
+                        {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: Colors.onSurface, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
                         <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
                         </View>
@@ -330,7 +330,7 @@ export default function GorevlerScreen() {
                             {istek && (istek.butce_min || istek.butce_max) ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>💰 {istek.butce_min ? `₺${Number(istek.butce_min).toLocaleString('tr-TR')}` : '?'} — {istek.butce_max ? `₺${Number(istek.butce_max).toLocaleString('tr-TR')}` : '?'}</Text> : null}
                           </View>
                           {eslesen.length > 0 && (
-                            <View style={{ marginTop: 5, paddingTop: 5, borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 3 }}>
+                            <View style={{ marginTop: 5, paddingTop: 5, borderTopWidth: 1, borderTopColor: Colors.outlineVariant, gap: 3 }}>
                               {eslesen.map((k: any, i: number) => (
                                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                   <Text style={{ fontSize: 10, fontWeight: '700', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(229,57,53,0.08)', color: Colors.primary }}>↳ {k.tip || 'Ek Kişi'}</Text>
@@ -348,18 +348,18 @@ export default function GorevlerScreen() {
               )}
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEkleTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                <Text style={{ fontSize: 13, color: '#374151' }}>📅 {ekleTarihDate.toLocaleDateString('tr-TR')}</Text>
+              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEkleTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8 }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {ekleTarihDate.toLocaleDateString('tr-TR')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEkleSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: ekleSaatDate ? '#86efac' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: ekleSaatDate ? '#16a34a' : '#9ca3af' }}>
+              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEkleSaatPicker(true); }} style={{ width: 90, padding: 10, borderWidth: 1, borderColor: ekleSaatDate ? 'rgba(134,239,172,0.5)' : Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: ekleSaatDate ? '#16a34a' : Colors.onSurfaceVariant }}>
                   {ekleSaatDate ? `⏰ ${pad(ekleSaatDate.getHours())}:${pad(ekleSaatDate.getMinutes())}` : '⏰ Saat'}
                 </Text>
               </TouchableOpacity>
             </View>
             {ekleSaatDate && (
               <TouchableOpacity onPress={() => setEkleSaatDate(null)} style={{ marginBottom: 10, alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: '#6b7280' }}>Saati kaldır ✕</Text>
+                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>Saati kaldır ✕</Text>
               </TouchableOpacity>
             )}
             {showEkleTarihPicker && <>
@@ -377,11 +377,11 @@ export default function GorevlerScreen() {
             {!showEkleTarihPicker && !showEkleSaatPicker && (
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 <TouchableOpacity onPress={() => { setEkleModal(false); setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriIds([]); setEkleMusteriArama(''); }}
-                  style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '500' }}>İptal</Text>
+                  style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>İptal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={gorevEkle} style={{ flex: 1, padding: 12, backgroundColor: ekleBaslik.trim() ? '#16a34a' : '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: ekleBaslik.trim() ? '#fff' : '#9ca3af', fontWeight: '700' }}>Ekle</Text>
+                <TouchableOpacity onPress={gorevEkle} style={{ flex: 1, padding: 12, backgroundColor: ekleBaslik.trim() ? '#16a34a' : Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: ekleBaslik.trim() ? '#fff' : Colors.onSurfaceVariant, fontWeight: '700' }}>Ekle</Text>
                 </TouchableOpacity>
               </View>
             )}
