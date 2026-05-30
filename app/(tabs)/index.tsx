@@ -275,11 +275,13 @@ export default function DashboardScreen() {
       supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).eq('id', b.id).then(() => {});
     }
     if (b.tip === 'eslesme-musteri') {
+      const ilanIds: string[] | undefined = b.veri?.eslesen_ilan_ids;
+      const ilanSel = supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif');
       const [{ data: musteri }, { data: rpc }, { data: istekler }, { data: ilanlar }] = await Promise.all([
         supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi').eq('id', b.hedefId).single(),
         supabase.rpc('get_musteri_detay', { mid: b.hedefId }),
         supabase.from('musteri_istekler').select('*, musteri_istek_ozellikler(ozellik_id)').eq('musteri_id', b.hedefId),
-        supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif'),
+        ilanIds && ilanIds.length ? ilanSel.in('id', ilanIds) : ilanSel,
       ]);
       if (musteri) {
         setMusteriDetay({
@@ -289,18 +291,27 @@ export default function DashboardScreen() {
           istekler: (istekler ?? []) as any[],
         });
       }
-      if (istekler?.length) {
+      if (ilanIds && ilanIds.length) {
+        setDetayListe(ilanlar ?? []);
+      } else if (istekler?.length) {
         setDetayListe((ilanlar ?? []).filter((ilan: any) => (istekler ?? []).some((istek: any) => istekEslesiyor(istek, ilan))));
       } else {
         setDetayListe([]);
       }
     } else if (b.tip === 'eslesme-ilan' || b.tip === 'fiyat-indi') {
+      const ids: string[] | undefined = b.veri?.eslesen_musteri_ids;
+      const baseSel = supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))');
       const [{ data: tumMusteriler }, { data: ilan }] = await Promise.all([
-        supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))'),
+        ids && ids.length ? baseSel.in('id', ids) : baseSel,
         supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').eq('id', b.hedefId).single(),
       ]);
       setIlanData(ilan ?? null);
-      if (ilan) setDetayListe((tumMusteriler ?? []).filter((m: any) => eslesenMi(m, ilan)));
+      if (ilan) {
+        const list = ids && ids.length
+          ? ((tumMusteriler ?? []) as any[]).filter((m: any) => (m.durum ?? 'Aktif') === 'Aktif')
+          : ((tumMusteriler ?? []) as any[]).filter((m: any) => (m.durum ?? 'Aktif') === 'Aktif' && eslesenMi(m, ilan));
+        setDetayListe(list);
+      }
     } else if (b.tip === 'takip' || b.tip === 'gorev-gecikti' || b.tip === 'sessiz' || (b.tip === 'asistan' && b.hedefId)) {
       const [{ data: mInfo }, { data: rpc }, { data: istekler }] = await Promise.all([
         supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi').eq('id', b.hedefId).single(),
