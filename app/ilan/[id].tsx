@@ -122,7 +122,7 @@ L.marker([${lat},${lng}],{icon:icon}).addTo(map);
 }
 
 export default function IlanDetayScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, paylas: paylasMusteriId } = useLocalSearchParams<{ id: string; paylas?: string }>();
   const [ilan, setIlan] = useState<Ilan | null>(null);
   const [loading, setLoading] = useState(true);
   const [aktifFoto, setAktifFoto] = useState(0);
@@ -180,6 +180,10 @@ export default function IlanDetayScreen() {
     const targetX = aktifFoto * THUMB_CELL - (SCREEN_WIDTH / 2 - 28);
     thumbScrollRef.current?.scrollTo({ x: Math.max(0, targetX), animated: true });
   }, [aktifFoto]);
+
+  useEffect(() => {
+    if (paylasMusteriId) linkModalAc(paylasMusteriId);
+  }, [paylasMusteriId]);
 
   useEffect(() => {
     fetchIlan();
@@ -379,14 +383,20 @@ export default function IlanDetayScreen() {
     return true;
   }
 
-  async function linkModalAc() {
-    setLinkSeciliMusteri('');
+  async function linkModalAc(presetMusteriId?: string) {
+    setLinkSeciliMusteri(presetMusteriId ?? '');
     setLinkMusteriAra('');
     setLinkEtiketAra('');
     setLinkUrl(null);
     setLinkSaat('24');
     const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').eq('durum', 'Aktif').order('ad');
-    if (data) setLinkMusteriler(data as any);
+    if (data) {
+      setLinkMusteriler(data as any);
+      if (presetMusteriId) {
+        const m = (data as any[]).find(x => x.id === presetMusteriId);
+        if (m) setLinkMusteriAra(`${m.ad ?? ''} ${m.soyad ?? ''}`.trim());
+      }
+    }
     setLinkModal(true);
   }
 
@@ -1013,6 +1023,18 @@ export default function IlanDetayScreen() {
                       {linkKopyalandi ? '✓ Kopyalandı!' : 'Kopyala'}
                     </Text>
                   </TouchableOpacity>
+                  {(() => {
+                    const tel = linkMusteriler.find(m => m.id === linkSeciliMusteri)?.telefon ?? '';
+                    const cleaned = tel.replace(/\D/g, '').replace(/^0/, '');
+                    if (!cleaned || !linkUrl) return null;
+                    return (
+                      <TouchableOpacity onPress={() => Linking.openURL(`whatsapp://send?phone=${cleaned}&text=${encodeURIComponent(linkUrl)}`).catch(() => Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(linkUrl)}`))} style={{
+                        backgroundColor: '#25D366', borderRadius: 8, padding: 14, alignItems: 'center', marginBottom: 8,
+                      }}>
+                        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>WhatsApp'ta Gönder</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
                   <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); setLinkSeciliMusteri(''); setLinkMusteriAra(''); setLinkEtiketAra(''); }} style={{
                     borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, alignItems: 'center',
                   }}>

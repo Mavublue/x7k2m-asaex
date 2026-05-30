@@ -1066,6 +1066,11 @@ export default function DashboardScreen() {
                                   {item.oda_sayisi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{item.oda_sayisi}</Text></View> : null}
                                   {item.bina_yasi ? <View style={styles.bdTag}><Text style={styles.bdTagText}>{item.bina_yasi}</Text></View> : null}
                                 </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 }}>
+                                  <TouchableOpacity onPress={() => { const mid = detayBildirim?.hedefId; setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); router.push(`/ilan/${item.id}?paylas=${mid}` as any); }} style={{ backgroundColor: '#E53935', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}>
+                                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🔗 Link Paylaş</Text>
+                                  </TouchableOpacity>
+                                </View>
                               </View>
                             </TouchableOpacity>
                           ))}

@@ -1698,6 +1698,15 @@ export default function MusteriDetayScreen() {
                 <TouchableOpacity onPress={() => Share.share({ message: linkUrl! })} style={[styles.eslesBulkBtn, { marginBottom: 10 }]}>
                   <Text style={styles.eslesBulkBtnText}>Paylaş / Kopyala</Text>
                 </TouchableOpacity>
+                {(() => {
+                  const cleaned = (musteri?.telefon ?? '').replace(/\D/g, '').replace(/^0/, '');
+                  if (!cleaned || !linkUrl) return null;
+                  return (
+                    <TouchableOpacity onPress={() => Linking.openURL(`whatsapp://send?phone=${cleaned}&text=${encodeURIComponent(linkUrl)}`).catch(() => Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(linkUrl)}`))} style={{ backgroundColor: '#25D366', borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>WhatsApp'ta Gönder</Text>
+                    </TouchableOpacity>
+                  );
+                })()}
                 <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSecimIds([]); setLinkSaat('24'); }}
                   style={{ padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.outline, alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
