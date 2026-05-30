@@ -166,7 +166,7 @@ export default function MusterilerScreen() {
           {musteriTipleri.map(t => (
             <TouchableOpacity
               key={t}
-              style={[styles.tab, activeTip === t && { backgroundColor: Colors.onSurface, borderColor: Colors.onSurface }]}
+              style={[styles.tab, activeTip === t && { backgroundColor: Colors.surfaceContainerHighest, borderColor: Colors.surfaceContainerHighest }]}
               onPress={() => setActiveTip(t)}
             >
               <Text style={[styles.tabText, activeTip === t && { color: '#fff' }]}>{t}</Text>

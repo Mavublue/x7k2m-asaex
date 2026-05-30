@@ -352,7 +352,7 @@ const s = StyleSheet.create({
   empty: { textAlign: 'center', color: Colors.onSurfaceVariant, fontSize: 14, paddingVertical: 32 },
 
   musteriKart: { backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, borderWidth: 1, borderColor: Colors.outlineVariant },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.onSurfaceVariant, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   musteriAd: { fontSize: 14, fontWeight: '700', color: Colors.onSurface },
   etiket: { fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600' },

@@ -238,7 +238,7 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.outlineVariant },
   dotAktif: { backgroundColor: Colors.primary, width: 18 },
 
-  tipBadge: { alignSelf: 'flex-start', backgroundColor: Colors.onSurface, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8 },
+  tipBadge: { alignSelf: 'flex-start', backgroundColor: Colors.surfaceContainerHighest, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8 },
   tipBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   baslik: { fontSize: 19, fontWeight: '700', color: Colors.onSurface, marginBottom: 4, lineHeight: 26 },
   lokasyon: { fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 10 },
@@ -249,7 +249,7 @@ const s = StyleSheet.create({
     borderRadius: Radius.lg, paddingHorizontal: 14, marginBottom: Spacing.md,
   },
   detayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, gap: 16 },
-  detayRowSinir: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.07)' },
+  detayRowSinir: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
   detayL: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
   detayV: { fontSize: 13, color: Colors.onSurfaceVariant, flex: 1, textAlign: 'right' },
 

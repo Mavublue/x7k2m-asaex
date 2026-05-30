@@ -315,7 +315,7 @@ export default function GorevlerScreen() {
                     return (
                       <TouchableOpacity key={m.id} onPress={() => { setEkleMusteriIds(prev => secili ? prev.filter(id => id !== m.id) : [...prev, m.id]); }}
                         style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: secili ? 'rgba(22,163,74,0.12)' : Colors.surfaceContainerLow }}>
-                        {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: Colors.onSurface, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
+                        {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: Colors.surfaceContainerHighest, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
                         <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
                         </View>

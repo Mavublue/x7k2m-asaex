@@ -1158,7 +1158,7 @@ export default function DashboardScreen() {
                       ]).filter(Boolean) as string[];
                       return (
                         <TouchableOpacity key={m.id} onPress={() => musteriDetayAc(m)} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: Colors.outlineVariant }}>
-                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.onSurfaceVariant, alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
                             <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{initials}</Text>
                           </View>
                           <View style={{ flex: 1, minWidth: 0 }}>

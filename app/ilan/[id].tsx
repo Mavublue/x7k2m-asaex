@@ -69,7 +69,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
             <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
           </TouchableOpacity>
           <View style={{ position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center', zIndex: 5 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.05)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
           </View>
           <FlatList
             ref={listRef}
@@ -937,7 +937,7 @@ export default function IlanDetayScreen() {
                           return (
                             <TouchableOpacity key={m.id} onPress={() => { setLinkSeciliMusteri(m.id); setLinkMusteriAra([m.ad, m.soyad].filter(Boolean).join(' ')); setLinkEtiketAra(''); }}
                               style={{ padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: linkSeciliMusteri === m.id ? 'rgba(229,57,53,0.12)' : Colors.surfaceContainerLow, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh }}>
-                              {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: Colors.onSurface, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
+                              {m.etiketler ? <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: Colors.surfaceContainerHighest, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 2 }}>#{m.etiketler.split(',')[0].trim()}</Text> : null}
                               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{(m.ad?.[0] ?? '?').toUpperCase()}</Text>
                               </View>
