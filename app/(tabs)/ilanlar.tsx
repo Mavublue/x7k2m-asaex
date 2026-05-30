@@ -3,7 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, ActivityIndicator, Modal, FlatList, SectionList,
-  KeyboardAvoidingView, Platform, Dimensions, RefreshControl, Alert,
+  KeyboardAvoidingView, Platform, Dimensions, RefreshControl, Alert, Linking,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
@@ -170,7 +170,7 @@ export default function IlanlarScreen() {
   const [paylasLink, setPaylasLink] = useState('');
   const [paylasYukleniyor, setPaylasYukleniyor] = useState(false);
   const [kopyalandi, setKopyalandi] = useState(false);
-  const [paylasMusteriler, setPaylasMusteriler] = useState<{id:string;ad:string;soyad:string;etiketler:string|null}[]>([]);
+  const [paylasMusteriler, setPaylasMusteriler] = useState<{id:string;ad:string;soyad:string;etiketler:string|null;telefon:string|null}[]>([]);
   const [paylasMusteri, setPaylasMusteri] = useState('');
   const [paylasMusteriAra, setPaylasMusteriAra] = useState('');
   const [paylasSaat, setPaylasSaat] = useState('168');
@@ -417,7 +417,7 @@ export default function IlanlarScreen() {
     setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); setKopyalandi(false); setPaylasEtiketAra('');
     setPaylasHaric(new Set());
     setPaylasIlanlar(kaynak === 'secim' ? ilanlar.filter(i => seciliIds.has(i.id)) : filtered);
-    supabase.from('musteriler').select('id, ad, soyad, etiketler').eq('durum', 'Aktif').order('ad')
+    supabase.from('musteriler').select('id, ad, soyad, etiketler, telefon').eq('durum', 'Aktif').order('ad')
       .then(({ data }) => { if (data) setPaylasMusteriler(data); });
     setPaylasModal(true);
   }
@@ -1454,6 +1454,18 @@ export default function IlanlarScreen() {
                       onPress={async () => { await Clipboard.setStringAsync(paylasLink); setKopyalandi(true); setTimeout(() => setKopyalandi(false), 2000); }}>
                       <Text style={styles.uygulaBtnText}>{kopyalandi ? '✓ Kopyalandı!' : 'Kopyala'}</Text>
                     </TouchableOpacity>
+                    {(() => {
+                      const tel = paylasMusteriler.find(m => m.id === paylasMusteri)?.telefon ?? '';
+                      const cleaned = tel.replace(/\D/g, '').replace(/^0/, '');
+                      if (!cleaned) return null;
+                      return (
+                        <TouchableOpacity
+                          onPress={() => Linking.openURL(`whatsapp://send?phone=${cleaned}&text=${encodeURIComponent(paylasLink)}`).catch(() => Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(paylasLink)}`))}
+                          style={{ backgroundColor: '#25D366', borderRadius: Radius.full, paddingVertical: 14, alignItems: 'center' }}>
+                          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>WhatsApp'ta Gönder</Text>
+                        </TouchableOpacity>
+                      );
+                    })()}
                     <TouchableOpacity style={{ borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.outline, paddingVertical: 14, alignItems: 'center' }}
                       onPress={() => { setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); }}>
                       <Text style={{ fontSize: 14, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
