@@ -10,22 +10,22 @@ export const Colors = {
   secondaryContainer: '#9d4300',
   onSecondary: '#ffffff',
 
-  surface: '#13131a',
-  surfaceBright: '#2a2a33',
-  surfaceContainerLowest: '#0a0a10',
-  surfaceContainerLow: '#1a1a22',
-  surfaceContainer: '#1f1f28',
-  surfaceContainerHigh: '#26262f',
-  surfaceContainerHighest: '#2d2d37',
-  surfaceDim: '#0a0a10',
+  surface: '#000000',
+  surfaceBright: '#1f1f1f',
+  surfaceContainerLowest: '#000000',
+  surfaceContainerLow: '#0d0d0d',
+  surfaceContainer: '#141414',
+  surfaceContainerHigh: '#1c1c1c',
+  surfaceContainerHighest: '#262626',
+  surfaceDim: '#000000',
 
-  onSurface: '#e3e1e9',
-  onSurfaceVariant: '#c5c5d3',
-  outline: '#8c8d99',
-  outlineVariant: '#3a3a44',
+  onSurface: '#e6e6e6',
+  onSurfaceVariant: '#bdbdbd',
+  outline: '#888888',
+  outlineVariant: '#333333',
 
   error: '#ff5449',
-  background: '#0e0e14',
+  background: '#000000',
 };
 
 export const FontFamily = {
