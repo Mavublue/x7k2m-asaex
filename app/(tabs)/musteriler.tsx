@@ -67,6 +67,16 @@ export default function MusterilerScreen() {
       result = result.filter(m => m.etiketler?.toLowerCase().includes(eq));
     }
     result = [...result].sort((a, b) => {
+      if (etiketSearch) {
+        const eq = etiketSearch.replace('#', '').toLowerCase();
+        const ae = (a.etiketler ?? '').toLowerCase();
+        const be = (b.etiketler ?? '').toLowerCase();
+        const aStarts = ae.startsWith(eq);
+        const bStarts = be.startsWith(eq);
+        if (aStarts !== bStarts) return aStarts ? -1 : 1;
+        if (ae.length !== be.length) return ae.length - be.length;
+        return ae.localeCompare(be);
+      }
       if (siralama === 'etiket_artan') return etiketSayi(a.etiketler) - etiketSayi(b.etiketler);
       if (siralama === 'etiket_azalan') {
         const av = etiketSayi(a.etiketler), bv = etiketSayi(b.etiketler);
