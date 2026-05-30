@@ -1182,6 +1182,11 @@ export default function DashboardScreen() {
                               <Text style={{ fontSize: 14 }}>📞</Text>
                             </TouchableOpacity>
                           ) : null}
+                          {ilanData?.id ? (
+                            <TouchableOpacity onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); router.push(`/ilan/${ilanData.id}?paylas=${m.id}` as any); }} style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 14, color: '#fff' }}>🔗</Text>
+                            </TouchableOpacity>
+                          ) : null}
                           <Text style={{ color: '#d1d5db', fontSize: 18 }}>›</Text>
                         </TouchableOpacity>
                       );
