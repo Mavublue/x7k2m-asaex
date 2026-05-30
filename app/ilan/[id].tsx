@@ -69,7 +69,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
             <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
           </TouchableOpacity>
           <View style={{ position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center', zIndex: 5 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.05)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
           </View>
           <FlatList
             ref={listRef}

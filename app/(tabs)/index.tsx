@@ -545,8 +545,8 @@ export default function DashboardScreen() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: '#dbeafe' }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
+              <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(59,130,246,0.18)' }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#93c5fd' }}>＋ Ekle</Text>
               </TouchableOpacity>
             </View>
             <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
@@ -628,13 +628,13 @@ export default function DashboardScreen() {
               {showEditTarihPicker && <>
                 <DateTimePicker value={editTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setEditTarihDate(d); }} />
                 <TouchableOpacity onPress={() => setShowEditTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
-                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                  <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
                 </TouchableOpacity>
               </>}
               {showEditSaatPicker && <>
                 <DateTimePicker value={editSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { if (d) setEditSaatDate(d); }} />
                 <TouchableOpacity onPress={() => setShowEditSaatPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
-                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                  <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
                 </TouchableOpacity>
               </>}
               {!showEditTarihPicker && !showEditSaatPicker && (
@@ -663,7 +663,7 @@ export default function DashboardScreen() {
                 style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
               {genelMusteriId ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: 8, backgroundColor: 'rgba(34,197,94,0.12)', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600', flex: 1 }}>
+                  <Text style={{ fontSize: 13, color: '#86efac', fontWeight: '600', flex: 1 }}>
                     {(() => { const m = musteriListesi.find(x => x.id === genelMusteriId); return [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); })()}
                   </Text>
                   <TouchableOpacity onPress={() => { setGenelMusteriId(null); setGenelMusteriArama(''); }}>
@@ -704,13 +704,13 @@ export default function DashboardScreen() {
               {showGenelTarihPicker && <>
                 <DateTimePicker value={genelTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setGenelTarihDate(d); }} />
                 <TouchableOpacity onPress={() => setShowGenelTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
-                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                  <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
                 </TouchableOpacity>
               </>}
               {showGenelSaatPicker && <>
                 <DateTimePicker value={genelSaatDate ?? new Date()} mode="time" is24Hour display="spinner" onChange={(_, d) => { if (d) setGenelSaatDate(d); }} />
                 <TouchableOpacity onPress={() => setShowGenelSaatPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
-                  <Text style={{ color: '#3b82f6', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
+                  <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
                 </TouchableOpacity>
               </>}
               {!showGenelTarihPicker && !showGenelSaatPicker && (
@@ -995,7 +995,7 @@ export default function DashboardScreen() {
                     <View>
                       <Text style={styles.bdSectionTitle}>İstekler</Text>
                       {(musteriDetay.istekler ?? []).map((istek: any, idx: number) => (
-                        <View key={istek.id} style={{ backgroundColor: '#fafafa', borderWidth: 1, borderColor: Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                        <View key={istek.id} style={{ backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: '#E53935', borderRadius: 10, padding: 12, marginBottom: 8 }}>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                             <View style={{ backgroundColor: '#E53935', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
                               <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>#{idx + 1}</Text>
@@ -1028,9 +1028,9 @@ export default function DashboardScreen() {
                     <View>
                       <Text style={styles.bdSectionTitle}>Son Notlar</Text>
                       {(musteriDetay.notlar ?? []).map((n: any) => (
-                        <View key={n.id} style={{ backgroundColor: 'rgba(254,243,199,0.7)', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 12, marginBottom: 6 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#92400e', marginBottom: 4 }}>{n.tarih ? new Date(n.tarih).toLocaleDateString('tr-TR') : ''}</Text>
-                          <Text style={{ fontSize: 12, color: '#78350f', lineHeight: 18 }}>{n.icerik}</Text>
+                        <View key={n.id} style={{ backgroundColor: 'rgba(234,179,8,0.10)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: 8, padding: 12, marginBottom: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#fcd34d', marginBottom: 4 }}>{n.tarih ? new Date(n.tarih).toLocaleDateString('tr-TR') : ''}</Text>
+                          <Text style={{ fontSize: 12, color: '#fde68a', lineHeight: 18 }}>{n.icerik}</Text>
                         </View>
                       ))}
                     </View>
@@ -1092,7 +1092,7 @@ export default function DashboardScreen() {
                 {detayBildirim?.tip === 'fiyat-indi' && detayBildirim.veri ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: 'rgba(249,115,22,0.18)', borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(249,115,22,0.4)' }}>
                     <Text style={{ fontSize: 18 }}>💸</Text>
-                    <Text style={{ flex: 1, fontSize: 12, color: '#9a3412', fontWeight: '600' }}>
+                    <Text style={{ flex: 1, fontSize: 12, color: '#fdba74', fontWeight: '600' }}>
                       Fiyat ₺{Number(detayBildirim.veri.eski_fiyat ?? 0).toLocaleString('tr-TR')} → ₺{Number(detayBildirim.veri.yeni_fiyat ?? 0).toLocaleString('tr-TR')}
                     </Text>
                   </View>
@@ -1250,8 +1250,8 @@ export default function DashboardScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
               <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.onSurface }}>Görevler</Text>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: '#dbeafe' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>＋ Ekle</Text>
+                <TouchableOpacity onPress={() => setGenelGorevModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, backgroundColor: 'rgba(59,130,246,0.18)' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#93c5fd' }}>＋ Ekle</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setGorevPanel(false)}>
                   <Text style={{ fontSize: 20, color: Colors.onSurfaceVariant }}>✕</Text>
@@ -1499,13 +1499,13 @@ const styles = StyleSheet.create({
   bdBaslik: { fontSize: 14, fontWeight: '600', color: Colors.onSurface },
   bdAlt: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   bdTipTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(59,130,246,0.08)' },
-  bdTipTagText: { fontSize: 11, fontWeight: '600', color: '#2563eb' },
+  bdTipTagText: { fontSize: 11, fontWeight: '600', color: '#60a5fa' },
   bdKonumTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(34,197,94,0.12)' },
   bdKonumTagText: { fontSize: 11, fontWeight: '600', color: '#16a34a' },
-  bdButceTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: '#fff7ed' },
-  bdButceTagText: { fontSize: 11, fontWeight: '600', color: '#c2410c' },
+  bdButceTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(249,115,22,0.18)' },
+  bdButceTagText: { fontSize: 11, fontWeight: '600', color: '#fdba74' },
   bdOdaTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(124,58,237,0.08)' },
-  bdOdaTagText: { fontSize: 11, fontWeight: '600', color: '#7c3aed' },
+  bdOdaTagText: { fontSize: 11, fontWeight: '600', color: '#c4b5fd' },
   bdZaman: { fontSize: 11, color: Colors.outlineVariant, marginTop: 2 },
   bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   bdMenuText: { fontSize: 22, color: Colors.onSurfaceVariant, fontWeight: '700', lineHeight: 24 },
@@ -1524,11 +1524,11 @@ const styles = StyleSheet.create({
   bdTipTag: { backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   bdTipTagText: { fontSize: 10, fontWeight: '600', color: '#E53935' },
   bdKonumTag: { backgroundColor: 'rgba(59,130,246,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  bdKonumTagText: { fontSize: 10, fontWeight: '600', color: '#1d4ed8' },
+  bdKonumTagText: { fontSize: 10, fontWeight: '600', color: '#93c5fd' },
   bdButceTag: { backgroundColor: 'rgba(58,170,110,0.12)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   bdButceTagText: { fontSize: 10, fontWeight: '600', color: '#3aaa6e' },
   bdOdaTag: { backgroundColor: 'rgba(168,85,247,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  bdOdaTagText: { fontSize: 10, fontWeight: '600', color: '#7c3aed' },
+  bdOdaTagText: { fontSize: 10, fontWeight: '600', color: '#c4b5fd' },
   bdYasTag: { backgroundColor: 'rgba(249,115,22,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  bdYasTagText: { fontSize: 10, fontWeight: '600', color: '#c2410c' },
+  bdYasTagText: { fontSize: 10, fontWeight: '600', color: '#fdba74' },
 });

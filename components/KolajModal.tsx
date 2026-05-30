@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   dimmer: { ...StyleSheet.absoluteFillObject },
   panel: { backgroundColor: Colors.surfaceContainerLow, borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '94%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh },
-  baslik: { fontSize: 16, fontWeight: '700', color: '#111' },
+  baslik: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   kapat: { fontSize: 22, color: Colors.onSurfaceVariant },
   label: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 6 },
   previewWrap: { aspectRatio: 1333 / 1999, backgroundColor: '#000', borderRadius: 12, overflow: 'hidden', marginBottom: 8 },

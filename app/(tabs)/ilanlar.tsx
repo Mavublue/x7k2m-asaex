@@ -1801,7 +1801,7 @@ const styles = StyleSheet.create({
   chipHaric: { backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
-  chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
+  chipHaricText: { color: '#fca5a5', fontWeight: '600', textDecorationLine: 'line-through' },
 
   secimBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

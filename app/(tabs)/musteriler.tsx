@@ -223,7 +223,7 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
   ) : [];
   const durumRenk = {
     Aktif: { bg: 'rgba(34,197,94,0.18)', text: '#166534' },
-    Beklemede: { bg: 'rgba(234,179,8,0.15)', text: '#854d0e' },
+    Beklemede: { bg: 'rgba(234,179,8,0.15)', text: '#fcd34d' },
     İptal: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5' },
   }[musteri.durum] ?? { bg: Colors.surfaceContainerLow, text: Colors.onSurfaceVariant };
 

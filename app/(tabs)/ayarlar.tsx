@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   profileAvatar: { width: 52, height: 52, borderRadius: Radius.full, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   profileAvatarText: { color: '#fff', fontSize: 20, fontWeight: '700' },
   profileName: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  profileEmail: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
+  profileEmail: { color: 'rgba(255,255,255,0.05)', fontSize: 12, marginTop: 2 },
   profileOfis: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
   profileArrow: { color: 'rgba(255,255,255,0.6)', fontSize: 24 },
 

@@ -1007,7 +1007,7 @@ export default function MusteriDetayScreen() {
                           { text: 'Sil', style: 'destructive', onPress: () => handleNotSil(n.id) },
                           { text: 'İptal', style: 'cancel' },
                         ])} style={styles.notIcon}>
-                          <Text style={{ fontSize: 18, color: '#92400e', fontWeight: '700' }}>⋯</Text>
+                          <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                         </TouchableOpacity>
                       </View>
                       <Text style={styles.notIcerik}>{n.icerik}</Text>
@@ -1276,7 +1276,7 @@ export default function MusteriDetayScreen() {
                               { text: 'Sil', style: 'destructive', onPress: () => handleNotSil(n.id) },
                               { text: 'İptal', style: 'cancel' },
                             ])} style={styles.notIcon}>
-                              <Text style={{ fontSize: 18, color: '#92400e', fontWeight: '700' }}>⋯</Text>
+                              <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                             </TouchableOpacity>
                           </View>
                           <Text style={styles.notIcerik}>{n.icerik}</Text>
@@ -1721,7 +1721,7 @@ export default function MusteriDetayScreen() {
       <Modal visible={!!gorevOneriModal} transparent animationType="fade" onRequestClose={() => setGorevOneriModal(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
-            <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700', marginBottom: 6 }}>🤖 Görev Önerisi</Text>
+            <Text style={{ fontSize: 13, color: '#c4b5fd', fontWeight: '700', marginBottom: 6 }}>🤖 Görev Önerisi</Text>
             <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.onSurface, marginBottom: 4 }}>{gorevOneriModal?.baslik}</Text>
             {gorevOneriModal?.tarih && (
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 12 }}>📅 {new Date(gorevOneriModal.tarih).toLocaleDateString('tr-TR')}</Text>
@@ -1730,7 +1730,7 @@ export default function MusteriDetayScreen() {
             {!showGorevOneriSaatPicker ? (
               <TouchableOpacity onPress={() => setShowGorevOneriSaatPicker(true)}
                 style={{ padding: 10, borderWidth: 1, borderColor: '#7c3aed', borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#c4b5fd' }}>
                   ⏰ {String(gorevOneriSaat.getHours()).padStart(2,'0')}:{String(gorevOneriSaat.getMinutes()).padStart(2,'0')}
                 </Text>
               </TouchableOpacity>
@@ -1933,7 +1933,7 @@ function GorevlerBox({
               { text: 'Sil', style: 'destructive', onPress: () => onSil(g.id) },
               { text: 'İptal', style: 'cancel' },
             ])} style={gorevStyles.menuBtn}>
-              <Text style={{ fontSize: 18, color: '#166534', fontWeight: '700' }}>⋯</Text>
+              <Text style={{ fontSize: 18, color: '#86efac', fontWeight: '700' }}>⋯</Text>
             </TouchableOpacity>
           </View>
         ))
@@ -1945,7 +1945,7 @@ function GorevlerBox({
 const gorevStyles = StyleSheet.create({
   box: { backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  baslik: { fontSize: 13, fontWeight: '700', color: '#166534', letterSpacing: 0.3 },
+  baslik: { fontSize: 13, fontWeight: '700', color: '#86efac', letterSpacing: 0.3 },
   ekleBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#16a34a', borderRadius: Radius.sm },
   ekleBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
   form: { marginBottom: 8 },
@@ -1954,7 +1954,7 @@ const gorevStyles = StyleSheet.create({
   kaydetBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
   iptalBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.sm },
   iptalBtnText: { fontSize: 12, color: Colors.onSurfaceVariant },
-  satir: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#bbf7d0' },
+  satir: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: 'rgba(34,197,94,0.4)' },
   satirTamamlandi: { opacity: 0.6 },
   checkbox: { paddingTop: 1 },
   satirBaslik: { fontSize: 13, fontWeight: '600', color: Colors.onSurface },
@@ -2025,7 +2025,7 @@ const styles = StyleSheet.create({
   elleBadge: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
   elleBadgeText: { fontSize: 10, color: Colors.primary, fontWeight: '700' },
   zatenBadge: { backgroundColor: 'rgba(234,179,8,0.18)', borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
-  zatenBadgeText: { fontSize: 10, color: '#d97706', fontWeight: '700' },
+  zatenBadgeText: { fontSize: 10, color: '#fcd34d', fontWeight: '700' },
   iptalBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center' },
   iptalBtnText: { fontSize: 14, color: '#ef4444' },
   ilanFoto: { width: 64, height: 64 },
@@ -2056,7 +2056,7 @@ const styles = StyleSheet.create({
   chipHaric: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: Colors.primary, fontWeight: '700' },
-  chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
+  chipHaricText: { color: '#fca5a5', fontWeight: '600', textDecorationLine: 'line-through' },
 
   secimBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 12 },
   secimBtnText: { fontSize: 15, color: Colors.onSurface },
@@ -2095,20 +2095,20 @@ const styles = StyleSheet.create({
   etiketBadge: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   etiketBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
 
-  notlarBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
+  notlarBox: { backgroundColor: 'rgba(234,179,8,0.10)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
   notlarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#92400e', letterSpacing: 0.3 },
+  notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#fcd34d', letterSpacing: 0.3 },
   notEkleBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
   notEkleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notForm: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
+  notForm: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: 8, padding: 10, marginBottom: 8 },
   notInput: { borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: Colors.surfaceContainerLow },
   notKaydetBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notKaydetBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notIptalBtnText: { color: Colors.onSurfaceVariant, fontSize: 12, fontWeight: '600' },
-  notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
+  notSatir: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
   notSatirHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notTarih: { fontSize: 11, fontWeight: '700', color: '#92400e' },
-  notIcerik: { fontSize: 13, color: '#78350f', lineHeight: 18 },
+  notTarih: { fontSize: 11, fontWeight: '700', color: '#fcd34d' },
+  notIcerik: { fontSize: 13, color: '#fde68a', lineHeight: 18 },
   notIcon: { padding: 2 },
 });

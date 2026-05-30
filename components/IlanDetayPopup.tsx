@@ -245,13 +245,13 @@ const s = StyleSheet.create({
   fiyat: { fontSize: 22, fontWeight: '700', color: Colors.onSurface, marginBottom: 14 },
 
   detayKart: {
-    backgroundColor: 'rgba(34,197,94,0.12)', borderColor: '#bbf7d0', borderWidth: 1.5,
+    backgroundColor: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.4)', borderWidth: 1.5,
     borderRadius: Radius.lg, paddingHorizontal: 14, marginBottom: Spacing.md,
   },
   detayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, gap: 16 },
   detayRowSinir: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.07)' },
   detayL: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
-  detayV: { fontSize: 13, color: '#4b5563', flex: 1, textAlign: 'right' },
+  detayV: { fontSize: 13, color: Colors.onSurfaceVariant, flex: 1, textAlign: 'right' },
 
   kart: {
     backgroundColor: Colors.surfaceContainerLow, borderColor: Colors.surfaceContainerLow, borderWidth: 1,
@@ -259,14 +259,14 @@ const s = StyleSheet.create({
   },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { backgroundColor: '#f0f9f4', borderColor: '#bbf7d0', borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  chipText: { fontSize: 12, color: '#15803d', fontWeight: '600' },
+  chip: { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.4)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  chipText: { fontSize: 12, color: '#86efac', fontWeight: '600' },
   aciklama: { fontSize: 13, color: Colors.onSurface, lineHeight: 22 },
 
   notKart: {
-    backgroundColor: '#fffbeb', borderColor: '#fde68a', borderWidth: 1,
+    backgroundColor: 'rgba(234,179,8,0.10)', borderColor: 'rgba(234,179,8,0.4)', borderWidth: 1,
     borderRadius: Radius.lg, padding: 14, marginBottom: Spacing.md,
   },
-  notLabel: { fontSize: 11, fontWeight: '700', color: '#92400e', letterSpacing: 0.5, marginBottom: 8 },
-  notText: { fontSize: 13, color: '#451a03', lineHeight: 22 },
+  notLabel: { fontSize: 11, fontWeight: '700', color: '#fcd34d', letterSpacing: 0.5, marginBottom: 8 },
+  notText: { fontSize: 13, color: '#fde68a', lineHeight: 22 },
 });

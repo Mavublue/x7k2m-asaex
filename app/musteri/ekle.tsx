@@ -653,7 +653,7 @@ export default function MusteriEkleScreen() {
                       { text: 'Sil', style: 'destructive', onPress: () => notSil(idx) },
                       { text: 'İptal', style: 'cancel' },
                     ])} style={styles.notIcon}>
-                      <Text style={{ fontSize: 18, color: '#92400e', fontWeight: '700' }}>⋯</Text>
+                      <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.notIcerik}>{n.icerik}</Text>
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.primaryFixed, borderColor: Colors.primary },
   chipHaric: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: '#ef4444' },
   chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
-  chipHaricText: { color: '#dc2626', fontWeight: '600', textDecorationLine: 'line-through' },
+  chipHaricText: { color: '#fca5a5', fontWeight: '600', textDecorationLine: 'line-through' },
   chipTextActive: { color: Colors.primary, fontWeight: '700' },
   secimBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 12 },
   secimBtnText: { fontSize: 15, color: Colors.onSurface },
@@ -863,20 +863,20 @@ const styles = StyleSheet.create({
   etiketInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, width: 80 },
   etiketHash: { fontSize: 16, fontWeight: '700', color: Colors.primary, marginRight: 1 },
   etiketInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: Colors.onSurface },
-  notlarBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
+  notlarBox: { backgroundColor: 'rgba(234,179,8,0.10)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
   notlarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#92400e', letterSpacing: 0.3 },
+  notlarBaslik: { fontSize: 13, fontWeight: '700', color: '#fcd34d', letterSpacing: 0.3 },
   notEkleBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 },
   notEkleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  notForm: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, padding: 10, marginBottom: 8 },
+  notForm: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: 8, padding: 10, marginBottom: 8 },
   notInput: { borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, backgroundColor: Colors.surfaceContainerLow },
   notKaydetBtn: { backgroundColor: '#92400e', borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notKaydetBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   notIptalBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 },
   notIptalBtnText: { color: Colors.onSurfaceVariant, fontSize: 12, fontWeight: '600' },
-  notSatir: { backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: 'rgba(253,230,138,0.6)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
+  notSatir: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 4, gap: 4 },
   notSatirHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notTarih: { fontSize: 11, fontWeight: '700', color: '#92400e' },
-  notIcerik: { fontSize: 13, color: '#78350f', lineHeight: 18 },
+  notTarih: { fontSize: 11, fontWeight: '700', color: '#fcd34d' },
+  notIcerik: { fontSize: 13, color: '#fde68a', lineHeight: 18 },
   notIcon: { padding: 2 },
 });
