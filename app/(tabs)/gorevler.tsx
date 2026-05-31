@@ -13,6 +13,7 @@ type GorevFiltre = 'gecmis' | 'bugun' | 'yarin' | '7gun' | 'tumu' | 'yapilan';
 
 export default function GorevlerScreen() {
   const [gorevler, setGorevler] = useState<any[]>([]);
+  const [gecmisGorevler, setGecmisGorevler] = useState<any[]>([]);
   const [gecmisCount, setGecmisCount] = useState(0);
   const [gorevFiltre, setGorevFiltre] = useState<GorevFiltre>('bugun');
   const [loading, setLoading] = useState(true);
@@ -78,17 +79,22 @@ export default function GorevlerScreen() {
     const { data } = await q;
     setGorevler(data ?? []);
 
-    const { count } = await supabase.from('musteri_gorevler')
-      .select('id', { count: 'exact', head: true })
+    const { data: gecmisData, count } = await supabase.from('musteri_gorevler')
+      .select('id, baslik, hedef_tarih, musteri_id, musteriler(ad, soyad, etiketler)', { count: 'exact' })
       .eq('tamamlandi', false)
       .not('hedef_tarih', 'is', null)
-      .lt('hedef_tarih', baslangic.toISOString());
+      .lt('hedef_tarih', baslangic.toISOString())
+      .order('hedef_tarih', { ascending: false });
     setGecmisCount(count ?? 0);
+    setGecmisGorevler(filtre === 'bugun' ? (gecmisData ?? []) : []);
   }
 
   async function gorevTamamla(id: string) {
     await supabase.from('musteri_gorevler').update({ tamamlandi: true }).eq('id', id);
+    const wasGecmis = gecmisGorevler.some(g => g.id === id);
     setGorevler(prev => prev.filter(g => g.id !== id));
+    setGecmisGorevler(prev => prev.filter(g => g.id !== id));
+    if (wasGecmis) setGecmisCount(prev => Math.max(0, prev - 1));
   }
 
   async function gorevGeriAl(id: string) {
@@ -98,7 +104,10 @@ export default function GorevlerScreen() {
 
   async function gorevSil(id: string) {
     await supabase.from('musteri_gorevler').delete().eq('id', id);
+    const wasGecmis = gecmisGorevler.some(g => g.id === id);
     setGorevler(prev => prev.filter(g => g.id !== id));
+    setGecmisGorevler(prev => prev.filter(g => g.id !== id));
+    if (wasGecmis) setGecmisCount(prev => Math.max(0, prev - 1));
   }
 
   async function gorevDuzenleKaydet() {
@@ -136,6 +145,45 @@ export default function GorevlerScreen() {
   }
 
   const pad = (n: number) => String(n).padStart(2, '0');
+
+  const renderGorevKart = (g: any, forcedGecmis: boolean) => {
+    const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
+    const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
+    const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${hasTime ? ` ⏰ ${pad(d.getHours())}:${pad(d.getMinutes())}` : ''}` : '';
+    const gecmis = forcedGecmis || gorevFiltre === 'gecmis';
+    const yapilan = !forcedGecmis && gorevFiltre === 'yapilan';
+    const m = g.musteriler;
+    const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
+    return (
+      <TouchableOpacity key={g.id} onPress={() => g.musteri_id && router.push(`/musteri/${g.musteri_id}` as any)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : yapilan ? Colors.surface : Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : yapilan ? Colors.onSurfaceVariant : '#16a34a' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: yapilan ? Colors.onSurfaceVariant : Colors.onSurface, textDecorationLine: yapilan ? 'line-through' : 'none' }}>{g.baslik}</Text>
+          <Text style={{ fontSize: 12, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 3 }}>
+            {musteriLabel || '—'}{tarihStr ? ` · 📅 ${tarihStr}` : ''}
+          </Text>
+        </View>
+        {yapilan ? (
+          <TouchableOpacity onPress={() => gorevGeriAl(g.id)}
+            style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>↺</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => gorevTamamla(g.id)}
+            style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(34,197,94,0.12)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)' }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
+          { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null); } },
+          { text: 'Sil', style: 'destructive', onPress: () => gorevSil(g.id) },
+          { text: 'İptal', style: 'cancel' },
+        ])} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
+          <Text style={{ fontSize: 18, color: Colors.onSurfaceVariant, fontWeight: '700' }}>⋯</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
@@ -181,50 +229,27 @@ export default function GorevlerScreen() {
         contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 32, gap: 8 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
         ListEmptyComponent={
-          <View style={{ padding: 20, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : gorevFiltre === 'yapilan' ? Colors.surfaceContainerHigh : 'rgba(34,197,94,0.12)', borderRadius: 12, alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, color: gorevFiltre === 'gecmis' ? '#ef4444' : gorevFiltre === 'yapilan' ? Colors.onSurfaceVariant : '#16a34a', fontWeight: '500' }}>
-              {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : gorevFiltre === 'yapilan' ? 'Henüz tamamlanmış görev yok' : 'Aktif görev yok 🎉'}
-            </Text>
-          </View>
+          gorevFiltre === 'bugun' && gecmisGorevler.length > 0 ? null : (
+            <View style={{ padding: 20, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : gorevFiltre === 'yapilan' ? Colors.surfaceContainerHigh : 'rgba(34,197,94,0.12)', borderRadius: 12, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: gorevFiltre === 'gecmis' ? '#ef4444' : gorevFiltre === 'yapilan' ? Colors.onSurfaceVariant : '#16a34a', fontWeight: '500' }}>
+                {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : gorevFiltre === 'yapilan' ? 'Henüz tamamlanmış görev yok' : 'Aktif görev yok 🎉'}
+              </Text>
+            </View>
+          )
         }
-        renderItem={({ item: g }) => {
-          const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
-          const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
-          const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${hasTime ? ` ⏰ ${pad(d.getHours())}:${pad(d.getMinutes())}` : ''}` : '';
-          const gecmis = gorevFiltre === 'gecmis';
-          const yapilan = gorevFiltre === 'yapilan';
-          const m = g.musteriler;
-          const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
-          return (
-            <TouchableOpacity onPress={() => g.musteri_id && router.push(`/musteri/${g.musteri_id}` as any)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : yapilan ? Colors.surface : Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : yapilan ? Colors.onSurfaceVariant : '#16a34a' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: yapilan ? Colors.onSurfaceVariant : Colors.onSurface, textDecorationLine: yapilan ? 'line-through' : 'none' }}>{g.baslik}</Text>
-                <Text style={{ fontSize: 12, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 3 }}>
-                  {musteriLabel || '—'}{tarihStr ? ` · 📅 ${tarihStr}` : ''}
-                </Text>
+        renderItem={({ item: g }) => renderGorevKart(g, false)}
+        ListFooterComponent={
+          gorevFiltre === 'bugun' && gecmisGorevler.length > 0 ? (
+            <View style={{ gap: 8, marginTop: gorevler.length > 0 ? 8 : 0 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(239,68,68,0.35)' }} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444' }}>GECİKMİŞ ({gecmisGorevler.length})</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(239,68,68,0.35)' }} />
               </View>
-              {yapilan ? (
-                <TouchableOpacity onPress={() => gorevGeriAl(g.id)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6, borderWidth: 1, borderColor: Colors.outlineVariant }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>↺</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => gorevTamamla(g.id)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(34,197,94,0.12)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
-                { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null); } },
-                { text: 'Sil', style: 'destructive', onPress: () => gorevSil(g.id) },
-                { text: 'İptal', style: 'cancel' },
-              ])} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
-                <Text style={{ fontSize: 18, color: Colors.onSurfaceVariant, fontWeight: '700' }}>⋯</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        }}
+              {gecmisGorevler.map(g => renderGorevKart(g, true))}
+            </View>
+          ) : null
+        }
       />
 
       {/* Görev Düzenle Modal */}
