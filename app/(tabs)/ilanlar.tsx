@@ -1614,7 +1614,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   addBtn: { backgroundColor: Colors.secondaryContainer, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 8 },
   addBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  paylasBtnSmall: { backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  paylasBtnSmall: { backgroundColor: Colors.surfaceContainerHigh, borderRadius: Radius.full, width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.outlineVariant },
   paylasBtnSmallText: { fontSize: 18 },
 
   searchPill: {
@@ -1766,7 +1766,7 @@ const styles = StyleSheet.create({
   gradientOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 110 },
 
   topRow: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tipBadge: { borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
+  tipBadge: { borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
   tipBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   iptalBadge: { backgroundColor: 'rgba(153,27,27,0.85)', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 },
   iptalBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
