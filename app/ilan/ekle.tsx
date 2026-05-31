@@ -891,7 +891,7 @@ function FormGroup({ label, children, rightElement }: { label: string; children:
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
-  scroll: { padding: Spacing.xl, paddingBottom: 48, gap: Spacing.lg },
+  scroll: { padding: Spacing.lg, paddingBottom: 32, gap: Spacing.md },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -901,32 +901,32 @@ const styles = StyleSheet.create({
   kapat: { fontSize: 20, color: Colors.onSurface },
   headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
 
-  formGroup: { gap: 8 },
+  formGroup: { gap: 6 },
   label: {
     fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant,
   },
   input: {
     backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: 12,
-    fontSize: 15,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    fontSize: 13,
     color: Colors.onSurface,
   },
-  textarea: { minHeight: 100, textAlignVertical: 'top' },
-  aciklamaTabRow: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, padding: 3, marginBottom: Spacing.sm },
-  aciklamaTab: { flex: 1, paddingVertical: 7, borderRadius: Radius.full, alignItems: 'center' },
+  textarea: { minHeight: 80, textAlignVertical: 'top' },
+  aciklamaTabRow: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, padding: 3, marginBottom: Spacing.xs },
+  aciklamaTab: { flex: 1, paddingVertical: 5, borderRadius: Radius.full, alignItems: 'center' },
   aciklamaTabAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
-  aciklamaTabText: { fontSize: 13, fontWeight: '500', color: Colors.onSurfaceVariant },
+  aciklamaTabText: { fontSize: 12, fontWeight: '500', color: Colors.onSurfaceVariant },
   aciklamaTabTextAktif: { color: Colors.onSurface, fontWeight: '700' },
   row: { flexDirection: 'row', gap: Spacing.sm },
   mapPickerBtn: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.lg, paddingVertical: 14,
+    backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: 10,
   },
-  mapPickerIcon: { fontSize: 16 },
-  mapPickerText: { flex: 1, fontSize: 15, color: Colors.onSurface },
+  mapPickerIcon: { fontSize: 14 },
+  mapPickerText: { flex: 1, fontSize: 13, color: Colors.onSurface },
   mapPickerClear: { fontSize: 14, color: Colors.onSurfaceVariant, paddingHorizontal: 4 },
   musteriKonumToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   musteriKonumLabel: { fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '500' },
@@ -939,13 +939,13 @@ const styles = StyleSheet.create({
 
   selectBtn: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.lg, paddingVertical: 12,
+    backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: 8,
   },
   selectBtnDisabled: { opacity: 0.4 },
-  selectText: { fontSize: 15, color: Colors.onSurface },
-  selectPlaceholder: { fontSize: 15, color: Colors.outlineVariant },
-  selectArrow: { fontSize: 12, color: Colors.onSurfaceVariant },
+  selectText: { fontSize: 13, color: Colors.onSurface },
+  selectPlaceholder: { fontSize: 13, color: Colors.outlineVariant },
+  selectArrow: { fontSize: 11, color: Colors.onSurfaceVariant },
 
   m2Kutu: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   m2Etiket: {
@@ -959,11 +959,11 @@ const styles = StyleSheet.create({
   errText: { fontSize: 12, color: '#E53935', marginTop: 4, fontWeight: '500' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   chip: {
-    borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 5,
     backgroundColor: Colors.surfaceContainerLow,
   },
   chipActive: { backgroundColor: Colors.primaryFixed },
-  chipText: { fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' },
+  chipText: { fontSize: 12, color: Colors.onSurfaceVariant, fontWeight: '500' },
   chipTextActive: { color: Colors.primary, fontWeight: '600' },
 
   fotoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -1009,19 +1009,19 @@ const styles = StyleSheet.create({
   fotoSiraBtn: { paddingHorizontal: 6, paddingVertical: 1 },
   fotoSiraBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
-  gizleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: Spacing.lg, gap: 12 },
+  gizleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, padding: Spacing.md, gap: 12 },
   gizleAlt: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
   btnRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
   taslakBtn: {
     flex: 1, backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: Radius.full, paddingVertical: 16, alignItems: 'center',
+    borderRadius: Radius.full, paddingVertical: 11, alignItems: 'center',
   },
-  taslakText: { color: Colors.onSurface, fontWeight: '600', fontSize: 14 },
+  taslakText: { color: Colors.onSurface, fontWeight: '600', fontSize: 13 },
   yayinBtn: {
     flex: 2, backgroundColor: Colors.primary,
-    borderRadius: Radius.full, paddingVertical: 16, alignItems: 'center',
+    borderRadius: Radius.full, paddingVertical: 11, alignItems: 'center',
   },
-  yayinText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  yayinText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   btnDisabled: { opacity: 0.5 },
   yuklemeUyari: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Colors.primaryFixed, borderRadius: Radius.lg, padding: Spacing.md },
   yuklemeUyariText: { fontSize: 13, color: Colors.primary, fontWeight: '500' },
