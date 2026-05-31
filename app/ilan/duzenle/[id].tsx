@@ -458,6 +458,17 @@ export default function IlanDuzenleScreen() {
             </View>
           </FormGroup>
 
+          {/* Müşteriye Gizle */}
+          <TouchableOpacity style={styles.gizleRow} onPress={() => setMusteriGizle(v => !v)} activeOpacity={0.7}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Müşteriye Gizle</Text>
+              <Text style={styles.gizleAlt}>Bu ilan toplu paylaşımlarda görünmez</Text>
+            </View>
+            <View style={[styles.tikBox, musteriGizle && styles.tikBoxAktif]}>
+              {musteriGizle && <Text style={styles.tikIsaret}>✓</Text>}
+            </View>
+          </TouchableOpacity>
+
           <FormGroup label="İlan Tipi *">
             <View style={styles.chipRow}>
               {tipler.map(t => (
@@ -593,17 +604,6 @@ export default function IlanDuzenleScreen() {
               </FormGroup>
             </>
           )}
-
-          {/* Müşteriye Gizle */}
-          <TouchableOpacity style={styles.gizleRow} onPress={() => setMusteriGizle(v => !v)} activeOpacity={0.7}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Müşteriye Gizle</Text>
-              <Text style={styles.gizleAlt}>Bu ilan toplu paylaşımlarda görünmez</Text>
-            </View>
-            <View style={[styles.tikBox, musteriGizle && styles.tikBoxAktif]}>
-              {musteriGizle && <Text style={styles.tikIsaret}>✓</Text>}
-            </View>
-          </TouchableOpacity>
 
           {tumOzellikler.length > 0 && (
             <FormGroup label="Özellikler">
