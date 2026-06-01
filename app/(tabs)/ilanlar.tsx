@@ -1402,6 +1402,10 @@ export default function IlanlarScreen() {
                             const isimUygun = !paylasMusteriAra || `${m.ad}${m.soyad ? ` ${m.soyad}` : ''}`.toLowerCase().includes(paylasMusteriAra.toLowerCase());
                             const etiketUygun = !paylasEtiketAra || (m.etiketler ?? '').toLowerCase().includes(paylasEtiketAra.toLowerCase());
                             return isimUygun && etiketUygun;
+                          }).sort((a, b) => {
+                            const aNum = parseInt((a.etiketler ?? '').split(',')[0].trim()) || 0;
+                            const bNum = parseInt((b.etiketler ?? '').split(',')[0].trim()) || 0;
+                            return bNum - aNum;
                           }).map(m => (
                             <TouchableOpacity key={m.id} style={{ padding: Spacing.md, backgroundColor: paylasMusteri === m.id ? Colors.primaryFixed : Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}
                               onPress={() => { setPaylasMusteri(m.id); setPaylasMusteriAra(`${m.ad}${m.soyad ? ` ${m.soyad}` : ''}`); setPaylasEtiketAra(''); }}>

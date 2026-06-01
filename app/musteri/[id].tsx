@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, SectionList, Image, Keyboard, Share,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, SectionList, Image, Keyboard, Share, Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -50,6 +50,85 @@ function notTarihParse(s: string): Date | null {
   if (!m) return null;
   const d = new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]), parseInt(m[4]), parseInt(m[5]));
   return isNaN(d.getTime()) ? null : d;
+}
+
+function paylasimTarihKisa(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function paylasimTarihGoster(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function formatSure(sn: number): string {
+  if (sn < 60) return `${sn} sn`;
+  const dk = Math.floor(sn / 60);
+  if (dk < 60) return `${dk} dk`;
+  const sa = Math.floor(dk / 60);
+  const kdk = dk % 60;
+  return kdk > 0 ? `${sa} sa ${kdk} dk` : `${sa} sa`;
+}
+function sonAktifText(iso: string): { canli: boolean; text: string } {
+  const ms = Date.now() - new Date(iso).getTime();
+  const sn = Math.floor(ms / 1000);
+  if (sn < 15) return { canli: true, text: 'Şu an bakıyor' };
+  const dk = Math.floor(sn / 60);
+  if (dk < 60) return { canli: false, text: `${dk} dk önce` };
+  const sa = Math.floor(dk / 60);
+  if (sa < 24) return { canli: false, text: `${sa} sa önce` };
+  const gun = Math.floor(sa / 24);
+  return { canli: false, text: `${gun} gün önce` };
+}
+function cihazAdi(ua: string | null): string {
+  if (!ua) return 'Bilinmeyen cihaz';
+  const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
+  let os = 'Cihaz';
+  if (/iPhone/i.test(ua)) os = 'iPhone';
+  else if (/iPad/i.test(ua)) os = 'iPad';
+  else if (/Android/i.test(ua)) {
+    const m = ua.match(/Android[^;)]*;\s*([^)]+?)(?:\s+Build|\))/);
+    os = m ? `Android (${m[1].trim()})` : 'Android';
+  }
+  else if (/Windows/i.test(ua)) os = 'Windows';
+  else if (/Macintosh|Mac OS/i.test(ua)) os = 'Mac';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+  let br = '';
+  if (/Edg\//i.test(ua)) br = 'Edge';
+  else if (/Chrome\//i.test(ua) && !/Edg/i.test(ua)) br = 'Chrome';
+  else if (/Firefox\//i.test(ua)) br = 'Firefox';
+  else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) br = 'Safari';
+  const ikon = /iPhone|iPad/i.test(ua) ? '📱' : isMobile ? '📱' : '💻';
+  return `${ikon} ${os}${br ? ' · ' + br : ''}`;
+}
+function cihazKisa(ua: string | null): string {
+  if (!ua) return 'Bilinmeyen';
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Android/i.test(ua)) return 'Android';
+  if (/Macintosh|Mac OS/i.test(ua)) return 'Mac';
+  if (/Windows/i.test(ua)) return 'Windows';
+  return 'Web';
+}
+function kalanSure(iso: string): { dolmus: boolean; text: string } {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return { dolmus: true, text: 'Süresi doldu' };
+  const sn = Math.floor(ms / 1000);
+  const saat = Math.floor(sn / 3600);
+  if (saat < 1) {
+    const dk = Math.max(1, Math.ceil(sn / 60));
+    return { dolmus: false, text: `${dk} dakika kaldı` };
+  }
+  if (saat < 24) return { dolmus: false, text: `${saat} saat kaldı` };
+  const gun = Math.floor(saat / 24);
+  const kalanSaat = saat % 24;
+  return { dolmus: false, text: kalanSaat > 0 ? `${gun} gün ${kalanSaat} saat kaldı` : `${gun} gün kaldı` };
+}
+function saatLabel(t: number) {
+  const d = new Date(t);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export default function MusteriDetayScreen() {
@@ -139,6 +218,22 @@ export default function MusteriDetayScreen() {
   const [gorevOneriModal, setGorevOneriModal] = useState<{baslik: string; tarih: string | null; rowId: string | null} | null>(null);
   const [gorevOneriSaat, setGorevOneriSaat] = useState<Date>(() => { const d = new Date(); d.setHours(7,0,0,0); return d; });
   const [showGorevOneriSaatPicker, setShowGorevOneriSaatPicker] = useState(false);
+
+  // Paylaşımlar
+  type PaylasimGecmisiRow = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
+  type Ziyaret = { paket_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
+  type Oturum = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
+  const [paylasimAcik, setPaylasimAcik] = useState(false);
+  const [paylasimYukleniyor, setPaylasimYukleniyor] = useState(false);
+  const [aktifToken, setAktifToken] = useState<{ token: string; expires_at: string } | null>(null);
+  const [paylasimGecmisi, setPaylasimGecmisi] = useState<PaylasimGecmisiRow[]>([]);
+  const [ziyaretler, setZiyaretler] = useState<Ziyaret[]>([]);
+  const [oturumlari, setOturumlari] = useState<Oturum[]>([]);
+  const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24>(24);
+  const [, setTickNow] = useState(0);
+  const [tokenUzatModal, setTokenUzatModal] = useState(false);
+  const [tokenYeniTarih, setTokenYeniTarih] = useState<Date>(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d; });
+  const [tokenUzatPicker, setTokenUzatPicker] = useState<'date' | 'time' | null>(null);
 
   const fetchMusteri = useCallback(async () => {
     const { data: rpcData, error: rpcErr } = await supabase.rpc('get_musteri_detay', { mid: id });
@@ -278,6 +373,67 @@ export default function MusteriDetayScreen() {
   }, [id]);
 
   useFocusEffect(useCallback(() => { fetchMusteri(); }, [fetchMusteri]));
+
+  const fetchPaylasim = useCallback(async (silent = false) => {
+    if (!silent) setPaylasimYukleniyor(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { if (!silent) setPaylasimYukleniyor(false); return; }
+    const [tokenRes, gecmisRes, ziyaretRes, oturumRes] = await Promise.all([
+      supabase.from('musteri_tokenler').select('token, expires_at').eq('user_id', session.user.id).eq('musteri_id', id).maybeSingle(),
+      supabase.from('musteri_paylasim_gecmisi')
+        .select('paylasildigi_tarih, paket_token, ilanlar(id, baslik, fiyat, fotograflar, portfoy_no, durum)')
+        .eq('user_id', session.user.id).eq('musteri_id', id)
+        .order('paylasildigi_tarih', { ascending: false }),
+      supabase.rpc('get_musteri_ziyaretleri', { p_musteri_id: id }),
+      supabase.rpc('get_musteri_oturumlari', { p_musteri_id: id }),
+    ]);
+    setAktifToken(tokenRes.data ? { token: tokenRes.data.token, expires_at: tokenRes.data.expires_at } : null);
+    setPaylasimGecmisi((gecmisRes.data ?? []) as any);
+    setZiyaretler((ziyaretRes.data ?? []) as any);
+    setOturumlari((oturumRes.data ?? []) as any);
+    if (!silent) setPaylasimYukleniyor(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (paylasimAcik) fetchPaylasim();
+  }, [paylasimAcik, fetchPaylasim]);
+
+  useEffect(() => {
+    if (!paylasimAcik) return;
+    const tick = setInterval(() => setTickNow(t => t + 1), 5000);
+    const refresh = setInterval(() => { fetchPaylasim(true); }, 10000);
+    return () => { clearInterval(tick); clearInterval(refresh); };
+  }, [paylasimAcik, fetchPaylasim]);
+
+  async function tokenUzatKaydet() {
+    if (!aktifToken) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const yeniIso = tokenYeniTarih.toISOString();
+    const { error } = await supabase.from('musteri_tokenler')
+      .update({ expires_at: yeniIso })
+      .eq('user_id', session.user.id).eq('musteri_id', id);
+    if (error) { Alert.alert('Hata', error.message); return; }
+    setAktifToken({ ...aktifToken, expires_at: yeniIso });
+    setTokenUzatModal(false);
+  }
+
+  function tokenDoldur() {
+    if (!aktifToken) return;
+    Alert.alert('Süreyi Doldur', 'Link süresi hemen doldurulsun mu? Müşteri artık açamaz.', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Doldur', style: 'destructive', onPress: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const nowIso = new Date().toISOString();
+        const { error } = await supabase.from('musteri_tokenler')
+          .update({ expires_at: nowIso })
+          .eq('user_id', session.user.id).eq('musteri_id', id);
+        if (error) { Alert.alert('Hata', error.message); return; }
+        setAktifToken({ ...aktifToken, expires_at: nowIso });
+      }},
+    ]);
+  }
 
   useEffect(() => {
     const e = etiket.trim();
@@ -1306,6 +1462,28 @@ export default function MusteriDetayScreen() {
                     onSil={handleGorevSil}
                   />
 
+                  {/* Paylaşımlar (lazy, collapsible) */}
+                  <PaylasimBox
+                    acik={paylasimAcik}
+                    setAcik={setPaylasimAcik}
+                    yukleniyor={paylasimYukleniyor}
+                    aktifToken={aktifToken}
+                    paylasimGecmisi={paylasimGecmisi}
+                    ziyaretler={ziyaretler}
+                    oturumlari={oturumlari}
+                    timelinePeriod={timelinePeriod}
+                    setTimelinePeriod={setTimelinePeriod}
+                    onUzatAc={() => {
+                      if (!aktifToken) return;
+                      const def = new Date(aktifToken.expires_at);
+                      if (def.getTime() < Date.now()) { const d = new Date(); d.setDate(d.getDate() + 1); setTokenYeniTarih(d); }
+                      else setTokenYeniTarih(def);
+                      setTokenUzatModal(true);
+                    }}
+                    onDoldur={tokenDoldur}
+                    onLinkOlustur={handleLinkModalAc}
+                  />
+
                   {/* İlan Eşleşmeleri (lazy) */}
                   {!eslesenYuklendi ? (
                     <TouchableOpacity
@@ -1717,6 +1895,53 @@ export default function MusteriDetayScreen() {
         </View>
       </Modal>
 
+      {/* Token Süre Uzat Modal */}
+      <Modal visible={tokenUzatModal} transparent animationType="fade" onRequestClose={() => setTokenUzatModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.onSurface, marginBottom: 14 }}>Süreyi Uzat</Text>
+            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 8 }}>Yeni bitiş tarihi ve saati</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setTokenUzatPicker('date'); }}
+                style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, backgroundColor: Colors.surfaceContainer }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {(() => { const pad = (n: number) => String(n).padStart(2,'0'); const d = tokenYeniTarih; return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; })()}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setTokenUzatPicker('time'); }}
+                style={{ paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, backgroundColor: Colors.surfaceContainer, minWidth: 100 }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurface }}>⏰ {String(tokenYeniTarih.getHours()).padStart(2,'0')}:{String(tokenYeniTarih.getMinutes()).padStart(2,'0')}</Text>
+              </TouchableOpacity>
+            </View>
+            {tokenUzatPicker && (
+              <DateTimePicker value={tokenYeniTarih} mode={tokenUzatPicker} is24Hour
+                display={Platform.OS === 'ios' ? (tokenUzatPicker === 'date' ? 'inline' : 'spinner') : tokenUzatPicker === 'date' ? 'calendar' : 'default'}
+                onChange={(_, sel) => {
+                  if (Platform.OS === 'android') { setTokenUzatPicker(null); }
+                  if (sel) {
+                    const merged = new Date(tokenYeniTarih);
+                    if (tokenUzatPicker === 'date') merged.setFullYear(sel.getFullYear(), sel.getMonth(), sel.getDate());
+                    else merged.setHours(sel.getHours(), sel.getMinutes(), 0, 0);
+                    setTokenYeniTarih(merged);
+                  }
+                }} />
+            )}
+            {Platform.OS === 'ios' && tokenUzatPicker && (
+              <TouchableOpacity onPress={() => setTokenUzatPicker(null)} style={{ alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>Tamam</Text>
+              </TouchableOpacity>
+            )}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+              <TouchableOpacity onPress={() => setTokenUzatModal(false)}
+                style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '500' }}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={tokenUzatKaydet} style={{ flex: 1, padding: 12, backgroundColor: '#2563eb', borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>Kaydet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* AI Görev Önerisi Modal */}
       <Modal visible={!!gorevOneriModal} transparent animationType="fade" onRequestClose={() => setGorevOneriModal(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
@@ -1941,6 +2166,423 @@ function GorevlerBox({
     </View>
   );
 }
+
+type PaylasimGecmisiItem = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
+type ZiyaretItem = { paket_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
+type OturumItem = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
+
+function PaylasimBox({
+  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ziyaretler, oturumlari,
+  timelinePeriod, setTimelinePeriod, onUzatAc, onDoldur, onLinkOlustur,
+}: {
+  acik: boolean;
+  setAcik: (v: boolean) => void;
+  yukleniyor: boolean;
+  aktifToken: { token: string; expires_at: string } | null;
+  paylasimGecmisi: PaylasimGecmisiItem[];
+  ziyaretler: ZiyaretItem[];
+  oturumlari: OturumItem[];
+  timelinePeriod: 1 | 6 | 24;
+  setTimelinePeriod: (v: 1 | 6 | 24) => void;
+  onUzatAc: () => void;
+  onDoldur: () => void;
+  onLinkOlustur: () => void;
+}) {
+  return (
+    <View style={paylasimStyles.box}>
+      <TouchableOpacity onPress={() => setAcik(!acik)} style={paylasimStyles.header}>
+        <Text style={paylasimStyles.baslik}>📊 Paylaşımlar {paylasimGecmisi.length > 0 ? `(${paylasimGecmisi.length})` : ''}</Text>
+        <Text style={paylasimStyles.headerOk}>{acik ? '▼' : '▶'}</Text>
+      </TouchableOpacity>
+
+      {!acik ? null : yukleniyor ? (
+        <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
+      ) : (
+        <View style={{ gap: 12 }}>
+          {/* Aktif Token */}
+          {aktifToken ? (() => {
+            const ks = kalanSure(aktifToken.expires_at);
+            return (
+              <View style={[paylasimStyles.tokenKart, { borderColor: ks.dolmus ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)', backgroundColor: ks.dolmus ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <Text style={{ fontSize: 20 }}>{ks.dolmus ? '⌛' : '🔗'}</Text>
+                  <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: ks.dolmus ? '#fca5a5' : '#86efac' }}>{ks.dolmus ? 'Link Süresi Doldu' : 'Aktif Link'}</Text>
+                    <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>{paylasimTarihKisa(aktifToken.expires_at)} {ks.dolmus ? '' : `— ${ks.text}`}</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                  <TouchableOpacity onPress={onUzatAc} style={paylasimStyles.tokenBtnPrimary}>
+                    <Text style={paylasimStyles.tokenBtnPrimaryText}>Süreyi Uzat</Text>
+                  </TouchableOpacity>
+                  {!ks.dolmus && (
+                    <TouchableOpacity onPress={onDoldur} style={paylasimStyles.tokenBtnDanger}>
+                      <Text style={paylasimStyles.tokenBtnDangerText}>Süreyi Doldur</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          })() : (
+            <View style={[paylasimStyles.tokenKart, { borderColor: Colors.outlineVariant, backgroundColor: Colors.surfaceContainerLow }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <Text style={{ fontSize: 18 }}>🔗</Text>
+                <Text style={{ flex: 1, fontSize: 12, color: Colors.onSurfaceVariant, minWidth: 160 }}>Bu müşteriye henüz link gönderilmedi.</Text>
+                <TouchableOpacity onPress={onLinkOlustur} style={paylasimStyles.tokenBtnPrimary}>
+                  <Text style={paylasimStyles.tokenBtnPrimaryText}>Link Oluştur</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Zaman Çizelgesi */}
+          {oturumlari.length > 0 && <TimelineChart oturumlari={oturumlari} paylasimGecmisi={paylasimGecmisi} timelinePeriod={timelinePeriod} setTimelinePeriod={setTimelinePeriod} />}
+
+          {/* Geçmiş */}
+          <View>
+            <Text style={paylasimStyles.bolumBaslik}>Paylaşım Geçmişi {paylasimGecmisi.length > 0 ? `(${paylasimGecmisi.length})` : ''}</Text>
+            {paylasimGecmisi.length === 0 ? (
+              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', marginTop: 6 }}>Henüz ilan paylaşılmadı.</Text>
+            ) : (
+              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} />
+            )}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelinePeriod }: {
+  oturumlari: OturumItem[];
+  paylasimGecmisi: PaylasimGecmisiItem[];
+  timelinePeriod: 1 | 6 | 24;
+  setTimelinePeriod: (v: 1 | 6 | 24) => void;
+}) {
+  const ilanMap = new Map<string, { baslik: string; portfoy: string | null; fiyat: number; foto: string | null }>();
+  paylasimGecmisi.forEach(p => {
+    if (p.ilanlar) ilanMap.set(p.ilanlar.id, {
+      baslik: p.ilanlar.baslik, portfoy: p.ilanlar.portfoy_no, fiyat: p.ilanlar.fiyat,
+      foto: p.ilanlar.fotograflar?.[0] ?? null,
+    });
+  });
+  const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+  const colorFor = (key: string) => {
+    let h = 0;
+    for (const c of key) h = (h * 31 + c.charCodeAt(0)) | 0;
+    return palette[Math.abs(h) % palette.length];
+  };
+  const nowMs = Date.now();
+  const periodMs = timelinePeriod * 3600 * 1000;
+  const minT = nowMs - periodMs;
+  const maxT = nowMs;
+  const range = periodMs;
+  const sortedAll = [...oturumlari].sort((a, b) => new Date(a.baslama_at).getTime() - new Date(b.baslama_at).getTime());
+  const sorted = sortedAll.filter(s => new Date(s.son_aktif_at).getTime() >= minT && new Date(s.baslama_at).getTime() <= maxT);
+
+  const laneEnds: number[] = [];
+  const sessionLanes: number[] = sorted.map(s => {
+    const sStart = Math.max(new Date(s.baslama_at).getTime(), minT);
+    const sEnd = Math.min(new Date(s.son_aktif_at).getTime(), maxT);
+    for (let i = 0; i < laneEnds.length; i++) {
+      if (laneEnds[i] <= sStart) { laneEnds[i] = sEnd; return i; }
+    }
+    laneEnds.push(sEnd);
+    return laneEnds.length - 1;
+  });
+  const laneCount = Math.max(1, laneEnds.length);
+
+  const tickCount = timelinePeriod === 1 ? 6 : timelinePeriod === 6 ? 6 : 8;
+  const ticks: number[] = [];
+  for (let i = 0; i <= tickCount; i++) ticks.push(minT + (range * i) / tickCount);
+
+  const LANE_H = 64;
+  const BOX_H = 56;
+  const chartH = LANE_H * laneCount + 4;
+  const screenW = Dimensions.get('window').width;
+  const chartW = Math.max(screenW - 48, 600);
+
+  return (
+    <View style={paylasimStyles.timelineKart}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+        <Text style={paylasimStyles.bolumBaslik}>📊 Zaman Çizelgesi</Text>
+        <View style={paylasimStyles.periodGroup}>
+          {([[1, '1 sa'], [6, '6 sa'], [24, '24 sa']] as const).map(([h, label]) => (
+            <TouchableOpacity key={h} onPress={() => setTimelinePeriod(h)} style={[paylasimStyles.periodChip, timelinePeriod === h && paylasimStyles.periodChipActive]}>
+              <Text style={[paylasimStyles.periodChipText, timelinePeriod === h && paylasimStyles.periodChipTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      <Text style={{ fontSize: 10, color: Colors.outline, marginBottom: 6 }}>🔄 10 sn'de bir güncellenir</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+        <View style={{ width: chartW, paddingTop: 18, paddingBottom: 18 }}>
+          {/* Üst tick label */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 14 }}>
+            {ticks.map((t, i) => (
+              <Text key={i} style={{ position: 'absolute', left: ((t - minT) / range) * chartW - 18, fontSize: 10, color: Colors.onSurfaceVariant, fontWeight: '600', width: 36, textAlign: 'center' }}>{saatLabel(t)}</Text>
+            ))}
+          </View>
+
+          {/* Chart */}
+          <View style={{ position: 'relative', height: chartH, backgroundColor: Colors.surfaceContainerLow, borderRadius: 6, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+            {/* Tick lines */}
+            {ticks.map((t, i) => (
+              <View key={i} style={{ position: 'absolute', top: 0, bottom: 0, left: ((t - minT) / range) * chartW, width: 1, backgroundColor: i === 0 || i === ticks.length - 1 ? Colors.outlineVariant : 'rgba(255,255,255,0.06)' }} />
+            ))}
+            {/* Şimdi çizgisi */}
+            {nowMs >= minT && nowMs <= maxT && (
+              <View style={{ position: 'absolute', top: 0, bottom: 0, left: ((nowMs - minT) / range) * chartW - 1, width: 2, backgroundColor: '#22c55e' }} />
+            )}
+            {/* Sessions */}
+            {sorted.map((s, idx) => {
+              const sStartRaw = new Date(s.baslama_at).getTime();
+              const sEndRaw = new Date(s.son_aktif_at).getTime();
+              const sStart = Math.max(sStartRaw, minT);
+              const sEnd = Math.min(sEndRaw, maxT);
+              const sa = sonAktifText(s.son_aktif_at);
+              const key = s.paket_token ?? s.ilan_id ?? 'unknown';
+              const ilan = s.ilan_id ? ilanMap.get(s.ilan_id) : null;
+              const label = ilan ? ilan.baslik : (s.paket_token ? '📋 Liste' : 'Bilinmeyen');
+              const sureSn = Math.max(1, Math.floor((sEndRaw - sStartRaw) / 1000));
+              const leftPx = ((sStart - minT) / range) * chartW;
+              const widthPx = Math.max(((sEnd - sStart) / range) * chartW, 24);
+              const lane = sessionLanes[idx];
+              const top = lane * LANE_H + (LANE_H - BOX_H) / 2;
+              const color = colorFor(key);
+              return (
+                <View key={idx} style={{
+                  position: 'absolute', left: leftPx, width: widthPx, top, height: BOX_H,
+                  backgroundColor: Colors.surface, borderWidth: 2, borderColor: color, borderRadius: 6,
+                  overflow: 'hidden', flexDirection: 'row',
+                  ...(sa.canli ? { shadowColor: '#22c55e', shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 4 } : {}),
+                }}>
+                  {ilan?.foto ? (
+                    <R2Image source={ilan.foto} style={{ width: 44, height: '100%' } as any} resizeMode="cover" size="sm" />
+                  ) : (
+                    <View style={{ width: 44, height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceContainerHigh }}>
+                      <Text style={{ fontSize: 18 }}>{s.paket_token ? '📋' : '🏠'}</Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1, paddingHorizontal: 5, paddingVertical: 3, justifyContent: 'center' }}>
+                    <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color }}>
+                      {sa.canli ? '🟢 ' : ''}{cihazKisa(s.user_agent)} · {saatLabel(sStartRaw)} · {formatSure(sureSn)}
+                    </Text>
+                    <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>{label}</Text>
+                    {ilan ? <Text numberOfLines={1} style={{ fontSize: 10, fontWeight: '700', color: Colors.primary }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text> : null}
+                  </View>
+                </View>
+              );
+            })}
+            {sorted.length === 0 && (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: Colors.outline, fontSize: 12 }}>Bu zaman aralığında oturum yok</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+        <Text style={{ fontSize: 10, color: Colors.outline }}>● = şimdi</Text>
+        <Text style={{ fontSize: 10, color: Colors.outline }}>🟢 = aktif oturum</Text>
+      </View>
+    </View>
+  );
+}
+
+function PaylasimListesi({ paylasimGecmisi, ziyaretler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[] }) {
+  const groups: Array<{ key: string; type: 'single' | 'paket'; date: string; items: PaylasimGecmisiItem[] }> = [];
+  const seen = new Map<string, number>();
+  paylasimGecmisi.forEach((p, i) => {
+    if (p.paket_token) {
+      const existingIdx = seen.get(p.paket_token);
+      if (existingIdx !== undefined) {
+        groups[existingIdx].items.push(p);
+      } else {
+        seen.set(p.paket_token, groups.length);
+        groups.push({ key: `paket-${p.paket_token}`, type: 'paket', date: p.paylasildigi_tarih, items: [p] });
+      }
+    } else {
+      groups.push({ key: `single-${i}`, type: 'single', date: p.paylasildigi_tarih, items: [p] });
+    }
+  });
+
+  return (
+    <View style={{ gap: 6, marginTop: 6 }}>
+      {groups.map(g => {
+        if (g.type === 'single') {
+          const p = g.items[0];
+          const ilan = p.ilanlar;
+          if (!ilan) return null;
+          const ilanZ = ziyaretler.filter(z => z.ilan_id === ilan.id);
+          const canliN = ilanZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+          return (
+            <TouchableOpacity key={g.key} onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={paylasimStyles.gecmisKartSingle}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {ilan.fotograflar?.[0] ? (
+                  <R2Image source={ilan.fotograflar[0]} style={{ width: 56, height: 46, borderRadius: 6 } as any} resizeMode="cover" size="sm" />
+                ) : (
+                  <View style={{ width: 56, height: 46, borderRadius: 6, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text>🏠</Text></View>
+                )}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+                    <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>🏠 Tek İlan</Text></View>
+                    {ilan.portfoy_no ? <View style={paylasimStyles.chipRed}><Text style={paylasimStyles.chipRedText}>#{ilan.portfoy_no}</Text></View> : null}
+                  </View>
+                  <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface }}>{ilan.baslik}</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📅 {paylasimTarihGoster(p.paylasildigi_tarih)}</Text>
+                    <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
+                    {ilan.durum && ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{ilan.durum}</Text> : null}
+                  </View>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                {ilanZ.length > 0 ? (
+                  <>
+                    <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {ilanZ.length} cihaz açtı</Text></View>
+                    {canliN > 0 ? <View style={paylasimStyles.chipGreen}><Text style={paylasimStyles.chipGreenText}>🟢 {canliN} şu an bakıyor</Text></View> : null}
+                  </>
+                ) : (
+                  <View style={paylasimStyles.chipGray}><Text style={paylasimStyles.chipGrayText}>Henüz açılmadı</Text></View>
+                )}
+              </View>
+              {ilanZ.length > 0 && (
+                <View style={paylasimStyles.cihazListe}>
+                  {ilanZ.map(z => {
+                    const sa = sonAktifText(z.son_aktif_at);
+                    return (
+                      <View key={z.device_id} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
+                        <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
+                        <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
+                        {z.acilis_sayisi > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {z.acilis_sayisi} oturum</Text> : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        }
+        // Paket
+        const gPaketToken = g.items[0].paket_token;
+        const paketIlanIds = new Set(g.items.map(p => p.ilanlar?.id).filter(Boolean) as string[]);
+        const byDevice = new Map<string, typeof ziyaretler[number]>();
+        ziyaretler.forEach(z => {
+          const matchesPaket = z.paket_token === gPaketToken;
+          const matchesIlan = z.ilan_id ? paketIlanIds.has(z.ilan_id) : false;
+          if (!matchesPaket && !matchesIlan) return;
+          const existing = byDevice.get(z.device_id);
+          if (!existing) {
+            byDevice.set(z.device_id, { ...z });
+          } else {
+            existing.toplam_sure_sn += z.toplam_sure_sn;
+            existing.acilis_sayisi = Math.max(existing.acilis_sayisi, z.acilis_sayisi);
+            if (new Date(z.son_aktif_at).getTime() > new Date(existing.son_aktif_at).getTime()) {
+              existing.son_aktif_at = z.son_aktif_at;
+              existing.user_agent = z.user_agent;
+            }
+          }
+        });
+        const paketZ = Array.from(byDevice.values());
+        const canliN = paketZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+        return (
+          <View key={g.key} style={paylasimStyles.gecmisKartPaket}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              <View style={paylasimStyles.chipAmber}><Text style={paylasimStyles.chipAmberText}>📋 Liste — {g.items.length} ilan</Text></View>
+              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📅 {paylasimTarihGoster(g.date)}</Text>
+              {paketZ.length > 0 ? (
+                <>
+                  <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {paketZ.length} cihaz açtı</Text></View>
+                  {canliN > 0 ? <View style={paylasimStyles.chipGreen}><Text style={paylasimStyles.chipGreenText}>🟢 {canliN} şu an bakıyor</Text></View> : null}
+                </>
+              ) : (
+                <View style={paylasimStyles.chipGray}><Text style={paylasimStyles.chipGrayText}>Henüz açılmadı</Text></View>
+              )}
+            </View>
+            {paketZ.length > 0 && (
+              <View style={paylasimStyles.cihazListe}>
+                {paketZ.map(z => {
+                  const sa = sonAktifText(z.son_aktif_at);
+                  return (
+                    <View key={z.device_id} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
+                      <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
+                      <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
+                      {z.acilis_sayisi > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {z.acilis_sayisi} oturum</Text> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 6, marginTop: 4 }}>
+              {g.items.map((p, i) => {
+                const ilan = p.ilanlar;
+                if (!ilan) return null;
+                return (
+                  <TouchableOpacity key={`${g.key}-${ilan.id}-${i}`} onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    {ilan.fotograflar?.[0] ? (
+                      <R2Image source={ilan.fotograflar[0]} style={{ width: 40, height: 32, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
+                    ) : (
+                      <View style={{ width: 40, height: 32, borderRadius: 4, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 12 }}>🏠</Text></View>
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                        {ilan.portfoy_no ? <View style={paylasimStyles.chipRedSmall}><Text style={paylasimStyles.chipRedTextSmall}>#{ilan.portfoy_no}</Text></View> : null}
+                        <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{ilan.baslik}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
+                        {ilan.durum && ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{ilan.durum}</Text> : null}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const paylasimStyles = StyleSheet.create({
+  box: { backgroundColor: 'rgba(59,130,246,0.10)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.4)', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  baslik: { fontSize: 13, fontWeight: '700', color: '#93c5fd', letterSpacing: 0.3 },
+  headerOk: { fontSize: 12, color: '#93c5fd' },
+  bolumBaslik: { fontSize: 13, fontWeight: '700', color: Colors.onSurface },
+  tokenKart: { borderWidth: 1, borderRadius: 10, padding: 12 },
+  tokenBtnPrimary: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#2563eb', borderRadius: 6 },
+  tokenBtnPrimaryText: { fontSize: 12, color: '#fff', fontWeight: '700' },
+  tokenBtnDanger: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.1)' },
+  tokenBtnDangerText: { fontSize: 12, color: '#fca5a5', fontWeight: '700' },
+  timelineKart: { backgroundColor: Colors.surfaceContainerLowest, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 10, padding: 10 },
+  periodGroup: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerHigh, padding: 3, borderRadius: 7, gap: 2 },
+  periodChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 },
+  periodChipActive: { backgroundColor: Colors.surfaceContainerHighest },
+  periodChipText: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant },
+  periodChipTextActive: { color: Colors.onSurface },
+  gecmisKartSingle: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 10, padding: 10 },
+  gecmisKartPaket: { backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: 'rgba(245,158,11,0.5)', borderRadius: 10, padding: 10 },
+  chipBlue: { backgroundColor: 'rgba(59,130,246,0.18)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  chipBlueText: { fontSize: 10, fontWeight: '700', color: '#93c5fd' },
+  chipGreen: { backgroundColor: 'rgba(34,197,94,0.18)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  chipGreenText: { fontSize: 10, fontWeight: '700', color: '#86efac' },
+  chipRed: { backgroundColor: 'rgba(229,57,53,0.18)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  chipRedText: { fontSize: 10, fontWeight: '700', color: '#fca5a5' },
+  chipRedSmall: { backgroundColor: 'rgba(229,57,53,0.18)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3 },
+  chipRedTextSmall: { fontSize: 9, fontWeight: '700', color: '#fca5a5' },
+  chipAmber: { backgroundColor: 'rgba(245,158,11,0.18)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  chipAmberText: { fontSize: 11, fontWeight: '700', color: '#fcd34d' },
+  chipGray: { backgroundColor: Colors.surfaceContainerHigh, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  chipGrayText: { fontSize: 10, color: Colors.onSurfaceVariant },
+  cihazListe: { backgroundColor: Colors.surfaceContainer, padding: 8, borderRadius: 6, gap: 3, marginTop: 6 },
+});
 
 const gorevStyles = StyleSheet.create({
   box: { backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: Radius.lg, padding: 14, marginTop: Spacing.sm },
