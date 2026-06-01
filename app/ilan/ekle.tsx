@@ -114,6 +114,7 @@ export default function IlanEkleScreen() {
   const [mahalleSearch, setMahalleSearch] = useState('');
   const [mapInitLat, setMapInitLat] = useState<number | undefined>();
   const [mapInitLng, setMapInitLng] = useState<number | undefined>();
+  const [gecmisKonum, setGecmisKonum] = useState<{ il: string; ilce: string; mahalle: string }[]>([]);
 
   useEffect(() => {
     supabase.from('ozellikler').select('*').order('ad').then(({ data }) => {
@@ -134,12 +135,22 @@ export default function IlanEkleScreen() {
           if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
         }
         const prefix = (data?.portfoy_prefix ?? '').toUpperCase();
-        const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id);
+        const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no, il, ilce, mahalle, created_at').eq('user_id', user.id).order('created_at', { ascending: false });
         const nums = new Set(
           (ilanlar ?? [])
             .map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10))
             .filter((n: number) => n > 0)
         );
+        const seen = new Set<string>();
+        const gecmis: { il: string; ilce: string; mahalle: string }[] = [];
+        for (const it of (ilanlar ?? []) as any[]) {
+          const k = `${it.il}|${it.ilce}|${it.mahalle}`;
+          if (!it.il || seen.has(k)) continue;
+          seen.add(k);
+          gecmis.push({ il: it.il, ilce: it.ilce ?? '', mahalle: it.mahalle ?? '' });
+          if (gecmis.length >= 20) break;
+        }
+        setGecmisKonum(gecmis);
         let n = 1000;
         while (nums.has(n)) n++;
         setPortfoyNo(prefix ? `${prefix}-${n}` : String(n));
@@ -154,6 +165,9 @@ export default function IlanEkleScreen() {
   const banyoNetOdaOpsiyonel = arsaTarla || isyeri;
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
+  const recentIller = Array.from(new Set(gecmisKonum.map(g => g.il))).slice(0, 5);
+  const recentIlceler = Array.from(new Set(gecmisKonum.filter(g => g.il === il && g.ilce).map(g => g.ilce))).slice(0, 5);
+  const recentMahalleler = Array.from(new Set(gecmisKonum.filter(g => g.il === il && g.ilce === ilce && g.mahalle).map(g => g.mahalle))).slice(0, 5);
   const mahalleGruplar = getMahalleGruplar(il, ilce)
     .map(g => {
       const sm = g.semt && g.semt.toLowerCase().includes(mahalleSearch.toLowerCase());
@@ -677,6 +691,7 @@ export default function IlanEkleScreen() {
         data={ilListesi}
         onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); }}
         selected={il}
+        recents={recentIller}
       />
 
       {/* İlçe Modal */}
@@ -689,6 +704,7 @@ export default function IlanEkleScreen() {
         data={ilceListesi}
         onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); }}
         selected={ilce}
+        recents={recentIlceler}
       />
 
       {/* Mahalle Modal */}
@@ -701,6 +717,7 @@ export default function IlanEkleScreen() {
         groupedData={mahalleGruplar}
         onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }}
         selected={mahalle}
+        recents={recentMahalleler}
       />
 
       {/* Harita Picker */}
@@ -810,12 +827,13 @@ export default function IlanEkleScreen() {
   );
 }
 
-function SelectModal({ visible, onClose, title, search, onSearch, data, groupedData, onSelect, selected }: {
+function SelectModal({ visible, onClose, title, search, onSearch, data, groupedData, onSelect, selected, recents }: {
   visible: boolean; onClose: () => void; title: string;
   search: string; onSearch: (v: string) => void;
   data?: string[];
   groupedData?: { semt: string | null; mahalleler: string[] }[];
   onSelect: (v: string) => void; selected: string;
+  recents?: string[];
 }) {
   const sections = groupedData?.map((g, idx) => ({
     title: g.semt ?? '',
@@ -830,6 +848,15 @@ function SelectModal({ visible, onClose, title, search, onSearch, data, groupedD
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { maxHeight: '80%' }]}>
             <Text style={styles.modalTitle}>{title}</Text>
+            {recents && recents.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {recents.map(r => (
+                  <TouchableOpacity key={r} onPress={() => onSelect(r)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: selected === r ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: selected === r ? Colors.primary : Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: selected === r ? Colors.onPrimary : Colors.onSurface }}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
             <TextInput
               style={[styles.input, { marginBottom: Spacing.md }]}
               placeholder="Ara..."

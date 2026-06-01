@@ -118,6 +118,7 @@ export default function IlanDuzenleScreen() {
   const [ilSearch, setIlSearch] = useState('');
   const [ilceSearch, setIlceSearch] = useState('');
   const [mahalleSearch, setMahalleSearch] = useState('');
+  const [gecmisKonum, setGecmisKonum] = useState<{ il: string; ilce: string; mahalle: string }[]>([]);
   const [secilenOzellikler, setSecilenOzellikler] = useState<string[]>([]);
   const [binaYasi, setBinaYasi] = useState('');
   const [banyoSayisi, setBanyoSayisi] = useState('');
@@ -169,8 +170,18 @@ export default function IlanDuzenleScreen() {
     if (!user) { setPortfoyYukleniyor(false); return; }
     const { data: profil } = await supabase.from('profiller').select('portfoy_prefix').eq('id', user.id).single();
     const prefix = ((profil as any)?.portfoy_prefix ?? '').toUpperCase();
-    const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id).not('portfoy_no', 'is', null);
+    const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no, il, ilce, mahalle, created_at').eq('user_id', user.id).order('created_at', { ascending: false });
     const nums = new Set((ilanlar ?? []).map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10)).filter((n: number) => n > 0));
+    const seen = new Set<string>();
+    const gecmis: { il: string; ilce: string; mahalle: string }[] = [];
+    for (const it of (ilanlar ?? []) as any[]) {
+      const k = `${it.il}|${it.ilce}|${it.mahalle}`;
+      if (!it.il || seen.has(k)) continue;
+      seen.add(k);
+      gecmis.push({ il: it.il, ilce: it.ilce ?? '', mahalle: it.mahalle ?? '' });
+      if (gecmis.length >= 20) break;
+    }
+    setGecmisKonum(gecmis);
     let n = 1000;
     while (nums.has(n)) n++;
     setPortfoyNo(prefix ? `${prefix}-${n}` : `${n}`);
@@ -179,6 +190,9 @@ export default function IlanDuzenleScreen() {
 
   const ilListesi = IL_LISTESI.filter(i => i.toLowerCase().includes(ilSearch.toLowerCase()));
   const ilceListesi = (ILLER[il] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(ilceSearch.toLowerCase()));
+  const recentIller = Array.from(new Set(gecmisKonum.map(g => g.il))).slice(0, 5);
+  const recentIlceler = Array.from(new Set(gecmisKonum.filter(g => g.il === il && g.ilce).map(g => g.ilce))).slice(0, 5);
+  const recentMahalleler = Array.from(new Set(gecmisKonum.filter(g => g.il === il && g.ilce === ilce && g.mahalle).map(g => g.mahalle))).slice(0, 5);
   const mahalleGruplar = getMahalleGruplar(il, ilce)
     .map(g => {
       const sm = g.semt && g.semt.toLowerCase().includes(mahalleSearch.toLowerCase());
@@ -711,9 +725,9 @@ export default function IlanDuzenleScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <SelectModal visible={ilModal} onClose={() => { setIlModal(false); setIlSearch(''); }} title="İl Seçin" search={ilSearch} onSearch={setIlSearch} data={ilListesi} onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); }} selected={il} />
-      <SelectModal visible={ilceModal} onClose={() => { setIlceModal(false); setIlceSearch(''); }} title="İlçe Seçin" search={ilceSearch} onSearch={setIlceSearch} data={ilceListesi} onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); }} selected={ilce} />
-      <SelectModal visible={mahalleModal} onClose={() => { setMahalleModal(false); setMahalleSearch(''); }} title="Mahalle Seçin" search={mahalleSearch} onSearch={setMahalleSearch} groupedData={mahalleGruplar} onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }} selected={mahalle} />
+      <SelectModal visible={ilModal} onClose={() => { setIlModal(false); setIlSearch(''); }} title="İl Seçin" search={ilSearch} onSearch={setIlSearch} data={ilListesi} onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); }} selected={il} recents={recentIller} />
+      <SelectModal visible={ilceModal} onClose={() => { setIlceModal(false); setIlceSearch(''); }} title="İlçe Seçin" search={ilceSearch} onSearch={setIlceSearch} data={ilceListesi} onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); }} selected={ilce} recents={recentIlceler} />
+      <SelectModal visible={mahalleModal} onClose={() => { setMahalleModal(false); setMahalleSearch(''); }} title="Mahalle Seçin" search={mahalleSearch} onSearch={setMahalleSearch} groupedData={mahalleGruplar} onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }} selected={mahalle} recents={recentMahalleler} />
 
 
       <Modal visible={odaModal} transparent animationType="slide">
@@ -786,12 +800,13 @@ export default function IlanDuzenleScreen() {
   );
 }
 
-function SelectModal({ visible, onClose, title, search, onSearch, data, groupedData, onSelect, selected }: {
+function SelectModal({ visible, onClose, title, search, onSearch, data, groupedData, onSelect, selected, recents }: {
   visible: boolean; onClose: () => void; title: string;
   search: string; onSearch: (v: string) => void;
   data?: string[];
   groupedData?: { semt: string | null; mahalleler: string[] }[];
   onSelect: (v: string) => void; selected: string;
+  recents?: string[];
 }) {
   const sections = groupedData?.map((g, idx) => ({
     title: g.semt ?? '', showHeader: g.semt !== null,
@@ -803,6 +818,15 @@ function SelectModal({ visible, onClose, title, search, onSearch, data, groupedD
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { maxHeight: '80%' }]}>
             <Text style={styles.modalTitle}>{title}</Text>
+            {recents && recents.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {recents.map(r => (
+                  <TouchableOpacity key={r} onPress={() => onSelect(r)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: selected === r ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: selected === r ? Colors.primary : Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: selected === r ? Colors.onPrimary : Colors.onSurface }}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
             <TextInput style={[styles.input, { marginBottom: Spacing.md }]} placeholder="Ara..." value={search} onChangeText={onSearch} placeholderTextColor={Colors.outlineVariant} autoFocus={false} />
             {groupedData ? (
               <SectionList sections={sections} keyExtractor={(item, index) => `${item}-${index}`} keyboardShouldPersistTaps="handled" stickySectionHeadersEnabled
