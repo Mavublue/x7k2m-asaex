@@ -2,14 +2,14 @@ import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, SectionList, Image, Keyboard, Share, Dimensions,
+  StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard, Share, Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri, Ilan, MusteriNot, MusteriGorev, MusteriIstek } from '../../types';
 import R2Image from '../../components/R2Image';
-import { TURKIYE, IL_LISTESI, getMahalleler, getMahalleGruplar } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
 import TelefonInput from '../../components/TelefonInput';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -153,10 +153,7 @@ export default function MusteriDetayScreen() {
   type IstekState = { id?: string; tipler: string[]; tipler_haric: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; binaYaslari_haric: string[]; ozelIstekler: string[]; ozelIstekler_haric: string[] };
   const [istekler, setIstekler] = useState<IstekState[]>([]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
-  const [konumlar, setKonumlar] = useState<string[]>([]);
-  const [tempIl, setTempIl] = useState('');
-  const [tempIlce, setTempIlce] = useState('');
-  const [tempMahalle, setTempMahalle] = useState('');
+  const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [minOda, setMinOda] = useState('');
   const [ozelIstekler, setOzelIstekler] = useState<string[]>([]);
   const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
@@ -186,17 +183,74 @@ export default function MusteriDetayScreen() {
   const [musteriTipi, setMusteriTipi] = useState('Bireysel');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
-  const [konumModal, setKonumModal] = useState(false);
-  const [konumAcik, setKonumAcik] = useState(false);
-  const [konumSayfa, setKonumSayfa] = useState<'il' | 'ilce' | 'mahalle'>('il');
   const [konumSearch, setKonumSearch] = useState('');
 
-  function konumEkle(il: string, ilce?: string, mahalle?: string) {
-    const k = [il, ilce, mahalle].filter(Boolean).join(' / ');
-    setKonumlar(prev => {
-      const next = prev.includes(k) ? prev : [...prev, k];
-      setIstekler(pp => pp.map((ist, i) => i === activeIstekIdx ? { ...ist, konumlar: next } : ist));
-      return next;
+  const tercihKonumlar = activeIstekIdx !== null ? (istekler[activeIstekIdx]?.konumlar ?? []) : [];
+  const setTercihKonumlar = (v: string[] | ((p: string[]) => string[])) => {
+    setIstekler(prev => prev.map((ist, i) => i === activeIstekIdx ? { ...ist, konumlar: typeof v === 'function' ? v(ist.konumlar) : v } : ist));
+  };
+  const ilIsaretli = (il: string) => tercihKonumlar.some(k => k === il || k.startsWith(il + ' / '));
+  const ilceIsaretli = (il: string, ilce: string) => {
+    const key = `${il} / ${ilce}`;
+    return tercihKonumlar.some(k => k === key || k.startsWith(key + ' / '));
+  };
+  const mahIsaretli = (il: string, ilce: string, mah: string) =>
+    tercihKonumlar.includes(`${il} / ${ilce} / ${mah}`);
+  function toggleIl(il: string) {
+    if (ilIsaretli(il)) setTercihKonumlar(prev => prev.filter(k => k !== il && !k.startsWith(il + ' / ')));
+    else setTercihKonumlar(prev => [...prev, il]);
+  }
+  function toggleIlce(il: string, ilce: string) {
+    const key = `${il} / ${ilce}`;
+    if (ilceIsaretli(il, ilce)) setTercihKonumlar(prev => prev.filter(k => k !== key && !k.startsWith(key + ' / ')));
+    else setTercihKonumlar(prev => [...prev.filter(k => k !== il), key]);
+  }
+  function toggleMah(il: string, ilce: string, mah: string) {
+    const key = `${il} / ${ilce} / ${mah}`;
+    if (mahIsaretli(il, ilce, mah)) setTercihKonumlar(prev => prev.filter(k => k !== key));
+    else setTercihKonumlar(prev => [...prev.filter(k => k !== `${il} / ${ilce}`), key]);
+  }
+  const seciliIller = Array.from(new Set(tercihKonumlar.map(k => k.split(' / ')[0])))
+    .sort((a, b) => a.localeCompare(b, 'tr'));
+  const seciliIlceler: { il: string; ilce: string }[] = Array.from(
+    new Set(tercihKonumlar.filter(k => k.split(' / ').length >= 2).map(k => {
+      const [il, ilce] = k.split(' / '); return `${il}|${ilce}`;
+    }))
+  ).map(s => { const [il, ilce] = s.split('|'); return { il, ilce }; });
+  const ilSayisi = seciliIller.length;
+  const ilceSayisi = tercihKonumlar.filter(k => k.split(' / ').length === 2).length;
+  const mahSayisi = tercihKonumlar.filter(k => k.split(' / ').length === 3).length;
+
+  let filteredBoxList: any[] = [];
+  if (filterPage === 'il') {
+    filteredBoxList = ILLER_LISTESI
+      .filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
+      .map(i => ({ type: 'item', kind: 'il', label: i, il: i, key: i }));
+  } else if (filterPage === 'ilce') {
+    seciliIller.forEach(il => {
+      const ilceler = (ILLER[il] ?? []).filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()));
+      if (ilceler.length > 0) {
+        filteredBoxList.push({ type: 'header', label: il });
+        ilceler.slice().sort((a,b) => a.localeCompare(b,'tr')).forEach(ilce => {
+          filteredBoxList.push({ type: 'item', kind: 'ilce', label: ilce, il, ilce, key: `${il}/${ilce}` });
+        });
+      }
+    });
+  } else if (filterPage === 'mahalle') {
+    seciliIlceler.forEach(({ il, ilce }) => {
+      const gruplar = getMahalleGruplar(il, ilce)
+        .map(g => {
+          const sm = g.semt && g.semt.toLowerCase().includes(konumSearch.toLowerCase());
+          return { semt: g.semt, mahalleler: sm ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())) };
+        })
+        .filter(g => g.mahalleler.length > 0);
+      if (gruplar.length > 0) {
+        filteredBoxList.push({ type: 'header', label: `${il} - ${ilce}` });
+        gruplar.forEach(g => {
+          if (g.semt) filteredBoxList.push({ type: 'header', label: `  ${g.semt}` });
+          g.mahalleler.forEach(mah => filteredBoxList.push({ type: 'item', kind: 'mah', label: mah, il, ilce, mah, key: `${il}/${ilce}/${mah}` }));
+        });
+      }
     });
   }
   const [ilanModal, setIlanModal] = useState(false);
@@ -974,17 +1028,12 @@ export default function MusteriDetayScreen() {
                       <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceContainerLow }]} placeholder="Max ₺" placeholderTextColor={Colors.outlineVariant} keyboardType="numeric"
                         value={istek.butceMax} onChangeText={v => setIstekler(p => p.map((x, i) => i === idx ? { ...x, butceMax: formatButce(v) } : x))} />
                     </View>
-                    {istek.konumlar.map((k, ki) => (
-                      <View key={ki} style={styles.konumChip}>
-                        <Text style={styles.konumChipText}>📍 {k}</Text>
-                        <TouchableOpacity onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, konumlar: x.konumlar.filter((_, j) => j !== ki) } : x))}>
-                          <Text style={styles.konumChipSil}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    <TouchableOpacity style={styles.secimBtn} onPress={() => { setActiveIstekIdx(idx); setKonumlar(istek.konumlar); setKonumSearch(''); setKonumSayfa('il'); setKonumModal(true); }}>
-                      <Text style={styles.secimBtnPlaceholder}>+ Konum Ekle</Text>
-                      <Text style={styles.secimChevron}>›</Text>
+                    <TouchableOpacity style={[styles.konumBox, istek.konumlar.length > 0 && styles.konumBoxAktif]}
+                      onPress={() => { setActiveIstekIdx(idx); setKonumSearch(''); setFilterPage('il'); }}>
+                      <Text style={[styles.konumBoxText, istek.konumlar.length > 0 && styles.konumBoxTextAktif]} numberOfLines={1}>
+                        {istek.konumlar.length > 0 ? `${istek.konumlar.length} konum seçildi` : 'Konum Seç'}
+                      </Text>
+                      <Text style={styles.konumBoxChevron}>▾</Text>
                     </TouchableOpacity>
                     {/* Min Oda */}
                     <View style={styles.inputContainer}>
@@ -1694,96 +1743,72 @@ export default function MusteriDetayScreen() {
       </Modal>
 
       {/* Konum Seçim Modali */}
-      <Modal visible={konumModal} animationType="slide" transparent onRequestClose={() => {
-        if (konumSayfa === 'mahalle') { setKonumSayfa('ilce'); setKonumSearch(''); }
-        else if (konumSayfa === 'ilce') { setKonumSayfa('il'); setKonumSearch(''); }
-        else setKonumModal(false);
-      }}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
-          <TouchableOpacity style={styles.modalDimmer} onPress={() => setKonumModal(false)} />
-          <View style={styles.modalPanel}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => {
-                if (konumSayfa === 'mahalle') { setKonumSayfa('ilce'); setKonumSearch(''); }
-                else if (konumSayfa === 'ilce') { setKonumSayfa('il'); setKonumSearch(''); }
-                else setKonumModal(false);
-              }}>
-                <Text style={styles.modalKapat}>{konumSayfa !== 'il' ? '←' : '✕'}</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalBaslik}>
-                {konumSayfa === 'il' ? 'İl Seçin' : konumSayfa === 'ilce' ? 'İlçe Seçin' : 'Mahalle Seçin'}
-              </Text>
-              {konumSayfa !== 'il' ? (
-                <TouchableOpacity onPress={() => { konumEkle(tempIl, tempIlce, tempMahalle); setKonumModal(false); }}>
-                  <Text style={{ fontSize: 13, color: Colors.primary }}>Ekle</Text>
+      {activeIstekIdx !== null && filterPage !== 'main' && (
+        <Modal visible={true} animationType="slide" transparent onRequestClose={() => { setFilterPage('main'); setActiveIstekIdx(null); setKonumSearch(''); }}>
+          <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
+            <TouchableOpacity style={styles.modalDimmer} onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); setKonumSearch(''); }} />
+            <View style={styles.modalPanel}>
+              <View style={styles.modalHeader}>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {([['il', 'İl'], ['ilce', 'İlçe'], ['mahalle', 'Mah.']] as ['il'|'ilce'|'mahalle', string][]).map(([p, label]) => {
+                    const count = p === 'il' ? ilSayisi : p === 'ilce' ? ilceSayisi : mahSayisi;
+                    const disabled = (p === 'ilce' && ilSayisi === 0) || (p === 'mahalle' && ilceSayisi === 0);
+                    return (
+                      <TouchableOpacity key={p} onPress={() => { if (!disabled) { setFilterPage(p); setKonumSearch(''); } }} disabled={disabled}
+                        style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, backgroundColor: filterPage === p ? Colors.primary : Colors.surfaceContainerHigh, opacity: disabled ? 0.4 : 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: filterPage === p ? '#fff' : Colors.onSurfaceVariant }}>
+                          {label}{count > 0 ? ` (${count})` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TouchableOpacity onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); setKonumSearch(''); }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.primary }}>Tamam</Text>
                 </TouchableOpacity>
-              ) : <View style={{ width: 32 }} />}
-            </View>
-            <TextInput
-              style={styles.modalSearch}
-              placeholder={konumSayfa === 'il' ? 'İl ara...' : konumSayfa === 'ilce' ? 'İlçe ara...' : 'Mahalle ara...'}
-              placeholderTextColor={Colors.outlineVariant}
-              value={konumSearch}
-              onChangeText={setKonumSearch}
-            />
-            {konumSayfa === 'mahalle' ? (
-              <SectionList
-                sections={getMahalleGruplar(tempIl, tempIlce)
-                  .map(g => {
-                    const sm = g.semt && g.semt.toLowerCase().includes(konumSearch.toLowerCase());
-                    return {
-                      title: g.semt ?? '',
-                      showHeader: g.semt !== null,
-                      data: sm ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(konumSearch.toLowerCase())),
-                    };
-                  })
-                  .filter(s => s.data.length > 0)}
-                keyExtractor={(item, index) => `mah-${index}-${item}`}
-                keyboardShouldPersistTaps="handled"
-                stickySectionHeadersEnabled
-                renderSectionHeader={({ section }: any) => section.showHeader ? (
-                  <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText}>{section.title}</Text></View>
-                ) : null}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.modalItem} onPress={() => {
-                    setTempMahalle(item);
-                    konumEkle(tempIl, tempIlce, item);
-                    setKonumModal(false);
-                  }}>
-                    <Text style={styles.modalItemText}>{item}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            ) : (
-              <FlatList
-                data={
-                  konumSayfa === 'il'
-                    ? ILLER_LISTESI.filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
-                    : (ILLER[tempIl] ?? []).slice().sort((a, b) => a.localeCompare(b, 'tr')).filter(i => i.toLowerCase().includes(konumSearch.toLowerCase()))
-                }
-                keyExtractor={(item, index) => `${konumSayfa}-${index}-${item}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.modalItem} onPress={() => {
-                    if (konumSayfa === 'il') {
-                      setTempIl(item); setTempIlce(''); setTempMahalle(''); setKonumSearch('');
-                      if (ILLER[item]?.length) setKonumSayfa('ilce');
-                      else { konumEkle(item); setKonumModal(false); }
-                    } else {
-                      setTempIlce(item); setTempMahalle(''); setKonumSearch('');
-                      const mah = getMahalleler(tempIl, item);
-                      if (mah.length) setKonumSayfa('mahalle');
-                      else { konumEkle(tempIl, item); setKonumModal(false); }
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextInput
+                  style={styles.modalSearch}
+                  placeholder="Ara..."
+                  placeholderTextColor={Colors.outlineVariant}
+                  value={konumSearch}
+                  onChangeText={setKonumSearch}
+                />
+                <FlatList
+                  data={filteredBoxList}
+                  keyExtractor={(item, i) => `${filterPage}-${i}-${item.type === 'item' ? item.key : item.label}`}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => {
+                    if (item.type === 'header') {
+                      return <Text style={styles.listeGrupBaslik}>{item.label}</Text>;
                     }
-                  }}>
-                    <Text style={styles.modalItemText}>{item}</Text>
-                  </TouchableOpacity>
-                )}
-                keyboardShouldPersistTaps="handled"
-              />
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+                    const secili =
+                      item.kind === 'il' ? ilIsaretli(item.il) :
+                      item.kind === 'ilce' ? ilceIsaretli(item.il, item.ilce) :
+                      mahIsaretli(item.il, item.ilce, item.mah);
+                    return (
+                      <TouchableOpacity
+                        style={[styles.modalItem, secili && { backgroundColor: Colors.primaryFixed }]}
+                        onPress={() => {
+                          if (item.kind === 'il') toggleIl(item.il);
+                          else if (item.kind === 'ilce') toggleIlce(item.il, item.ilce);
+                          else toggleMah(item.il, item.ilce, item.mah);
+                        }}
+                      >
+                        <View style={[styles.konumCheckbox, secili && styles.konumCheckboxAktif]}>
+                          {secili && <Text style={styles.konumCheckboxTick}>✓</Text>}
+                        </View>
+                        <Text style={[styles.modalItemText, secili && { color: Colors.primary, fontWeight: '600' }, { flex: 1 }]}>{item.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
 
       {/* Link Paylaş Modali */}
       <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => setLinkModal(false)}>
@@ -2741,6 +2766,15 @@ const styles = StyleSheet.create({
   konumChip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.primaryFixed, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 10, marginBottom: 6 },
   konumChipText: { fontSize: 14, color: Colors.primary, flex: 1 },
   konumChipSil: { fontSize: 14, color: Colors.primary, paddingLeft: 8 },
+  konumBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 14, borderWidth: 1, borderColor: 'transparent' },
+  konumBoxAktif: { backgroundColor: Colors.primaryFixed, borderColor: Colors.primary },
+  konumBoxText: { fontSize: 14, color: Colors.onSurfaceVariant, flex: 1 },
+  konumBoxTextAktif: { color: Colors.primary, fontWeight: '600' },
+  konumBoxChevron: { fontSize: 16, color: Colors.onSurfaceVariant },
+  listeGrupBaslik: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, paddingHorizontal: Spacing.xl, paddingVertical: 6, backgroundColor: Colors.surfaceContainerLow, textTransform: 'uppercase', letterSpacing: 0.5 },
+  konumCheckbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: Colors.outlineVariant, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  konumCheckboxAktif: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  konumCheckboxTick: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalDimmer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },

@@ -257,8 +257,8 @@ export default function GorevlerScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 10 }}>✏️ Görevi Düzenle</Text>
-            <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı"
-              style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+            <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı" placeholderTextColor={Colors.onSurfaceVariant}
+              style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8, color: Colors.onSurface }} />
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
               <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8 }}>
                 <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
@@ -305,8 +305,8 @@ export default function GorevlerScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Görev Ekle</Text>
-            <TextInput value={ekleBaslik} onChangeText={setEkleBaslik} placeholder="Görev başlığı"
-              style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+            <TextInput value={ekleBaslik} onChangeText={setEkleBaslik} placeholder="Görev başlığı" placeholderTextColor={Colors.onSurfaceVariant}
+              style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8, color: Colors.onSurface }} />
             {/* Seçili müşteriler chips */}
             {ekleMusteriIds.length > 0 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
@@ -322,8 +322,8 @@ export default function GorevlerScreen() {
             )}
             {/* Müşteri arama */}
             <View style={{ marginBottom: 8 }}>
-              <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} onBlur={() => setTimeout(() => setEkleMusteriArama(''), 150)} placeholder="Müşteri ekle (opsiyonel, çoklu)"
-                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13 }} />
+              <TextInput value={ekleMusteriArama} onChangeText={setEkleMusteriArama} onBlur={() => setTimeout(() => setEkleMusteriArama(''), 150)} placeholder="Müşteri ekle (opsiyonel, çoklu)" placeholderTextColor={Colors.onSurfaceVariant}
+                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }} />
               {ekleMusteriArama.trim().length > 0 && (
                 <View onStartShouldSetResponder={() => true} style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, marginTop: 2, maxHeight: 260 }}>
                   {musteriListesi.filter(m => {
