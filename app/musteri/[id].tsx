@@ -128,7 +128,7 @@ function kalanSure(iso: string): { dolmus: boolean; text: string } {
 function saatLabel(t: number) {
   const d = new Date(t);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return { time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, date: `${pad(d.getDate())}.${pad(d.getMonth() + 1)}` };
 }
 
 export default function MusteriDetayScreen() {
@@ -2363,12 +2363,18 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
       <Text style={{ fontSize: 10, color: Colors.outline, marginBottom: 6 }}>🔄 10 sn'de bir güncellenir</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-        <View style={{ width: chartW, paddingTop: 18, paddingBottom: 18 }}>
+        <View style={{ width: chartW, paddingTop: 30, paddingBottom: 18 }}>
           {/* Üst tick label */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 14 }}>
-            {ticks.map((t, i) => (
-              <Text key={i} style={{ position: 'absolute', left: ((t - minT) / range) * chartW - 18, fontSize: 10, color: Colors.onSurfaceVariant, fontWeight: '600', width: 36, textAlign: 'center' }}>{saatLabel(t)}</Text>
-            ))}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 28 }}>
+            {ticks.map((t, i) => {
+              const l = saatLabel(t);
+              return (
+                <View key={i} style={{ position: 'absolute', left: ((t - minT) / range) * chartW - 22, width: 44, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, fontWeight: '700' }}>{l.time}</Text>
+                  <Text style={{ fontSize: 9, color: Colors.outline, fontWeight: '500' }}>{l.date}</Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* Chart */}
