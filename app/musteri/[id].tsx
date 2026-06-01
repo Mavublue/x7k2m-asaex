@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -2274,20 +2274,41 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
   };
   const nowMs = Date.now();
   const periodMs = timelinePeriod * 3600 * 1000;
-  const minT = nowMs - periodMs;
-  const maxT = nowMs;
-  const range = periodMs;
+  const filterStart = nowMs - periodMs;
   const sortedAll = [...oturumlari].sort((a, b) => new Date(a.baslama_at).getTime() - new Date(b.baslama_at).getTime());
-  const sorted = sortedAll.filter(s => new Date(s.son_aktif_at).getTime() >= minT && new Date(s.baslama_at).getTime() <= maxT);
+  const sorted = sortedAll.filter(s => new Date(s.son_aktif_at).getTime() >= filterStart && new Date(s.baslama_at).getTime() <= nowMs);
+
+  // X-axis: tight fit to data (boş saatleri gösterme)
+  let minT: number, maxT: number;
+  if (sorted.length === 0) {
+    minT = filterStart;
+    maxT = nowMs;
+  } else {
+    const dataStart = Math.min(...sorted.map(s => new Date(s.baslama_at).getTime()));
+    const dataEnd = Math.max(...sorted.map(s => new Date(s.son_aktif_at).getTime()));
+    const hasActive = sorted.some(s => sonAktifText(s.son_aktif_at).canli);
+    const displayEnd = hasActive ? Math.max(dataEnd, nowMs) : dataEnd;
+    const span = Math.max(displayEnd - dataStart, 5 * 60_000);
+    const buffer = Math.max(span * 0.05, 60_000);
+    minT = dataStart - buffer;
+    maxT = displayEnd + buffer;
+  }
+  const range = maxT - minT;
+
+  const screenW = Dimensions.get('window').width;
+  const chartW = Math.max(screenW - 48, 600);
+  const CARD_W = 160;
+  const LANE_MIN_MS = Math.max(60_000, range * (CARD_W / chartW));
 
   const laneEnds: number[] = [];
   const sessionLanes: number[] = sorted.map(s => {
     const sStart = Math.max(new Date(s.baslama_at).getTime(), minT);
     const sEnd = Math.min(new Date(s.son_aktif_at).getTime(), maxT);
+    const visualEnd = Math.max(sEnd, sStart + LANE_MIN_MS);
     for (let i = 0; i < laneEnds.length; i++) {
-      if (laneEnds[i] <= sStart) { laneEnds[i] = sEnd; return i; }
+      if (laneEnds[i] <= sStart) { laneEnds[i] = visualEnd; return i; }
     }
-    laneEnds.push(sEnd);
+    laneEnds.push(visualEnd);
     return laneEnds.length - 1;
   });
   const laneCount = Math.max(1, laneEnds.length);
@@ -2296,11 +2317,11 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
   const ticks: number[] = [];
   for (let i = 0; i <= tickCount; i++) ticks.push(minT + (range * i) / tickCount);
 
-  const LANE_H = 64;
-  const BOX_H = 56;
-  const chartH = LANE_H * laneCount + 4;
-  const screenW = Dimensions.get('window').width;
-  const chartW = Math.max(screenW - 48, 600);
+  const CARD_H = 56;
+  const CONNECTOR_H = 14;
+  const BAR_H = 16;
+  const cardAreaH = laneCount * (CARD_H + 4);
+  const chartH = cardAreaH + CONNECTOR_H + BAR_H + 4;
 
   return (
     <View style={paylasimStyles.timelineKart}>
@@ -2335,7 +2356,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
             {nowMs >= minT && nowMs <= maxT && (
               <View style={{ position: 'absolute', top: 0, bottom: 0, left: ((nowMs - minT) / range) * chartW - 1, width: 2, backgroundColor: '#22c55e' }} />
             )}
-            {/* Sessions */}
+            {/* Sessions: kart üstte, çizgi ile altta bar'a bağlanır */}
             {sorted.map((s, idx) => {
               const sStartRaw = new Date(s.baslama_at).getTime();
               const sEndRaw = new Date(s.son_aktif_at).getTime();
@@ -2347,32 +2368,42 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
               const label = ilan ? ilan.baslik : (s.paket_token ? '📋 Liste' : 'Bilinmeyen');
               const sureSn = Math.max(1, Math.floor((sEndRaw - sStartRaw) / 1000));
               const leftPx = ((sStart - minT) / range) * chartW;
-              const widthPx = Math.max(((sEnd - sStart) / range) * chartW, 24);
+              const realWidthPx = ((sEnd - sStart) / range) * chartW;
+              const barWidthPx = Math.max(realWidthPx, 3);
               const lane = sessionLanes[idx];
-              const top = lane * LANE_H + (LANE_H - BOX_H) / 2;
+              const cardTop = lane * (CARD_H + 4);
+              const cardBottom = cardTop + CARD_H;
+              const barTop = cardAreaH + CONNECTOR_H;
               const color = colorFor(key);
               return (
-                <View key={idx} style={{
-                  position: 'absolute', left: leftPx, width: widthPx, top, height: BOX_H,
-                  backgroundColor: Colors.surface, borderWidth: 2, borderColor: color, borderRadius: 6,
-                  overflow: 'hidden', flexDirection: 'row',
-                  ...(sa.canli ? { shadowColor: '#22c55e', shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 4 } : {}),
-                }}>
-                  {ilan?.foto ? (
-                    <R2Image source={ilan.foto} style={{ width: 44, height: '100%' } as any} resizeMode="cover" size="sm" />
-                  ) : (
-                    <View style={{ width: 44, height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceContainerHigh }}>
-                      <Text style={{ fontSize: 18 }}>{s.paket_token ? '📋' : '🏠'}</Text>
+                <Fragment key={idx}>
+                  {/* Kart */}
+                  <View style={{
+                    position: 'absolute', left: leftPx, width: CARD_W, top: cardTop, height: CARD_H,
+                    backgroundColor: Colors.surface, borderWidth: 2, borderColor: color, borderRadius: 6,
+                    overflow: 'hidden', flexDirection: 'row', zIndex: 2,
+                    ...(sa.canli ? { shadowColor: '#22c55e', shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 4 } : {}),
+                  }}>
+                    {ilan?.foto ? (
+                      <R2Image source={ilan.foto} style={{ width: 44, height: '100%' } as any} resizeMode="cover" size="sm" />
+                    ) : (
+                      <View style={{ width: 44, height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceContainerHigh }}>
+                        <Text style={{ fontSize: 18 }}>{s.paket_token ? '📋' : '🏠'}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1, paddingHorizontal: 5, paddingVertical: 3, justifyContent: 'center' }}>
+                      <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color }}>
+                        {sa.canli ? '🟢 ' : ''}{cihazKisa(s.user_agent)} · {formatSure(sureSn)}
+                      </Text>
+                      <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>{label}</Text>
+                      {ilan ? <Text numberOfLines={1} style={{ fontSize: 10, fontWeight: '700', color: Colors.primary }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text> : null}
                     </View>
-                  )}
-                  <View style={{ flex: 1, paddingHorizontal: 5, paddingVertical: 3, justifyContent: 'center' }}>
-                    <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color }}>
-                      {sa.canli ? '🟢 ' : ''}{cihazKisa(s.user_agent)} · {saatLabel(sStartRaw)} · {formatSure(sureSn)}
-                    </Text>
-                    <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>{label}</Text>
-                    {ilan ? <Text numberOfLines={1} style={{ fontSize: 10, fontWeight: '700', color: Colors.primary }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text> : null}
                   </View>
-                </View>
+                  {/* Bağlantı çizgisi */}
+                  <View style={{ position: 'absolute', left: leftPx - 1, top: cardBottom, width: 2, height: barTop - cardBottom, backgroundColor: color, zIndex: 1 }} />
+                  {/* Bar */}
+                  <View style={{ position: 'absolute', left: leftPx, top: barTop, width: barWidthPx, height: BAR_H, backgroundColor: color, borderRadius: 3, zIndex: 2 }} />
+                </Fragment>
               );
             })}
             {sorted.length === 0 && (
