@@ -725,8 +725,8 @@ export default function IlanDuzenleScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <SelectModal visible={ilModal} onClose={() => { setIlModal(false); setIlSearch(''); }} title="İl Seçin" search={ilSearch} onSearch={setIlSearch} data={ilListesi} onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); }} selected={il} recents={recentIller} />
-      <SelectModal visible={ilceModal} onClose={() => { setIlceModal(false); setIlceSearch(''); }} title="İlçe Seçin" search={ilceSearch} onSearch={setIlceSearch} data={ilceListesi} onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); }} selected={ilce} recents={recentIlceler} />
+      <SelectModal visible={ilModal} onClose={() => { setIlModal(false); setIlSearch(''); }} title="İl Seçin" search={ilSearch} onSearch={setIlSearch} data={ilListesi} onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); setTimeout(() => setIlceModal(true), 180); }} selected={il} recents={recentIller} />
+      <SelectModal visible={ilceModal} onClose={() => { setIlceModal(false); setIlceSearch(''); }} title="İlçe Seçin" search={ilceSearch} onSearch={setIlceSearch} data={ilceListesi} onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); setTimeout(() => setMahalleModal(true), 180); }} selected={ilce} recents={recentIlceler} />
       <SelectModal visible={mahalleModal} onClose={() => { setMahalleModal(false); setMahalleSearch(''); }} title="Mahalle Seçin" search={mahalleSearch} onSearch={setMahalleSearch} groupedData={mahalleGruplar} onSelect={v => { setMahalle(v); setMahalleSearch(''); setMahalleModal(false); }} selected={mahalle} recents={recentMahalleler} />
 
 

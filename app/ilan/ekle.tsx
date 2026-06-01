@@ -689,7 +689,7 @@ export default function IlanEkleScreen() {
         search={ilSearch}
         onSearch={setIlSearch}
         data={ilListesi}
-        onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); }}
+        onSelect={v => { setIl(v); setIlce(''); setMahalle(''); setIlSearch(''); setIlModal(false); setTimeout(() => setIlceModal(true), 180); }}
         selected={il}
         recents={recentIller}
       />
@@ -702,7 +702,7 @@ export default function IlanEkleScreen() {
         search={ilceSearch}
         onSearch={setIlceSearch}
         data={ilceListesi}
-        onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); }}
+        onSelect={v => { setIlce(v); setMahalle(''); setIlceSearch(''); setIlceModal(false); setTimeout(() => setMahalleModal(true), 180); }}
         selected={ilce}
         recents={recentIlceler}
       />
