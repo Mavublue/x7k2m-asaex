@@ -281,6 +281,7 @@ export default function MusteriDetayScreen() {
   const [paylasimYukleniyor, setPaylasimYukleniyor] = useState(false);
   const [aktifToken, setAktifToken] = useState<{ token: string; expires_at: string } | null>(null);
   const [paylasimGecmisi, setPaylasimGecmisi] = useState<PaylasimGecmisiRow[]>([]);
+  const [ekIlanlar, setEkIlanlar] = useState<{ id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[]>([]);
   const [ziyaretler, setZiyaretler] = useState<Ziyaret[]>([]);
   const [oturumlari, setOturumlari] = useState<Oturum[]>([]);
   const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24 | 168>(24);
@@ -444,7 +445,16 @@ export default function MusteriDetayScreen() {
     setAktifToken(tokenRes.data ? { token: tokenRes.data.token, expires_at: tokenRes.data.expires_at } : null);
     setPaylasimGecmisi((gecmisRes.data ?? []) as any);
     setZiyaretler((ziyaretRes.data ?? []) as any);
-    setOturumlari((oturumRes.data ?? []) as any);
+    const oturumData = (oturumRes.data ?? []) as { ilan_id: string | null }[];
+    setOturumlari(oturumData as any);
+    const gecmisIds = new Set(((gecmisRes.data ?? []) as any[]).map(p => p.ilanlar?.id).filter(Boolean));
+    const eksikIds = Array.from(new Set(oturumData.map(o => o.ilan_id).filter((x): x is string => !!x && !gecmisIds.has(x))));
+    if (eksikIds.length) {
+      const { data: ek } = await supabase.from('ilanlar').select('id, baslik, fiyat, fotograflar, portfoy_no').in('id', eksikIds);
+      setEkIlanlar((ek ?? []) as any);
+    } else {
+      setEkIlanlar([]);
+    }
     if (!silent) setPaylasimYukleniyor(false);
   }, [id]);
 
@@ -1518,6 +1528,7 @@ export default function MusteriDetayScreen() {
                     yukleniyor={paylasimYukleniyor}
                     aktifToken={aktifToken}
                     paylasimGecmisi={paylasimGecmisi}
+                    ekIlanlar={ekIlanlar}
                     ziyaretler={ziyaretler}
                     oturumlari={oturumlari}
                     timelinePeriod={timelinePeriod}
@@ -2197,7 +2208,7 @@ type ZiyaretItem = { paket_token: string | null; ilan_id: string | null; device_
 type OturumItem = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
 
 function PaylasimBox({
-  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ziyaretler, oturumlari,
+  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, oturumlari,
   timelinePeriod, setTimelinePeriod, onUzatAc, onDoldur, onLinkOlustur,
 }: {
   acik: boolean;
@@ -2205,6 +2216,7 @@ function PaylasimBox({
   yukleniyor: boolean;
   aktifToken: { token: string; expires_at: string } | null;
   paylasimGecmisi: PaylasimGecmisiItem[];
+  ekIlanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[];
   ziyaretler: ZiyaretItem[];
   oturumlari: OturumItem[];
   timelinePeriod: 1 | 6 | 24 | 168;
@@ -2261,7 +2273,7 @@ function PaylasimBox({
           )}
 
           {/* Zaman Çizelgesi */}
-          {oturumlari.length > 0 && <TimelineChart oturumlari={oturumlari} paylasimGecmisi={paylasimGecmisi} timelinePeriod={timelinePeriod} setTimelinePeriod={setTimelinePeriod} />}
+          {oturumlari.length > 0 && <TimelineChart oturumlari={oturumlari} paylasimGecmisi={paylasimGecmisi} ekIlanlar={ekIlanlar} timelinePeriod={timelinePeriod} setTimelinePeriod={setTimelinePeriod} />}
 
           {/* Geçmiş */}
           <View>
@@ -2278,9 +2290,10 @@ function PaylasimBox({
   );
 }
 
-function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelinePeriod }: {
+function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod, setTimelinePeriod }: {
   oturumlari: OturumItem[];
   paylasimGecmisi: PaylasimGecmisiItem[];
+  ekIlanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[];
   timelinePeriod: 1 | 6 | 24 | 168;
   setTimelinePeriod: (v: 1 | 6 | 24 | 168) => void;
 }) {
@@ -2289,6 +2302,12 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
     if (p.ilanlar) ilanMap.set(p.ilanlar.id, {
       baslik: p.ilanlar.baslik, portfoy: p.ilanlar.portfoy_no, fiyat: p.ilanlar.fiyat,
       foto: p.ilanlar.fotograflar?.[0] ?? null,
+    });
+  });
+  ekIlanlar.forEach(e => {
+    if (!ilanMap.has(e.id)) ilanMap.set(e.id, {
+      baslik: e.baslik, portfoy: e.portfoy_no, fiyat: e.fiyat,
+      foto: e.fotograflar?.[0] ?? null,
     });
   });
   const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
