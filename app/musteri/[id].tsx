@@ -283,7 +283,7 @@ export default function MusteriDetayScreen() {
   const [paylasimGecmisi, setPaylasimGecmisi] = useState<PaylasimGecmisiRow[]>([]);
   const [ziyaretler, setZiyaretler] = useState<Ziyaret[]>([]);
   const [oturumlari, setOturumlari] = useState<Oturum[]>([]);
-  const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24>(24);
+  const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24 | 168>(24);
   const [, setTickNow] = useState(0);
   const [tokenUzatModal, setTokenUzatModal] = useState(false);
   const [tokenYeniTarih, setTokenYeniTarih] = useState<Date>(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d; });
@@ -2207,8 +2207,8 @@ function PaylasimBox({
   paylasimGecmisi: PaylasimGecmisiItem[];
   ziyaretler: ZiyaretItem[];
   oturumlari: OturumItem[];
-  timelinePeriod: 1 | 6 | 24;
-  setTimelinePeriod: (v: 1 | 6 | 24) => void;
+  timelinePeriod: 1 | 6 | 24 | 168;
+  setTimelinePeriod: (v: 1 | 6 | 24 | 168) => void;
   onUzatAc: () => void;
   onDoldur: () => void;
   onLinkOlustur: () => void;
@@ -2281,8 +2281,8 @@ function PaylasimBox({
 function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelinePeriod }: {
   oturumlari: OturumItem[];
   paylasimGecmisi: PaylasimGecmisiItem[];
-  timelinePeriod: 1 | 6 | 24;
-  setTimelinePeriod: (v: 1 | 6 | 24) => void;
+  timelinePeriod: 1 | 6 | 24 | 168;
+  setTimelinePeriod: (v: 1 | 6 | 24 | 168) => void;
 }) {
   const ilanMap = new Map<string, { baslik: string; portfoy: string | null; fiyat: number; foto: string | null }>();
   paylasimGecmisi.forEach(p => {
@@ -2338,7 +2338,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
   });
   const laneCount = Math.max(1, laneEnds.length);
 
-  const tickCount = timelinePeriod === 1 ? 6 : timelinePeriod === 6 ? 6 : 8;
+  const tickCount = timelinePeriod === 1 ? 6 : timelinePeriod === 6 ? 6 : timelinePeriod === 24 ? 8 : 7;
   const ticks: number[] = [];
   for (let i = 0; i <= tickCount; i++) ticks.push(minT + (range * i) / tickCount);
 
@@ -2353,7 +2353,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, timelinePeriod, setTimelin
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
         <Text style={paylasimStyles.bolumBaslik}>📊 Zaman Çizelgesi</Text>
         <View style={paylasimStyles.periodGroup}>
-          {([[1, '1 sa'], [6, '6 sa'], [24, '24 sa']] as const).map(([h, label]) => (
+          {([[1, '1 sa'], [6, '6 sa'], [24, '24 sa'], [168, '7 gün']] as const).map(([h, label]) => (
             <TouchableOpacity key={h} onPress={() => setTimelinePeriod(h)} style={[paylasimStyles.periodChip, timelinePeriod === h && paylasimStyles.periodChipActive]}>
               <Text style={[paylasimStyles.periodChipText, timelinePeriod === h && paylasimStyles.periodChipTextActive]}>{label}</Text>
             </TouchableOpacity>
