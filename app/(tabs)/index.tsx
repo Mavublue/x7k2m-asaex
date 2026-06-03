@@ -76,6 +76,7 @@ export default function DashboardScreen() {
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const [aktifFiltre, setAktifFiltre] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const bildirimListRef = useRef<FlatList<any>>(null);
   const takipY = useRef(0);
   const bildirimModalPending = useRef(false);
   const ilkFocus = useRef(true);
@@ -270,10 +271,6 @@ export default function DashboardScreen() {
     setMusteriDetay(null);
     setIlanData(null);
     setDetayYukleniyor(true);
-    if (!b.okundu) {
-      setBildirimler(prev => prev.map(x => x.id === b.id ? { ...x, okundu: true } : x));
-      supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).eq('id', b.id).then(() => {});
-    }
     if (b.tip === 'eslesme-musteri') {
       const ilanIds: string[] | undefined = b.veri?.eslesen_ilan_ids;
       const ilanSel = supabase.from('ilanlar').select('id, baslik, fiyat, konum, ilce, mahalle, kategori, fotograflar, tip, kat_sayisi, bulundugu_kat, bina_yasi, oda_sayisi, ilan_ozellikler(ozellik_id)').eq('durum', 'Aktif');
@@ -852,17 +849,34 @@ export default function DashboardScreen() {
                     </View>
                   ) : (
                     <FlatList
+                      ref={bildirimListRef}
                       data={filtreliSirali}
                       keyExtractor={b => b.id}
                       contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
                       initialNumToRender={10}
                       maxToRenderPerBatch={6}
                       windowSize={15}
+                      onScrollToIndexFailed={(info) => {
+                        bildirimListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+                      }}
                       ListHeaderComponent={(
                         <View style={{ gap: 8, marginBottom: 8 }}>
-                          <TouchableOpacity onPress={tumunuOkunduYap} style={{ alignSelf: 'flex-end' }}>
-                            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
-                          </TouchableOpacity>
+                          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                            {filtreliSirali.some(b => !b.okundu) && (
+                              <TouchableOpacity onPress={() => {
+                                const eski = [...filtreliSirali].filter(b => !b.okundu).sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''))[0];
+                                if (eski) {
+                                  const idx = filtreliSirali.findIndex(b => b.id === eski.id);
+                                  if (idx >= 0) bildirimListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.2 });
+                                }
+                              }} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(229,57,53,0.15)', borderWidth: 1, borderColor: 'rgba(229,57,53,0.4)' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.primary }}>⬇ En eski okunmamış</Text>
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={tumunuOkunduYap}>
+                              <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                            </TouchableOpacity>
+                          </View>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                             <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
                               <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : Colors.onSurface }}>Tümü ({sirali.length})</Text>
@@ -913,6 +927,14 @@ export default function DashboardScreen() {
                                 </View>
                               ) : null}
                             </TouchableOpacity>
+                            {!isOkundu && (
+                              <TouchableOpacity
+                                onPress={() => toggleOkundu(item.id)}
+                                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, backgroundColor: Colors.primary }}>
+                                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓ Okundu</Text>
+                              </TouchableOpacity>
+                            )}
                             <TouchableOpacity
                               style={styles.bdMenuBtn}
                               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
