@@ -10,7 +10,10 @@ import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
 
-type MusteriListe = Musteri & { musteri_iletisim?: { ad: string; telefon: string | null; tip: string | null }[] };
+type MusteriListe = Musteri & {
+  musteri_iletisim?: { ad: string; telefon: string | null; tip: string | null }[];
+  musteri_notlar?: { icerik: string; tarih: string }[];
+};
 import { TURKIYE, IL_LISTESI } from '../../constants/turkiye';
 
 const ILLER = TURKIYE;
@@ -28,6 +31,17 @@ const SIRALAMA_LABEL: Record<Siralama, string> = {
   guncelleme_yeni: 'Değişiklik (yeni)',
   guncelleme_eski: 'Değişiklik (eski)',
 };
+function highlightRN(text: string, q: string) {
+  if (!q || !text) return text;
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+  const parts = text.split(re);
+  return parts.map((p, i) =>
+    p.toLowerCase() === q.toLowerCase()
+      ? <Text key={i} style={{ backgroundColor: '#fde047', color: '#1a1b21' }}>{p}</Text>
+      : p
+  );
+}
+
 function etiketSayi(e: string | null): number {
   if (!e) return Number.POSITIVE_INFINITY;
   const n = parseInt(e.trim(), 10);
@@ -59,7 +73,8 @@ export default function MusterilerScreen() {
         `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(q) ||
         m.telefon?.includes(q) ||
         m.tercih_konum?.toLowerCase().includes(q) ||
-        (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q))
+        (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q)) ||
+        (m.musteri_notlar ?? []).some(n => n.icerik?.toLowerCase().includes(q))
       );
     }
     if (etiketSearch) {
@@ -109,7 +124,7 @@ export default function MusterilerScreen() {
     else setLoading(true);
     const { data } = await supabase
       .from('musteriler')
-      .select('*, musteri_iletisim(ad, telefon, tip)')
+      .select('*, musteri_iletisim(ad, telefon, tip), musteri_notlar(icerik, tarih)')
       .order('olusturma_tarihi', { ascending: false });
     if (data) {
       setMusteriler(data as MusteriListe[]);
@@ -132,13 +147,20 @@ export default function MusterilerScreen() {
       </View>
 
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.search}
-          placeholder="Müşteri ara..."
-          placeholderTextColor={Colors.outlineVariant}
-          value={search}
-          onChangeText={setSearch}
-        />
+        <View style={styles.searchWrap}>
+          <TextInput
+            style={[styles.search, styles.searchPadRight]}
+            placeholder="Müşteri ara..."
+            placeholderTextColor={Colors.outlineVariant}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} style={styles.clearBtn} hitSlop={8}>
+              <Text style={styles.clearBtnText}>×</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.etiketSearchBox}>
           <Text style={styles.etiketSearchHash}>#</Text>
           <TextInput
@@ -150,6 +172,11 @@ export default function MusterilerScreen() {
             autoCapitalize="none"
             returnKeyType="search"
           />
+          {etiketSearch.length > 0 && (
+            <TouchableOpacity onPress={() => setEtiketSearch('')} hitSlop={8}>
+              <Text style={styles.clearBtnText}>×</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -231,6 +258,9 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
   const matchedEk = q ? (musteri.musteri_iletisim ?? []).filter(k =>
     k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q)
   ) : [];
+  const matchedNotlar = q ? (musteri.musteri_notlar ?? []).filter(n =>
+    n.icerik?.toLowerCase().includes(q)
+  ).slice(0, 2) : [];
   const durumRenk = {
     Aktif: { bg: 'rgba(34,197,94,0.18)', text: '#166534' },
     Beklemede: { bg: 'rgba(234,179,8,0.15)', text: '#fcd34d' },
@@ -276,7 +306,7 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
         </View>
       </View>
 
-      {matchedEk.length > 0 && (
+      {(matchedEk.length > 0 || matchedNotlar.length > 0) && (
         <View style={styles.ekKisiler}>
           {matchedEk.map((k, i) => (
             <View key={i} style={styles.ekKisiRow}>
@@ -285,6 +315,14 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
               </View>
               <Text style={styles.ekKisiAd} numberOfLines={1}>{k.ad}</Text>
               {k.telefon ? <Text style={styles.ekKisiTel}>📞 {k.telefon}</Text> : null}
+            </View>
+          ))}
+          {matchedNotlar.map((n, i) => (
+            <View key={`n${i}`} style={styles.ekKisiRow}>
+              <View style={styles.notTip}>
+                <Text style={styles.notTipText}>↳ Not</Text>
+              </View>
+              <Text style={styles.notIcerik} numberOfLines={2}>{highlightRN(n.icerik, q)}</Text>
             </View>
           ))}
         </View>
@@ -317,6 +355,7 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
   searchContainer: { paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm, flexDirection: 'row', gap: 8, alignItems: 'center' },
+  searchWrap: { flex: 1, position: 'relative', justifyContent: 'center' },
   search: {
     flex: 1,
     backgroundColor: Colors.surfaceContainerLow,
@@ -326,6 +365,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.onSurface,
   },
+  searchPadRight: { paddingRight: 36 },
+  clearBtn: { position: 'absolute', right: 8, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', width: 28 },
+  clearBtnText: { fontSize: 18, color: Colors.onSurfaceVariant, fontWeight: '600' },
   etiketSearchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: 10, paddingVertical: 12, width: 88 },
   etiketSearchHash: { fontSize: 14, fontWeight: '700', color: Colors.primary, marginRight: 2 },
   etiketSearch: { flex: 1, fontSize: 14, color: Colors.onSurface, padding: 0 },
@@ -381,6 +423,9 @@ const styles = StyleSheet.create({
   ekKisiTipText: { fontSize: 9, fontWeight: '700', color: Colors.primary },
   ekKisiAd: { fontSize: 11, fontWeight: '600', color: Colors.onSurface },
   ekKisiTel: { fontSize: 10, color: Colors.onSurfaceVariant },
+  notTip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(59,130,246,0.18)' },
+  notTipText: { fontSize: 9, fontWeight: '700', color: '#93c5fd' },
+  notIcerik: { fontSize: 11, color: Colors.onSurfaceVariant, flex: 1 },
 
   emptyBox: {
     backgroundColor: Colors.surfaceContainerLow,
