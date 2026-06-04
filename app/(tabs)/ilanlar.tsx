@@ -1549,7 +1549,7 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
     const konum = [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ');
     return (
       <TouchableOpacity
-        style={[styles.kompaktKart, iptal && { opacity: 0.55 }, secimModu && secili && { borderWidth: 2, borderColor: Colors.primary }]}
+        style={[styles.kompaktKart, !ilan.musteri_gizle && styles.kompaktKartAcik, iptal && { opacity: 0.55 }, secimModu && secili && { borderWidth: 3, borderColor: Colors.primary }]}
         onPress={() => secimModu ? onToggle?.() : router.push(`/ilan/${ilan.id}`)}
         activeOpacity={0.85}
       >
@@ -1663,6 +1663,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 84,
   },
+  kompaktKartAcik: { borderWidth: 2, borderColor: '#3aaa6e' },
   kompaktImage: { width: 96, height: 84, backgroundColor: Colors.surfaceContainerHigh },
   kompaktInfo: { flex: 1, paddingHorizontal: 10, paddingVertical: 8, justifyContent: 'space-between' },
   kompaktUstSatir: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
