@@ -478,6 +478,9 @@ export default function MusteriDetayScreen() {
       .update({ expires_at: yeniIso })
       .eq('user_id', session.user.id).eq('musteri_id', id);
     if (error) { Alert.alert('Hata', error.message); return; }
+    await supabase.from('paylasim_paketleri')
+      .update({ expires_at: yeniIso })
+      .eq('emlakci_id', session.user.id).eq('musteri_token', aktifToken.token);
     setAktifToken({ ...aktifToken, expires_at: yeniIso });
     setTokenUzatModal(false);
   }
@@ -494,6 +497,9 @@ export default function MusteriDetayScreen() {
           .update({ expires_at: nowIso })
           .eq('user_id', session.user.id).eq('musteri_id', id);
         if (error) { Alert.alert('Hata', error.message); return; }
+        await supabase.from('paylasim_paketleri')
+          .update({ expires_at: nowIso })
+          .eq('emlakci_id', session.user.id).eq('musteri_token', aktifToken.token);
         setAktifToken({ ...aktifToken, expires_at: nowIso });
       }},
     ]);
