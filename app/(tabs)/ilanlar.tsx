@@ -149,6 +149,7 @@ export default function IlanlarScreen() {
   const [filtered, setFiltered] = useState<Ilan[]>([]);
   const [mapHtml, setMapHtml] = useState('');
   const [gorunum, setGorunum] = useState<'liste' | 'harita'>('liste');
+  const [kartModu, setKartModu] = useState<'buyuk' | 'kucuk'>('buyuk');
   const [seciliIlan, setSeciliIlan] = useState<Ilan | null>(null);
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
   const [search, setSearch] = useState('');
@@ -685,6 +686,9 @@ export default function IlanlarScreen() {
         <>
           <View style={styles.header}>
             <SearchPill style={{ flex: 1 }} />
+            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => setKartModu(m => m === 'buyuk' ? 'kucuk' : 'buyuk')}>
+              <Text style={styles.paylasBtnSmallText}>{kartModu === 'buyuk' ? '☰' : '▦'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => setRastgeleModal(true)}>
               <Text style={styles.paylasBtnSmallText}>🎲</Text>
             </TouchableOpacity>
@@ -805,7 +809,7 @@ export default function IlanlarScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} />)
+            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'} />)
           )}
         </ScrollView>
       )}
@@ -1537,9 +1541,52 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
-function IlanKart({ ilan, secimModu, secili, onToggle }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void }) {
+function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
+
+  if (kompakt) {
+    const konum = [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ');
+    return (
+      <TouchableOpacity
+        style={[styles.kompaktKart, iptal && { opacity: 0.55 }, secimModu && secili && { borderWidth: 2, borderColor: Colors.primary }]}
+        onPress={() => secimModu ? onToggle?.() : router.push(`/ilan/${ilan.id}`)}
+        activeOpacity={0.85}
+      >
+        {ilkFoto ? (
+          <R2Image source={ilkFoto} style={styles.kompaktImage} resizeMode="cover" size="sm" />
+        ) : (
+          <View style={[styles.kompaktImage, styles.imagePlaceholder]}>
+            <Text style={{ fontSize: 22 }}>🏠</Text>
+          </View>
+        )}
+        {secimModu && (
+          <View style={{ position: 'absolute', top: 4, left: 4, width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: secili ? Colors.primary : '#fff', backgroundColor: secili ? Colors.primary : 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+            {secili && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>✓</Text>}
+          </View>
+        )}
+        <View style={styles.kompaktInfo}>
+          <View style={styles.kompaktUstSatir}>
+            {ilan.portfoy_no && <Text style={styles.kompaktPortfoy}>#{ilan.portfoy_no}</Text>}
+            <View style={[styles.kompaktTipBadge, { backgroundColor: ilan.tip === 'Satılık' ? 'rgba(0,35,111,0.18)' : 'rgba(253,118,26,0.18)' }]}>
+              <Text style={[styles.kompaktTipText, { color: ilan.tip === 'Satılık' ? '#5b8def' : '#fd761a' }]}>{ilan.tip}</Text>
+            </View>
+            {ilan.kategori && <Text style={styles.kompaktMeta}>{ilan.kategori}</Text>}
+            {ilan.oda_sayisi && <Text style={styles.kompaktMeta}>{ilan.oda_sayisi}</Text>}
+            {ilan.metrekare && <Text style={styles.kompaktMeta}>{ilan.metrekare}m²</Text>}
+            {ilan.musteri_gizle && <Text style={[styles.kompaktMeta, { color: '#fbbf24' }]}>👁</Text>}
+            {iptal && <Text style={[styles.kompaktMeta, { color: '#ef4444', fontWeight: '700' }]}>İPTAL</Text>}
+          </View>
+          <Text style={styles.kompaktBaslik} numberOfLines={1}>{ilan.baslik}</Text>
+          <View style={styles.kompaktAltSatir}>
+            {konum ? <Text style={styles.kompaktKonum} numberOfLines={1}>📍 {konum}</Text> : <View style={{ flex: 1 }} />}
+            <Text style={styles.kompaktFiyat}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       style={[styles.kart, !ilan.musteri_gizle && styles.kartAcik, iptal && styles.kartIptal, secimModu && secili && { borderWidth: 4, borderColor: Colors.primary }]}
@@ -1608,6 +1655,25 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, paddingBottom: 32 },
+
+  kompaktKart: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    minHeight: 84,
+  },
+  kompaktImage: { width: 96, height: 84, backgroundColor: Colors.surfaceContainerHigh },
+  kompaktInfo: { flex: 1, paddingHorizontal: 10, paddingVertical: 8, justifyContent: 'space-between' },
+  kompaktUstSatir: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  kompaktPortfoy: { fontSize: 11, fontWeight: '700', color: '#E53935' },
+  kompaktTipBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
+  kompaktTipText: { fontSize: 10, fontWeight: '700' },
+  kompaktMeta: { fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '500' },
+  kompaktBaslik: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginTop: 2 },
+  kompaktAltSatir: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  kompaktKonum: { flex: 1, fontSize: 11, color: Colors.onSurfaceVariant },
+  kompaktFiyat: { fontSize: 13, fontWeight: '700', color: '#E53935' },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
