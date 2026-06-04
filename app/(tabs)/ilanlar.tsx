@@ -695,7 +695,7 @@ export default function IlanlarScreen() {
             <TouchableOpacity style={[styles.paylasBtnSmall, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
               <Text style={[styles.paylasBtnSmallText, secimModu && { color: '#fff' }]}>{secimModu ? '✕' : '☑'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => handleListePaylas('filtre')}>
+            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => handleListePaylas(secimModu && seciliIds.size > 0 ? 'secim' : 'filtre')}>
               <Text style={styles.paylasBtnSmallText}>🔗</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/ilan/ekle')}>
