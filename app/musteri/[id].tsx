@@ -1132,6 +1132,7 @@ export default function MusteriDetayScreen() {
                     value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
                     mode="date"
                     display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                    locale="tr-TR"
                     onChange={(_, sel) => {
                       setShowTakipPicker(Platform.OS === 'ios');
                       if (sel) {
@@ -1185,6 +1186,7 @@ export default function MusteriDetayScreen() {
                         value={notTarih}
                         mode={showPicker}
                         is24Hour
+                        locale="tr-TR"
                         display={Platform.OS === 'ios' ? (showPicker === 'date' ? 'inline' : 'spinner') : showPicker === 'date' ? 'calendar' : 'default'}
                         onChange={(_, sel) => {
                           if (Platform.OS === 'android') {
@@ -1405,6 +1407,7 @@ export default function MusteriDetayScreen() {
                     value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
                     mode="date"
                     display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                    locale="tr-TR"
                     onChange={(_, sel) => {
                       setShowInlineTakipPicker(false);
                       if (sel) {
@@ -1954,7 +1957,7 @@ export default function MusteriDetayScreen() {
               </TouchableOpacity>
             </View>
             {tokenUzatPicker && (
-              <DateTimePicker value={tokenYeniTarih} mode={tokenUzatPicker} is24Hour
+              <DateTimePicker value={tokenYeniTarih} mode={tokenUzatPicker} is24Hour locale="tr-TR"
                 display={Platform.OS === 'ios' ? (tokenUzatPicker === 'date' ? 'inline' : 'spinner') : tokenUzatPicker === 'date' ? 'calendar' : 'default'}
                 onChange={(_, sel) => {
                   if (Platform.OS === 'android') { setTokenUzatPicker(null); }
@@ -2149,7 +2152,7 @@ function GorevlerBox({
             <DateTimePicker
               value={gorevHedefTarih ?? new Date()}
               mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
               locale="tr-TR"
               onChange={(_, sel) => {
                 setShowGorevPicker(Platform.OS === 'ios');

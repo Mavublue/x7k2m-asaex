@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, Image, Modal, FlatList, RefreshControl, TextInput, AppState, Keyboard,
+  StyleSheet, ActivityIndicator, Alert, Image, Modal, FlatList, RefreshControl, TextInput, AppState, Keyboard, Platform,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import R2Image from '../../components/R2Image';
@@ -634,7 +634,7 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
               )}
               {showEditTarihPicker && <>
-                <DateTimePicker value={editTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setEditTarihDate(d); }} />
+                <DateTimePicker value={editTarihDate} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'calendar'} locale="tr-TR" onChange={(_, d) => { if (d) { setEditTarihDate(d); if (Platform.OS === 'android') setShowEditTarihPicker(false); } }} />
                 <TouchableOpacity onPress={() => setShowEditTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                   <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
                 </TouchableOpacity>
@@ -710,7 +710,7 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
               )}
               {showGenelTarihPicker && <>
-                <DateTimePicker value={genelTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setGenelTarihDate(d); }} />
+                <DateTimePicker value={genelTarihDate} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'calendar'} locale="tr-TR" onChange={(_, d) => { if (d) { setGenelTarihDate(d); if (Platform.OS === 'android') setShowGenelTarihPicker(false); } }} />
                 <TouchableOpacity onPress={() => setShowGenelTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                   <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
                 </TouchableOpacity>

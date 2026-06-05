@@ -275,7 +275,7 @@ export default function GorevlerScreen() {
               </TouchableOpacity>
             )}
             {showEditTarihPicker && <>
-              <DateTimePicker value={editTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setEditTarihDate(d); }} />
+              <DateTimePicker value={editTarihDate} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'calendar'} locale="tr-TR" onChange={(_, d) => { if (d) { setEditTarihDate(d); if (Platform.OS === 'android') setShowEditTarihPicker(false); } }} />
               <TouchableOpacity onPress={() => setShowEditTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                 <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
               </TouchableOpacity>
@@ -388,7 +388,7 @@ export default function GorevlerScreen() {
               </TouchableOpacity>
             )}
             {showEkleTarihPicker && <>
-              <DateTimePicker value={ekleTarihDate} mode="date" display="spinner" locale="tr-TR" onChange={(_, d) => { if (d) setEkleTarihDate(d); }} />
+              <DateTimePicker value={ekleTarihDate} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'calendar'} locale="tr-TR" onChange={(_, d) => { if (d) { setEkleTarihDate(d); if (Platform.OS === 'android') setShowEkleTarihPicker(false); } }} />
               <TouchableOpacity onPress={() => setShowEkleTarihPicker(false)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24, marginTop: 4 }}>
                 <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>Tamam</Text>
               </TouchableOpacity>

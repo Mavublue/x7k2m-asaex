@@ -556,6 +556,7 @@ export default function MusteriEkleScreen() {
                 value={takipTarihi ? (() => { const [d,m,y] = takipTarihi.split('.'); return new Date(+y, +m-1, +d); })() : new Date()}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                locale="tr-TR"
                 onChange={(_, sel) => {
                   setShowTakipPicker(Platform.OS === 'ios');
                   if (sel) {
@@ -610,6 +611,7 @@ export default function MusteriEkleScreen() {
                     value={notTarih}
                     mode={showPicker}
                     is24Hour
+                    locale="tr-TR"
                     display={Platform.OS === 'ios' ? (showPicker === 'date' ? 'inline' : 'spinner') : showPicker === 'date' ? 'calendar' : 'default'}
                     onChange={(_, sel) => {
                       if (Platform.OS === 'android') {
