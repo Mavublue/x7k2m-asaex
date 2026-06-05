@@ -2187,8 +2187,10 @@ function GorevlerBox({
       ) : (
         gorevler.map(g => (
           <View key={g.id} style={[gorevStyles.satir, g.tamamlandi && gorevStyles.satirTamamlandi]}>
-            <TouchableOpacity onPress={() => onTamamla(g)} style={gorevStyles.checkbox}>
-              <Text style={{ fontSize: 16 }}>{g.tamamlandi ? '☑' : '☐'}</Text>
+            <TouchableOpacity onPress={() => onTamamla(g)} style={gorevStyles.checkbox} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <View style={[gorevStyles.checkboxBox, g.tamamlandi && gorevStyles.checkboxBoxOn]}>
+                {g.tamamlandi ? <Text style={gorevStyles.checkboxTick}>✓</Text> : null}
+              </View>
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={[gorevStyles.satirBaslik, g.tamamlandi && gorevStyles.satirBaslikTamamlandi]}>{g.baslik}</Text>
@@ -2685,7 +2687,10 @@ const gorevStyles = StyleSheet.create({
   iptalBtnText: { fontSize: 12, color: Colors.onSurfaceVariant },
   satir: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: 'rgba(34,197,94,0.4)' },
   satirTamamlandi: { opacity: 0.6 },
-  checkbox: { paddingTop: 1 },
+  checkbox: { paddingTop: 2 },
+  checkboxBox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: '#86efac', backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  checkboxBoxOn: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  checkboxTick: { color: '#fff', fontSize: 13, fontWeight: '800', lineHeight: 15 },
   satirBaslik: { fontSize: 13, fontWeight: '600', color: Colors.onSurface },
   satirBaslikTamamlandi: { textDecorationLine: 'line-through', color: Colors.onSurfaceVariant },
   satirAciklama: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
