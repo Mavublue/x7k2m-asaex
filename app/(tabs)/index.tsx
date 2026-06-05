@@ -614,10 +614,10 @@ export default function DashboardScreen() {
         <Modal visible={!!editGorev} transparent animationType="fade" onRequestClose={() => setEditGorev(null)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
-              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 6 }}>✏️ Görevi Düzenle</Text>
+              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 6, color: Colors.onSurface }}>✏️ Görevi Düzenle</Text>
               {editGorev && (() => { const m = editGorev.musteriler; const lbl = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' '); return lbl ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginBottom: 10 }}>{lbl}</Text> : null; })()}
-              <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı"
-                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+              <TextInput value={editBaslik} onChangeText={setEditBaslik} placeholder="Görev başlığı" placeholderTextColor={Colors.onSurfaceVariant}
+                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8, color: Colors.onSurface }} />
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                 <TouchableOpacity onPress={() => { Keyboard.dismiss(); setShowEditTarihPicker(true); }} style={{ flex: 1, padding: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8 }}>
                   <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {editTarihDate.toLocaleDateString('tr-TR')}</Text>
@@ -666,9 +666,9 @@ export default function DashboardScreen() {
         <Modal visible={genelGorevModal} transparent animationType="fade" onRequestClose={() => setGenelGorevModal(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
-              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12 }}>＋ Görev Ekle</Text>
-              <TextInput value={genelBaslik} onChangeText={setGenelBaslik} placeholder="Görev başlığı"
-                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8 }} />
+              <Text style={{ fontWeight: '700', fontSize: 15, marginBottom: 12, color: Colors.onSurface }}>＋ Görev Ekle</Text>
+              <TextInput value={genelBaslik} onChangeText={setGenelBaslik} placeholder="Görev başlığı" placeholderTextColor={Colors.onSurfaceVariant}
+                style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 8, color: Colors.onSurface }} />
               {genelMusteriId ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderWidth: 1, borderColor: 'rgba(134,239,172,0.5)', borderRadius: 8, backgroundColor: 'rgba(34,197,94,0.12)', marginBottom: 8 }}>
                   <Text style={{ fontSize: 13, color: '#86efac', fontWeight: '600', flex: 1 }}>
@@ -680,8 +680,8 @@ export default function DashboardScreen() {
                 </View>
               ) : (
                 <View style={{ marginBottom: 8 }}>
-                  <TextInput value={genelMusteriArama} onChangeText={setGenelMusteriArama} placeholder="Müşteri ara (opsiyonel)"
-                    style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13 }} />
+                  <TextInput value={genelMusteriArama} onChangeText={setGenelMusteriArama} placeholder="Müşteri ara (opsiyonel)" placeholderTextColor={Colors.onSurfaceVariant}
+                    style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface }} />
                   {genelMusteriArama.trim().length > 0 && (
                     <View style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, marginTop: 2, maxHeight: 140, overflow: 'hidden' }}>
                       {musteriListesi.filter(m => `${m.ad} ${m.soyad ?? ''} ${m.etiketler ?? ''}`.toLowerCase().includes(genelMusteriArama.toLowerCase())).slice(0,6).map(m => (
