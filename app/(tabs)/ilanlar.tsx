@@ -1568,9 +1568,11 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
         <View style={styles.kompaktInfo}>
           <View style={styles.kompaktUstSatir}>
             {ilan.portfoy_no && <Text style={styles.kompaktPortfoy}>#{ilan.portfoy_no}</Text>}
-            <View style={[styles.kompaktTipBadge, { backgroundColor: ilan.tip === 'Satılık' ? 'rgba(0,35,111,0.18)' : 'rgba(253,118,26,0.18)' }]}>
-              <Text style={[styles.kompaktTipText, { color: ilan.tip === 'Satılık' ? '#5b8def' : '#fd761a' }]}>{ilan.tip}</Text>
-            </View>
+            {ilan.tip === 'Kiralık' && (
+              <View style={[styles.kompaktTipBadge, { backgroundColor: 'rgba(253,118,26,0.18)' }]}>
+                <Text style={[styles.kompaktTipText, { color: '#fd761a' }]}>{ilan.tip}</Text>
+              </View>
+            )}
             {ilan.kategori && <Text style={styles.kompaktMeta}>{ilan.kategori}</Text>}
             {ilan.oda_sayisi && <Text style={styles.kompaktMeta}>{ilan.oda_sayisi}</Text>}
             {ilan.metrekare && <Text style={styles.kompaktMeta}>{ilan.metrekare}m²</Text>}
@@ -1614,9 +1616,11 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
               {secili && <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>✓</Text>}
             </View>
           )}
-          <View style={[styles.tipBadge, { backgroundColor: ilan.tip === 'Satılık' ? 'rgba(0,35,111,0.85)' : 'rgba(253,118,26,0.85)' }]}>
-            <Text style={styles.tipBadgeText}>{ilan.tip}</Text>
-          </View>
+          {ilan.tip === 'Kiralık' && (
+            <View style={[styles.tipBadge, { backgroundColor: 'rgba(253,118,26,0.85)' }]}>
+              <Text style={styles.tipBadgeText}>{ilan.tip}</Text>
+            </View>
+          )}
         </View>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {ilan.musteri_gizle && (
