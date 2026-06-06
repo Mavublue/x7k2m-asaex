@@ -105,7 +105,18 @@ export default function MusterilerScreen() {
       const eq = etiketSearch.replace('#', '').toLowerCase();
       result = result.filter(m => m.etiketler?.toLowerCase().includes(eq));
     }
+    const searchQ = search.toLowerCase();
+    const isNameMatch = (m: MusteriListe) => !searchQ ? false : (
+      `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(searchQ) ||
+      (m.telefon?.includes(searchQ) ?? false) ||
+      (m.tercih_konum?.toLowerCase().includes(searchQ) ?? false) ||
+      (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(searchQ) || k.telefon?.includes(searchQ))
+    );
     result = [...result].sort((a, b) => {
+      if (searchQ) {
+        const an = isNameMatch(a), bn = isNameMatch(b);
+        if (an !== bn) return an ? -1 : 1;
+      }
       if (etiketSearch) {
         const eq = etiketSearch.replace('#', '').toLowerCase();
         const ae = (a.etiketler ?? '').toLowerCase();
