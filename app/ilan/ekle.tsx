@@ -135,15 +135,20 @@ export default function IlanEkleScreen() {
           if (koord) { setMapInitLat(koord[0]); setMapInitLng(koord[1]); }
         }
         const prefix = (data?.portfoy_prefix ?? '').toUpperCase();
-        const { data: ilanlar } = await supabase.from('ilanlar').select('portfoy_no, il, ilce, mahalle, created_at').eq('user_id', user.id).order('created_at', { ascending: false });
+        const { data: portfoyRows, error: portfoyErr } = await supabase.from('ilanlar').select('portfoy_no').eq('user_id', user.id);
+        if (portfoyErr) console.warn('portfoy_no fetch error', portfoyErr);
         const nums = new Set(
-          (ilanlar ?? [])
+          (portfoyRows ?? [])
             .map((i: any) => parseInt((i.portfoy_no ?? '').replace(/\D/g, ''), 10))
             .filter((n: number) => n > 0)
         );
+        let n = 1000;
+        while (nums.has(n)) n++;
+        setPortfoyNo(prefix ? `${prefix}-${n}` : String(n));
+        const { data: konumRows } = await supabase.from('ilanlar').select('il, ilce, mahalle').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200);
         const seen = new Set<string>();
         const gecmis: { il: string; ilce: string; mahalle: string }[] = [];
-        for (const it of (ilanlar ?? []) as any[]) {
+        for (const it of (konumRows ?? []) as any[]) {
           const k = `${it.il}|${it.ilce}|${it.mahalle}`;
           if (!it.il || seen.has(k)) continue;
           seen.add(k);
@@ -151,9 +156,6 @@ export default function IlanEkleScreen() {
           if (gecmis.length >= 20) break;
         }
         setGecmisKonum(gecmis);
-        let n = 1000;
-        while (nums.has(n)) n++;
-        setPortfoyNo(prefix ? `${prefix}-${n}` : String(n));
       } catch (e) {
         setPortfoyNo('1000');
       }
