@@ -150,7 +150,7 @@ export default function MusteriDetayScreen() {
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
   const [telefonRaw, setTelefonRaw] = useState('');
-  type IstekState = { id?: string; tipler: string[]; tipler_haric: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; binaYaslari_haric: string[]; ozelIstekler: string[]; ozelIstekler_haric: string[] };
+  type IstekState = { id?: string; satilikKiralik: '' | 'Satılık' | 'Kiralık'; tipler: string[]; tipler_haric: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; binaYaslari_haric: string[]; ozelIstekler: string[]; ozelIstekler_haric: string[] };
   const [istekler, setIstekler] = useState<IstekState[]>([]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
@@ -311,6 +311,7 @@ export default function MusteriDetayScreen() {
       setMinOda(data.min_oda ?? '');
       setIstekler((rpcData?.istekler ?? []).map((i: any) => ({
         id: i.id,
+        satilikKiralik: (i.satilik_kiralik === 'Satılık' || i.satilik_kiralik === 'Kiralık') ? i.satilik_kiralik : '',
         tipler: i.tip ? i.tip.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
         tipler_haric: i.tip_haric ? i.tip_haric.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
         butceMin: i.butce_min ? formatButce(String(i.butce_min)) : '',
@@ -359,7 +360,8 @@ export default function MusteriDetayScreen() {
 
   const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
   function istekEslesiyor(istek: any, ilan: any): boolean {
-    if (!istek.tip && istek.butce_min == null && istek.butce_max == null && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi) return false;
+    if (!istek.tip && !istek.satilik_kiralik && istek.butce_min == null && istek.butce_max == null && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi) return false;
+    if (istek.satilik_kiralik && ilan.tip !== istek.satilik_kiralik) return false;
     const f = Number(ilan.fiyat);
     if (istek.butce_min != null && f < Number(istek.butce_min)) return false;
     if (istek.butce_max != null && f > Number(istek.butce_max)) return false;
@@ -542,11 +544,12 @@ export default function MusteriDetayScreen() {
     if (error) { Alert.alert('Hata', error.message); setSaving(false); return; }
 
     await supabase.from('musteri_istekler').delete().eq('musteri_id', id);
-    const validIstekler = istekler.filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length);
+    const validIstekler = istekler.filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length || i.satilikKiralik);
     if (validIstekler.length) {
       const iRows = validIstekler.map(i => ({
         musteri_id: id,
         ...(i.id ? { id: i.id } : {}),
+        satilik_kiralik: i.satilikKiralik || null,
         tip: i.tipler.length ? i.tipler.join(',') : null,
         tip_haric: i.tipler_haric.length ? i.tipler_haric.join(',') : null,
         butce_min: i.butceMin ? parseInt(i.butceMin.replace(/\./g, '')) : null,
@@ -600,6 +603,7 @@ export default function MusteriDetayScreen() {
       const bMax = istek.butceMax ? parseInt(istek.butceMax.replace(/\./g, '')) : null;
       if (bMin != null && f < bMin) return false;
       if (bMax != null && f > bMax) return false;
+      if (istek.satilikKiralik && ilan.tip !== istek.satilikKiralik) return false;
       if (istek.tipler.length && !istek.tipler.some(t => (ilan.kategori ?? '').toLowerCase().includes(t.toLowerCase()))) return false;
       return true;
     });
@@ -1008,7 +1012,7 @@ export default function MusteriDetayScreen() {
               <View style={styles.inputContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
-                  <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] }])}
+                  <TouchableOpacity onPress={() => setIstekler(p => [...p, { satilikKiralik: '', tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] }])}
                     style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                     <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
                   </TouchableOpacity>
@@ -1022,6 +1026,17 @@ export default function MusteriDetayScreen() {
                           <Text style={{ fontSize: 14, color: Colors.primary, fontWeight: '700' }}>× Kaldır</Text>
                         </TouchableOpacity>
                       )}
+                    </View>
+                    <View style={styles.chipRow}>
+                      {(['Satılık', 'Kiralık'] as const).map(s => {
+                        const sec = istek.satilikKiralik === s;
+                        return (
+                          <TouchableOpacity key={s} style={[styles.chip, sec && styles.chipActive]}
+                            onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, satilikKiralik: x.satilikKiralik === s ? '' : s } : x))}>
+                            <Text style={[styles.chipText, sec && styles.chipTextActive]}>{s}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                     <View style={styles.chipRow}>
                       {EMLAK_TIPLERI.map(t => {
@@ -1109,7 +1124,7 @@ export default function MusteriDetayScreen() {
                   </View>
                 ))}
                 {istekler.length === 0 && (
-                  <TouchableOpacity onPress={() => setIstekler([{ tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] }])}
+                  <TouchableOpacity onPress={() => setIstekler([{ satilikKiralik: '', tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] }])}
                     style={{ padding: 12, borderRadius: Radius.lg, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center' }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>+ İlk isteği ekle</Text>
                   </TouchableOpacity>

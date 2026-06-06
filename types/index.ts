@@ -48,6 +48,7 @@ export interface Musteri {
 export interface MusteriIstek {
   id: string;
   musteri_id: string;
+  satilik_kiralik: 'Satılık' | 'Kiralık' | null;
   tip: string | null;
   butce_min: number | null;
   butce_max: number | null;

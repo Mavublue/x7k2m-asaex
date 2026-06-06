@@ -52,8 +52,8 @@ export default function MusteriEkleScreen() {
   const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telKod, setTelKod] = useState(VARSAYILAN_TELEFON_KODU);
   const [telNumara, setTelNumara] = useState('');
-  type IstekState = { tipler: string[]; tipler_haric: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; binaYaslari_haric: string[]; ozelIstekler: string[]; ozelIstekler_haric: string[]; katSayilari: string[]; katSayilari_haric: string[]; bulunduguKatlar: string[]; bulunduguKatlar_haric: string[] };
-  const [istekler, setIstekler] = useState<IstekState[]>([{ tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [], katSayilari: [], katSayilari_haric: [], bulunduguKatlar: [], bulunduguKatlar_haric: [] }]);
+  type IstekState = { satilikKiralik: '' | 'Satılık' | 'Kiralık'; tipler: string[]; tipler_haric: string[]; butceMin: string; butceMax: string; konumlar: string[]; minOda: string; binaYaslari: string[]; binaYaslari_haric: string[]; ozelIstekler: string[]; ozelIstekler_haric: string[]; katSayilari: string[]; katSayilari_haric: string[]; bulunduguKatlar: string[]; bulunduguKatlar_haric: string[] };
+  const [istekler, setIstekler] = useState<IstekState[]>([{ satilikKiralik: '', tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [], katSayilari: [], katSayilari_haric: [], bulunduguKatlar: [], bulunduguKatlar_haric: [] }]);
   const [activeIstekIdx, setActiveIstekIdx] = useState<number | null>(null);
   const [filterPage, setFilterPage] = useState<'main' | 'il' | 'ilce' | 'mahalle'>('main');
   const [konumSearch, setKonumSearch] = useState('');
@@ -256,9 +256,10 @@ export default function MusteriEkleScreen() {
     if (error) { Alert.alert('Hata', error.message); setLoading(false); return; }
     if (inserted) {
       const iRows = istekler
-        .filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length)
+        .filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length || i.satilikKiralik)
         .map(i => ({
           musteri_id: (inserted as any).id,
+          satilik_kiralik: i.satilikKiralik || null,
           tip: i.tipler.length ? i.tipler.join(',') : null,
           tip_haric: i.tipler_haric.length ? i.tipler_haric.join(',') : null,
           butce_min: i.butceMin ? parseInt(i.butceMin.replace(/\./g, '')) : null,
@@ -272,7 +273,7 @@ export default function MusteriEkleScreen() {
           bulundugu_kat: i.bulunduguKatlar.length ? i.bulunduguKatlar.join(',') : null,
           bulundugu_kat_haric: i.bulunduguKatlar_haric.length ? i.bulunduguKatlar_haric.join(',') : null,
         }));
-      const validIsteklerForOz = istekler.filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length);
+      const validIsteklerForOz = istekler.filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length || i.satilikKiralik);
       if (iRows.length) {
         const { data: insertedIstekler, error: iErr } = await supabase.from('musteri_istekler').insert(iRows).select('id');
         if (iErr) { Alert.alert('İstek kaydı hatası', iErr.message); setLoading(false); return; }
@@ -396,7 +397,7 @@ export default function MusteriEkleScreen() {
           <View style={styles.inputContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.label}>İstekler {istekler.length > 1 ? `(${istekler.length})` : ''}</Text>
-              <TouchableOpacity onPress={() => setIstekler(p => [...p, { tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [], katSayilari: [], katSayilari_haric: [], bulunduguKatlar: [], bulunduguKatlar_haric: [] }])}
+              <TouchableOpacity onPress={() => setIstekler(p => [...p, { satilikKiralik: '', tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [], katSayilari: [], katSayilari_haric: [], bulunduguKatlar: [], bulunduguKatlar_haric: [] }])}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed }}>
                 <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '700' }}>+ İstek Ekle</Text>
               </TouchableOpacity>
@@ -411,6 +412,20 @@ export default function MusteriEkleScreen() {
                       <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>× Kaldır</Text>
                     </TouchableOpacity>
                   )}
+                </View>
+                {/* Satılık / Kiralık */}
+                <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                  <View style={{ backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.onSurface, textTransform: 'uppercase', letterSpacing: 0.8 }}>Satılık / Kiralık</Text>
+                  </View>
+                  <View style={{ backgroundColor: Colors.surfaceContainerLow, padding: 10, flexDirection: 'row', gap: 8 }}>
+                    {(['Satılık', 'Kiralık'] as const).map(s => { const sec = istek.satilikKiralik === s; return (
+                      <TouchableOpacity key={s} style={[styles.chip, sec && styles.chipActive]}
+                        onPress={() => setIstekler(p => p.map((x, i) => i === idx ? { ...x, satilikKiralik: x.satilikKiralik === s ? '' : s } : x))}>
+                        <Text style={[styles.chipText, sec && styles.chipTextActive]}>{s}</Text>
+                      </TouchableOpacity>
+                    ); })}
+                  </View>
                 </View>
                 {/* Bütçe */}
                 <View style={{ borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>

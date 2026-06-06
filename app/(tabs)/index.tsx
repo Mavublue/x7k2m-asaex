@@ -114,7 +114,8 @@ export default function DashboardScreen() {
   const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
   function istekEslesiyor(istek: any, ilan: any): boolean {
     const istekOzellikIds: string[] = (istek.musteri_istek_ozellikler ?? []).map((o: any) => o.ozellik_id);
-    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi && !istek.kat_sayisi && !istek.bulundugu_kat && !istekOzellikIds.length) return false;
+    if (!istek.butce_min && !istek.butce_max && !istek.tip && !istek.satilik_kiralik && !istek.tercih_konum && !istek.min_oda && !istek.bina_yasi && !istek.kat_sayisi && !istek.bulundugu_kat && !istekOzellikIds.length) return false;
+    if (istek.satilik_kiralik && ilan.tip !== istek.satilik_kiralik) return false;
     const f = Number(ilan.fiyat);
     if (istek.butce_min != null && f < Number(istek.butce_min)) return false;
     if (istek.butce_max != null && f > Number(istek.butce_max)) return false;
@@ -297,7 +298,7 @@ export default function DashboardScreen() {
       }
     } else if (b.tip === 'eslesme-ilan' || b.tip === 'fiyat-indi') {
       const ids: string[] | undefined = b.veri?.eslesen_musteri_ids;
-      const baseSel = supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))');
+      const baseSel = supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_tipi, musteri_istekler(tip, satilik_kiralik, butce_min, butce_max, tercih_konum, min_oda, bina_yasi, kat_sayisi, bulundugu_kat, musteri_istek_ozellikler(ozellik_id))');
       const [{ data: tumMusteriler }, { data: ilan }] = await Promise.all([
         ids && ids.length ? baseSel.in('id', ids) : baseSel,
         supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').eq('id', b.hedefId).single(),
