@@ -16,6 +16,7 @@ export default function GorevlerScreen() {
   const [gecmisGorevler, setGecmisGorevler] = useState<any[]>([]);
   const [gecmisCount, setGecmisCount] = useState(0);
   const [gorevFiltre, setGorevFiltre] = useState<GorevFiltre>('bugun');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -211,6 +212,27 @@ export default function GorevlerScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Arama */}
+      <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: 12 }}>
+          <Text style={{ fontSize: 14, color: Colors.onSurfaceVariant, marginRight: 6 }}>🔍</Text>
+          <TextInput
+            style={{ flex: 1, fontSize: 14, color: Colors.onSurface, paddingVertical: 10 }}
+            placeholder="Görev başlığı veya müşteri ara..."
+            placeholderTextColor={Colors.outlineVariant}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+              <Text style={{ fontSize: 16, color: Colors.onSurfaceVariant }}>×</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {/* Filtre chips */}
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
         {([['gecmis','Gecikmiş'],['bugun','Bugün'],['yarin','Yarın'],['7gun','7 Gün'],['tumu','Tümü'],['yapilan','Yapılanlar']] as [GorevFiltre, string][]).map(([f, label]) => (
@@ -224,7 +246,13 @@ export default function GorevlerScreen() {
       </View>
 
       <FlatList
-        data={gorevler}
+        data={search ? gorevler.filter(g => {
+          const q = search.toLowerCase();
+          const m = g.musteriler;
+          return (g.baslik ?? '').toLowerCase().includes(q)
+            || `${m?.ad ?? ''} ${m?.soyad ?? ''}`.toLowerCase().includes(q)
+            || (m?.etiketler ?? '').toLowerCase().includes(q);
+        }) : gorevler}
         keyExtractor={g => g.id}
         contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 32, gap: 8 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
@@ -246,7 +274,13 @@ export default function GorevlerScreen() {
                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444' }}>GECİKMİŞ ({gecmisGorevler.length})</Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(239,68,68,0.35)' }} />
               </View>
-              {gecmisGorevler.map(g => renderGorevKart(g, true))}
+              {(search ? gecmisGorevler.filter(g => {
+                const q = search.toLowerCase();
+                const m = g.musteriler;
+                return (g.baslik ?? '').toLowerCase().includes(q)
+                  || `${m?.ad ?? ''} ${m?.soyad ?? ''}`.toLowerCase().includes(q)
+                  || (m?.etiketler ?? '').toLowerCase().includes(q);
+              }) : gecmisGorevler).map(g => renderGorevKart(g, true))}
             </View>
           ) : null
         }
