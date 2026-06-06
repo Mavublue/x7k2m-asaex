@@ -14,6 +14,7 @@ import { Musteri } from '../../types';
 type MusteriListe = Musteri & {
   musteri_iletisim?: { ad: string; telefon: string | null; tip: string | null }[];
   musteri_notlar?: { icerik: string; tarih: string }[];
+  musteri_istekler?: { tip: string | null; satilik_kiralik: string | null; butce_min: number | null; butce_max: number | null; tercih_konum: string | null }[];
 };
 import { TURKIYE, IL_LISTESI } from '../../constants/turkiye';
 
@@ -22,6 +23,8 @@ const ILLER_LISTESI = IL_LISTESI;
 
 const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal'];
 const musteriTipleri = ['Tümü', 'Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
+const kategoriler = ['Tümü', 'Daire', 'Villa', 'Müstakil Ev', 'Arsa', 'İşyeri'];
+const satilikKiralik = ['Tümü', 'Satılık', 'Kiralık'];
 
 type Siralama = 'etiket_artan' | 'etiket_azalan' | 'eklenme_yeni' | 'eklenme_eski' | 'guncelleme_yeni' | 'guncelleme_eski';
 const SIRALAMA_LABEL: Record<Siralama, string> = {
@@ -56,6 +59,8 @@ export default function MusterilerScreen() {
   const [etiketSearch, setEtiketSearch] = useState('');
   const [activeDurum, setActiveDurum] = useState('Tümü');
   const [activeTip, setActiveTip] = useState('Tümü');
+  const [activeKategori, setActiveKategori] = useState('Tümü');
+  const [activeSK, setActiveSK] = useState('Tümü');
   const [siralama, setSiralama] = useState<Siralama>('eklenme_yeni');
   const [siralamaAcik, setSiralamaAcik] = useState(false);
 
@@ -77,6 +82,15 @@ export default function MusterilerScreen() {
     let result = musteriler;
     if (activeDurum !== 'Tümü') result = result.filter(m => m.durum === activeDurum);
     if (activeTip !== 'Tümü') result = result.filter(m => (m.musteri_tipi ?? 'Bireysel') === activeTip);
+    if (activeKategori !== 'Tümü') {
+      result = result.filter(m => (m.musteri_istekler ?? []).some(i => {
+        const tips = (i.tip ?? '').split(',').map(s => s.trim()).filter(Boolean);
+        return tips.includes(activeKategori);
+      }));
+    }
+    if (activeSK !== 'Tümü') {
+      result = result.filter(m => (m.musteri_istekler ?? []).some(i => i.satilik_kiralik === activeSK));
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(m =>
@@ -117,7 +131,7 @@ export default function MusterilerScreen() {
       return 0;
     });
     setFiltered(result);
-  }, [search, etiketSearch, activeDurum, activeTip, musteriler, siralama]);
+  }, [search, etiketSearch, activeDurum, activeTip, activeKategori, activeSK, musteriler, siralama]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -134,7 +148,7 @@ export default function MusterilerScreen() {
     else setLoading(true);
     const { data } = await supabase
       .from('musteriler')
-      .select('*, musteri_iletisim(ad, telefon, tip), musteri_notlar(icerik, tarih)')
+      .select('*, musteri_iletisim(ad, telefon, tip), musteri_notlar(icerik, tarih), musteri_istekler(tip, satilik_kiralik, butce_min, butce_max, tercih_konum)')
       .order('olusturma_tarihi', { ascending: false });
     if (data) {
       setMusteriler(data as MusteriListe[]);
@@ -217,6 +231,27 @@ export default function MusterilerScreen() {
               onPress={() => setActiveTip(t)}
             >
               <Text style={[styles.tabText, activeTip === t && { color: '#fff' }]}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingBottom: 6 }}>
+          {satilikKiralik.map(t => (
+            <TouchableOpacity
+              key={t}
+              style={[styles.tab, activeSK === t && { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
+              onPress={() => setActiveSK(t)}
+            >
+              <Text style={[styles.tabText, activeSK === t && { color: '#fff' }]}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={{ width: 1, backgroundColor: Colors.outlineVariant, marginHorizontal: 4 }} />
+          {kategoriler.map(k => (
+            <TouchableOpacity
+              key={k}
+              style={[styles.tab, activeKategori === k && { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
+              onPress={() => setActiveKategori(k)}
+            >
+              <Text style={[styles.tabText, activeKategori === k && { color: '#fff' }]}>{k}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
