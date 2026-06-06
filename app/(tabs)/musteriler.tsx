@@ -4,6 +4,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, TextInput, ActivityIndicator, Modal, FlatList, RefreshControl,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { cacheGet, cacheSet } from '../../lib/cache';
@@ -57,6 +58,15 @@ export default function MusterilerScreen() {
   const [activeTip, setActiveTip] = useState('Tümü');
   const [siralama, setSiralama] = useState<Siralama>('eklenme_yeni');
   const [siralamaAcik, setSiralamaAcik] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('musteri_siralama').then(v => {
+      if (v && ['etiket_artan','etiket_azalan','eklenme_yeni','eklenme_eski','guncelleme_yeni','guncelleme_eski'].includes(v)) {
+        setSiralama(v as Siralama);
+      }
+    });
+  }, []);
+  useEffect(() => { AsyncStorage.setItem('musteri_siralama', siralama); }, [siralama]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
