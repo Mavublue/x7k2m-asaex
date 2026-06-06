@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PersistentTabBar from '../../components/PersistentTabBar';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
@@ -792,6 +793,7 @@ export default function MusteriEkleScreen() {
           </KeyboardAvoidingView>
         </Modal>
       )}
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }

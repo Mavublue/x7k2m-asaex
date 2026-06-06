@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PersistentTabBar from '../../components/PersistentTabBar';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Modal, FlatList, SectionList,
@@ -823,6 +824,7 @@ export default function IlanEkleScreen() {
           </View>
         </View>
       </Modal>
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }

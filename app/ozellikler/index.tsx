@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PersistentTabBar from '../../components/PersistentTabBar';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
@@ -325,6 +326,7 @@ export default function OzelliklerScreen() {
       </KeyboardAvoidingView>
 
       <IlanDetayPopup ilanId={popupId} onClose={() => setPopupId(null)} />
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }

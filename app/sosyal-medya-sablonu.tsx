@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PersistentTabBar from '../components/PersistentTabBar';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -150,6 +151,7 @@ export default function SosyalMedyaSablonuScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }

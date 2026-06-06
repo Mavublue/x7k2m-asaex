@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Modal, Linking, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PersistentTabBar from '../../../components/PersistentTabBar';
 import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import R2Image from '../../../components/R2Image';
@@ -324,6 +325,7 @@ export default function EslesenMusterilerScreen() {
           )}
         </View>
       </Modal>
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }
