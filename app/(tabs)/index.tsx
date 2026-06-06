@@ -586,7 +586,7 @@ export default function DashboardScreen() {
               const m = g.musteriler;
               const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
               return (
-                <TouchableOpacity key={g.id} onPress={() => router.push(`/musteri/${g.musteri_id}` as any)}
+                <TouchableOpacity key={g.id} onPress={() => g.musteri_id ? router.push(`/musteri/${g.musteri_id}` as any) : null}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a', marginBottom: 6 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>
@@ -1334,7 +1334,7 @@ export default function DashboardScreen() {
                 const m = g.musteriler;
                 const musteriLabel = [m?.etiketler ? `#${m.etiketler}` : null, m?.ad, m?.soyad].filter(Boolean).join(' ');
                 return (
-                  <TouchableOpacity onPress={() => { setGorevPanel(false); router.push(`/musteri/${g.musteri_id}` as any); }}
+                  <TouchableOpacity onPress={() => { if (!g.musteri_id) return; setGorevPanel(false); router.push(`/musteri/${g.musteri_id}` as any); }}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : '#16a34a' }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface }}>{g.baslik}</Text>

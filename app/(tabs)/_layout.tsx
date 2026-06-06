@@ -42,7 +42,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="ilanlar" />
-      <Tabs.Screen name="harita" />
+      <Tabs.Screen name="harita" options={{ href: null }} />
       <Tabs.Screen name="gorevler" />
       <Tabs.Screen name="musteriler" />
       <Tabs.Screen name="ayarlar" />
