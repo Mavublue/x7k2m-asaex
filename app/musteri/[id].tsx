@@ -1472,6 +1472,7 @@ export default function MusteriDetayScreen() {
                             value={notTarih}
                             mode={showPicker}
                             is24Hour
+                            locale="tr-TR"
                             display={Platform.OS === 'ios' ? (showPicker === 'date' ? 'inline' : 'spinner') : showPicker === 'date' ? 'calendar' : 'default'}
                             onChange={(_, sel) => {
                               if (Platform.OS === 'android') {

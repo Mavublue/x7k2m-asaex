@@ -495,6 +495,7 @@ export default function IlanDetayScreen() {
     { label: 'Tip', deger: ilan.tip },
     { label: 'Kategori', deger: ilan.kategori },
     { label: 'Oda Sayısı', deger: ilan.oda_sayisi },
+    { label: 'Banyo Sayısı', deger: (ilan as any).banyo_sayisi ?? null },
     { label: 'Metrekare', deger: ilan.metrekare ? `${ilan.metrekare} m²` : null },
     { label: 'Kat Sayısı', deger: (ilan as any).kat_sayisi ?? null },
     { label: 'Bulunduğu Kat', deger: (ilan as any).bulundugu_kat ?? null },
@@ -614,6 +615,13 @@ export default function IlanDetayScreen() {
                 <Text style={styles.ozellikEmoji}>🚪</Text>
                 <Text style={styles.ozellikDeger}>{ilan.oda_sayisi}</Text>
                 <Text style={styles.ozellikLabel}>Oda</Text>
+              </View>
+            )}
+            {(ilan as any).banyo_sayisi && (
+              <View style={styles.ozellikKart}>
+                <Text style={styles.ozellikEmoji}>🛁</Text>
+                <Text style={styles.ozellikDeger}>{(ilan as any).banyo_sayisi}</Text>
+                <Text style={styles.ozellikLabel}>Banyo</Text>
               </View>
             )}
             <View style={styles.ozellikKart}>
