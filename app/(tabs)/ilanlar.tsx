@@ -58,10 +58,10 @@ function buildMapHtml(ilanlar: Ilan[]) {
 </head>
 <body><div id="map"></div>
 <script>
-var map=L.map('map',{zoomControl:false}).setView(${merkez},${zoom});
-var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
+var map=L.map('map',{zoomControl:false,maxZoom:18}).setView(${merkez},${zoom});
+var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
 map.on('click',function(){window.ReactNativeWebView.postMessage(JSON.stringify({close:true}));});
-var cluster=L.markerClusterGroup({maxClusterRadius:40});
+var cluster=L.markerClusterGroup({maxClusterRadius:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false});
 var ms=${JSON.stringify(markers)},bs=[];
 ms.forEach(function(m){
   var icon=L.divIcon({html:'<div class="pm'+(m.tip==='Kiralık'?' k':'')+'">₺'+m.fiyat+'</div>',className:'',iconSize:null,iconAnchor:[28,14]});

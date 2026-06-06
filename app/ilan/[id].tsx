@@ -114,8 +114,8 @@ function buildDetayMapHtml(lat: number, lng: number, emoji: string = '🏠') {
 </head>
 <body><div id="map"></div>
 <script>
-var map=L.map('map',{zoomControl:true}).setView([${lat},${lng}],14);
-var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
+var map=L.map('map',{zoomControl:true,maxZoom:18}).setView([${lat},${lng}],14);
+var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
 var icon=L.divIcon({html:'<div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))">${emoji}</div>',className:'',iconSize:[32,32],iconAnchor:[16,28]});
 L.marker([${lat},${lng}],{icon:icon}).addTo(map);
 </script></body></html>`;

@@ -39,8 +39,8 @@ function buildInlinePickerHtml(initLat?: number, initLng?: number) {
 <div class="hint">Konumu seçmek için dokunun</div>
 <script>
 var pin=L.divIcon({html:'<div style="width:18px;height:18px;background:#6750A4;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>',className:'',iconSize:[18,18],iconAnchor:[9,18]});
-var map=L.map('map',{zoomControl:true}).setView(${center},${zoom});
-var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
+var map=L.map('map',{zoomControl:true,maxZoom:18}).setView(${center},${zoom});
+var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
 var marker;${initMarker}
 map.on('click',function(e){
   if(marker)marker.setLatLng(e.latlng);

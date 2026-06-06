@@ -76,13 +76,13 @@ function buildHtml(ilanlar: Ilan[]) {
 <body>
   <div id="map"></div>
   <script>
-    var map = L.map('map', { zoomControl: true }).setView(${merkez}, ${zoom});
-    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM', maxZoom: 19 });
-    var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19 });
+    var map = L.map('map', { zoomControl: true, maxZoom: 18 }).setView(${merkez}, ${zoom});
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM', maxZoom: 18 });
+    var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 18 });
     esri.addTo(map);
     L.control.layers({ 'Uydu': esri, 'Sokak': osm }, null, { position: 'topright' }).addTo(map);
 
-    var cluster = L.markerClusterGroup({ maxClusterRadius: 40 });
+    var cluster = L.markerClusterGroup({ maxClusterRadius: 40, spiderfyOnMaxZoom: true, showCoverageOnHover: false });
     var markers = ${markersJson};
     var bounds = [];
 
