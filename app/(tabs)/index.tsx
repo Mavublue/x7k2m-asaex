@@ -858,7 +858,10 @@ export default function DashboardScreen() {
                       maxToRenderPerBatch={6}
                       windowSize={15}
                       onScrollToIndexFailed={(info) => {
-                        bildirimListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+                        bildirimListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+                        setTimeout(() => {
+                          try { bildirimListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 }); } catch {}
+                        }, 300);
                       }}
                       ListHeaderComponent={(
                         <View style={{ gap: 8, marginBottom: 8 }}>
@@ -866,10 +869,17 @@ export default function DashboardScreen() {
                             {filtreliSirali.some(b => !b.okundu) && (
                               <TouchableOpacity onPress={() => {
                                 const eski = [...filtreliSirali].filter(b => !b.okundu).sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''))[0];
-                                if (eski) {
-                                  const idx = filtreliSirali.findIndex(b => b.id === eski.id);
-                                  if (idx >= 0) bildirimListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.2 });
-                                }
+                                if (!eski) return;
+                                const idx = filtreliSirali.findIndex(b => b.id === eski.id);
+                                if (idx < 0) return;
+                                const tryScroll = (attempt = 0) => {
+                                  try {
+                                    bildirimListRef.current?.scrollToIndex({ index: idx, animated: attempt === 0, viewPosition: 0.5 });
+                                  } catch {
+                                    if (attempt < 5) setTimeout(() => tryScroll(attempt + 1), 200);
+                                  }
+                                };
+                                tryScroll();
                               }} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(229,57,53,0.15)', borderWidth: 1, borderColor: 'rgba(229,57,53,0.4)' }}>
                                 <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.primary }}>⬇ En eski okunmamış</Text>
                               </TouchableOpacity>
