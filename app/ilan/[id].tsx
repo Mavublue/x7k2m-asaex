@@ -24,6 +24,7 @@ import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
+import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
 
 function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
@@ -1197,6 +1198,7 @@ export default function IlanDetayScreen() {
         />
       </Modal>
 
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }

@@ -12,6 +12,7 @@ import R2Image from '../../components/R2Image';
 import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
 import TelefonInput from '../../components/TelefonInput';
+import PersistentTabBar from '../../components/PersistentTabBar';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ILLER = TURKIYE;
@@ -2052,6 +2053,7 @@ export default function MusteriDetayScreen() {
           </View>
         </View>
       </Modal>
+      <PersistentTabBar />
     </SafeAreaView>
   );
 }
