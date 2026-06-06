@@ -854,14 +854,15 @@ export default function DashboardScreen() {
                       data={filtreliSirali}
                       keyExtractor={b => b.id}
                       contentContainerStyle={{ padding: Spacing.md, gap: 8 }}
-                      initialNumToRender={10}
-                      maxToRenderPerBatch={6}
-                      windowSize={15}
+                      initialNumToRender={20}
+                      maxToRenderPerBatch={10}
+                      windowSize={41}
                       onScrollToIndexFailed={(info) => {
-                        bildirimListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+                        const off = Math.max(0, info.averageItemLength * info.index - 100);
+                        bildirimListRef.current?.scrollToOffset({ offset: off, animated: false });
                         setTimeout(() => {
                           try { bildirimListRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 }); } catch {}
-                        }, 300);
+                        }, 150);
                       }}
                       ListHeaderComponent={(
                         <View style={{ gap: 8, marginBottom: 8 }}>
