@@ -238,16 +238,14 @@ export default function IlanEkleScreen() {
         if (cancelledRef.current.has(item.tempId)) continue;
         if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
 
-        setPending(prev => prev.map(it => it.tempId === item.tempId ? { ...it, percent: 95 } : it));
-
         let isFirst = false;
         setFotograflar(prev => {
           isFirst = prev.length === 0;
           return [...prev, key];
         });
         setFotograflarPreview(prev => [...prev, item.asset.uri]);
-        await optimizePhoto(key, isFirst);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
+        await optimizePhoto(key, isFirst);
       } catch (e) {
         if (!cancelledRef.current.has(item.tempId)) console.error('Fotoğraf hatası:', e);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
