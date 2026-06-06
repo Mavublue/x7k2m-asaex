@@ -684,7 +684,7 @@ export default function MusteriDetayScreen() {
     setLinkYukleniyor(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLinkYukleniyor(false); return; }
-    const expiresAt = new Date(Date.now() + parseInt(linkSaat) * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + (parseInt(linkSaat) || 1) * 60 * 60 * 1000).toISOString();
     const { data: mevcutMt } = await supabase.from('musteri_tokenler').select('token').eq('user_id', session.user.id).eq('musteri_id', id).single();
     let musteriToken: string;
     if (mevcutMt) {
@@ -1914,7 +1914,9 @@ export default function MusteriDetayScreen() {
                       <TextInput
                         style={{ width: 50, borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.md, paddingHorizontal: 6, paddingVertical: 4, fontSize: 12, textAlign: 'center', color: Colors.onSurface }}
                         value={linkSaat}
-                        onChangeText={v => setLinkSaat(v.replace(/\D/g, '') || '1')}
+                        onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
+                        onBlur={() => { if (!linkSaat || linkSaat === '0') setLinkSaat('1'); }}
+                        selectTextOnFocus
                         keyboardType="numeric"
                       />
                       <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>saat</Text>
