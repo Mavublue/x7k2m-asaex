@@ -1549,7 +1549,7 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
     const konum = [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ');
     return (
       <TouchableOpacity
-        style={[styles.kompaktKart, !ilan.musteri_gizle && styles.kompaktKartAcik, iptal && { opacity: 0.55 }, secimModu && secili && { borderWidth: 3, borderColor: Colors.primary }]}
+        style={[styles.kompaktKart, ilan.tip === 'Kiralık' ? { borderWidth: 2, borderColor: ilan.musteri_gizle ? '#ffc89c' : '#fd761a' } : !ilan.musteri_gizle && styles.kompaktKartAcik, iptal && { opacity: 0.55 }, secimModu && secili && { borderWidth: 3, borderColor: Colors.primary }]}
         onPress={() => secimModu ? onToggle?.() : router.push(`/ilan/${ilan.id}`)}
         activeOpacity={0.85}
       >
@@ -1591,7 +1591,7 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
 
   return (
     <TouchableOpacity
-      style={[styles.kart, !ilan.musteri_gizle && styles.kartAcik, iptal && styles.kartIptal, secimModu && secili && { borderWidth: 4, borderColor: Colors.primary }]}
+      style={[styles.kart, ilan.tip === 'Kiralık' ? { borderWidth: 4, borderColor: ilan.musteri_gizle ? '#ffc89c' : '#fd761a' } : !ilan.musteri_gizle && styles.kartAcik, iptal && styles.kartIptal, secimModu && secili && { borderWidth: 4, borderColor: Colors.primary }]}
       onPress={() => secimModu ? onToggle?.() : router.push(`/ilan/${ilan.id}`)}
     >
       {ilkFoto ? (
