@@ -455,7 +455,7 @@ export default function DashboardScreen() {
     if (!editGorev || !editBaslik.trim()) return;
     const dt = new Date(editTarihDate);
     if (editSaatDate) { dt.setHours(editSaatDate.getHours(), editSaatDate.getMinutes(), 0, 0); }
-    else { dt.setUTCHours(0, 0, 0, 0); }
+    else { dt.setHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').update({ baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() }).eq('id', editGorev.id);
     setGorevDashboard(prev => prev.map(g => g.id === editGorev.id ? { ...g, baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() } : g));
     setEditGorev(null);
@@ -479,7 +479,7 @@ export default function DashboardScreen() {
     if (!user) return;
     const dt = new Date(genelTarihDate);
     if (genelSaatDate) { dt.setHours(genelSaatDate.getHours(), genelSaatDate.getMinutes(), 0, 0); }
-    else { dt.setUTCHours(0, 0, 0, 0); }
+    else { dt.setHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, ...(genelMusteriId ? { musteri_id: genelMusteriId } : {}) });
     setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); setGenelGorevModal(false);
     fetchGorevDashboard(gorevFiltre);
@@ -578,7 +578,7 @@ export default function DashboardScreen() {
           ) : (
             gorevDashboard.map(g => {
               const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
-              const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
+              const hasTime = d && (d.getHours() !== 0 || d.getMinutes() !== 0);
               const pad = (n: number) => String(n).padStart(2, '0');
               const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
               const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
@@ -599,7 +599,7 @@ export default function DashboardScreen() {
                     <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
-                    { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null); } },
+                    { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getHours()!==0||new Date(g.hedef_tarih).getMinutes()!==0) ? dt : null); } },
                     { text: 'Sil', style: 'destructive', onPress: () => gorevSilDashboard(g.id) },
                     { text: 'İptal', style: 'cancel' },
                   ])} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
@@ -1326,7 +1326,7 @@ export default function DashboardScreen() {
               }
               renderItem={({ item: g }) => {
                 const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
-                const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
+                const hasTime = d && (d.getHours() !== 0 || d.getMinutes() !== 0);
                 const pad = (n: number) => String(n).padStart(2, '0');
                 const saatStr = hasTime && d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : null;
                 const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${saatStr ? ` ⏰ ${saatStr}` : ''}` : '';
@@ -1347,7 +1347,7 @@ export default function DashboardScreen() {
                       <Text style={{ fontSize: 12, fontWeight: '700', color: '#16a34a' }}>✓</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
-                      { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null); } },
+                      { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getHours()!==0||new Date(g.hedef_tarih).getMinutes()!==0) ? dt : null); } },
                       { text: 'Sil', style: 'destructive', onPress: () => gorevSilDashboard(g.id) },
                       { text: 'İptal', style: 'cancel' },
                     ])} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>

@@ -797,7 +797,7 @@ export default function MusteriDetayScreen() {
     setGorevAciklama(g.aciklama ?? '');
     const existing = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
     setGorevHedefTarih(existing);
-    if (existing && (existing.getUTCHours() !== 0 || existing.getUTCMinutes() !== 0)) {
+    if (existing && (existing.getHours() !== 0 || existing.getMinutes() !== 0)) {
       setGorevHedefSaat(existing);
     } else {
       setGorevHedefSaat(null);
@@ -810,6 +810,8 @@ export default function MusteriDetayScreen() {
     let hedefDate: Date | null = gorevHedefTarih ? new Date(gorevHedefTarih) : null;
     if (hedefDate && gorevHedefSaat) {
       hedefDate.setHours(gorevHedefSaat.getHours(), gorevHedefSaat.getMinutes(), 0, 0);
+    } else if (hedefDate) {
+      hedefDate.setHours(0, 0, 0, 0);
     }
     const payload = {
       musteri_id: id,
@@ -2085,7 +2087,7 @@ function gorevTarihGoster(iso: string | null) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   const tarih = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
-  const hasTime = d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0;
+  const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
   return hasTime ? `${tarih} ${pad(d.getHours())}:${pad(d.getMinutes())}` : tarih;
 }
 

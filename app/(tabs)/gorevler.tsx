@@ -115,7 +115,7 @@ export default function GorevlerScreen() {
     if (!editGorev || !editBaslik.trim()) return;
     const dt = new Date(editTarihDate);
     if (editSaatDate) { dt.setHours(editSaatDate.getHours(), editSaatDate.getMinutes(), 0, 0); }
-    else { dt.setUTCHours(0, 0, 0, 0); }
+    else { dt.setHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').update({ baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() }).eq('id', editGorev.id);
     setGorevler(prev => prev.map(g => g.id === editGorev.id ? { ...g, baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() } : g));
     setEditGorev(null);
@@ -127,7 +127,7 @@ export default function GorevlerScreen() {
     if (!user) return;
     const dt = new Date(ekleTarihDate);
     if (ekleSaatDate) { dt.setHours(ekleSaatDate.getHours(), ekleSaatDate.getMinutes(), 0, 0); }
-    else { dt.setUTCHours(0, 0, 0, 0); }
+    else { dt.setHours(0, 0, 0, 0); }
     if (ekleMusteriIds.length > 0) {
       await supabase.from('musteri_gorevler').insert(
         ekleMusteriIds.map(mid => ({ baslik: ekleBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, musteri_id: mid }))
@@ -149,7 +149,7 @@ export default function GorevlerScreen() {
 
   const renderGorevKart = (g: any, forcedGecmis: boolean) => {
     const d = g.hedef_tarih ? new Date(g.hedef_tarih) : null;
-    const hasTime = d && (d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0);
+    const hasTime = d && (d.getHours() !== 0 || d.getMinutes() !== 0);
     const tarihStr = d ? `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}${hasTime ? ` ⏰ ${pad(d.getHours())}:${pad(d.getMinutes())}` : ''}` : '';
     const gecmis = forcedGecmis || gorevFiltre === 'gecmis';
     const yapilan = !forcedGecmis && gorevFiltre === 'yapilan';
@@ -176,7 +176,7 @@ export default function GorevlerScreen() {
           </TouchableOpacity>
         )}
         <TouchableOpacity onPress={() => Alert.alert('Görev', g.baslik, [
-          { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getUTCHours()!==0||new Date(g.hedef_tarih).getUTCMinutes()!==0) ? dt : null); } },
+          { text: 'Düzenle', onPress: () => { const dt = g.hedef_tarih ? new Date(g.hedef_tarih) : new Date(); setEditGorev(g); setEditBaslik(g.baslik); setEditTarihDate(dt); setEditSaatDate(g.hedef_tarih && (new Date(g.hedef_tarih).getHours()!==0||new Date(g.hedef_tarih).getMinutes()!==0) ? dt : null); } },
           { text: 'Sil', style: 'destructive', onPress: () => gorevSil(g.id) },
           { text: 'İptal', style: 'cancel' },
         ])} style={{ paddingHorizontal: 8, paddingVertical: 6, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 6 }}>
