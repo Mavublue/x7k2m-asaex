@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, Dimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -27,6 +27,37 @@ type CanliRow = {
   paket_baslik: string | null;
   paket_ilan_sayisi: number | null;
 };
+
+type OturumRow = {
+  device_id: string;
+  baslama_at: string;
+  son_aktif_at: string;
+  user_agent: string | null;
+  paket_token: string | null;
+  ilan_id: string | null;
+  musteri_id: string;
+  musteri_ad: string | null;
+  musteri_soyad: string | null;
+  musteri_etiket: string | null;
+  ilan_baslik: string | null;
+  ilan_portfoy_no: string | null;
+  ilan_fotograf: string | null;
+  paket_baslik: string | null;
+  paket_ilan_sayisi: number | null;
+};
+
+function colorFor(key: string): string {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `hsl(${hue}, 70%, 60%)`;
+}
+
+function saatLabel(t: number): { time: string; date: string } {
+  const d = new Date(t);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return { time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, date: `${pad(d.getDate())}.${pad(d.getMonth() + 1)}` };
+}
 
 function sonAktifText(iso: string): { canli: boolean; text: string } {
   const ms = Date.now() - new Date(iso).getTime();
@@ -71,33 +102,39 @@ function cihazAdi(ua: string | null): string {
 export default function CanliZiyaretlerScreen() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CanliRow[]>([]);
+  const [oturumlari, setOturumlari] = useState<OturumRow[]>([]);
+  const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24>(6);
   const [refreshing, setRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (period: 1 | 6 | 24) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setRows([]); setLoading(false); return; }
-    const { data, error } = await supabase.rpc('get_canli_ziyaretler', { p_emlakci_id: user.id });
-    if (!error && Array.isArray(data)) setRows(data as CanliRow[]);
+    if (!user) { setRows([]); setOturumlari([]); setLoading(false); return; }
+    const [{ data: canli }, { data: otu }] = await Promise.all([
+      supabase.rpc('get_canli_ziyaretler', { p_emlakci_id: user.id }),
+      supabase.rpc('get_canli_oturumlari', { p_emlakci_id: user.id, p_son_saat: period }),
+    ]);
+    if (Array.isArray(canli)) setRows(canli as CanliRow[]);
+    if (Array.isArray(otu)) setOturumlari(otu as OturumRow[]);
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(timelinePeriod); }, [fetchData, timelinePeriod]);
   useFocusEffect(useCallback(() => {
-    fetchData();
+    fetchData(timelinePeriod);
     timerRef.current = setInterval(() => {
-      fetchData();
+      fetchData(timelinePeriod);
       setTick(t => t + 1);
     }, 8000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [fetchData]));
+  }, [fetchData, timelinePeriod]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchData();
+    await fetchData(timelinePeriod);
     setRefreshing(false);
-  }, [fetchData]);
+  }, [fetchData, timelinePeriod]);
 
   const canliRows = rows.filter(r => sonAktifText(r.son_aktif_at).canli);
   const benzersizCihaz = new Set(canliRows.map(r => r.device_id)).size;
@@ -193,17 +230,178 @@ export default function CanliZiyaretlerScreen() {
                 </View>
 
                 <View style={styles.alt}>
-                  <Text style={styles.altText}>⏱️ Toplam {formatSure(r.toplam_sure_sn)}</Text>
-                  {r.acilis_sayisi > 1 ? <Text style={styles.altText}>· {r.acilis_sayisi} oturum</Text> : null}
+                  <Text style={styles.altText}>
+                    📊 {r.acilis_sayisi > 1 ? `${r.acilis_sayisi} ziyarette` : 'Bu ziyarette'} toplam {formatSure(r.toplam_sure_sn)}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );
           })
         )}
+
+        <ZamanTuneli oturumlari={oturumlari} timelinePeriod={timelinePeriod} setTimelinePeriod={setTimelinePeriod} />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod }: {
+  oturumlari: OturumRow[];
+  timelinePeriod: 1 | 6 | 24;
+  setTimelinePeriod: (p: 1 | 6 | 24) => void;
+}) {
+  const nowMs = Date.now();
+  const filterStart = nowMs - timelinePeriod * 3600 * 1000;
+  const sortedAll = [...oturumlari].sort((a, b) => new Date(a.baslama_at).getTime() - new Date(b.baslama_at).getTime());
+  const sorted = sortedAll.filter(s => new Date(s.son_aktif_at).getTime() >= filterStart && new Date(s.baslama_at).getTime() <= nowMs);
+
+  let minT: number, maxT: number;
+  if (sorted.length === 0) { minT = filterStart; maxT = nowMs; }
+  else {
+    const dataStart = Math.min(...sorted.map(s => new Date(s.baslama_at).getTime()));
+    const dataEnd = Math.max(...sorted.map(s => new Date(s.son_aktif_at).getTime()));
+    const hasActive = sorted.some(s => sonAktifText(s.son_aktif_at).canli);
+    const displayEnd = hasActive ? Math.max(dataEnd, nowMs) : dataEnd;
+    const span = Math.max(displayEnd - dataStart, 5 * 60_000);
+    const buffer = Math.max(span * 0.05, 60_000);
+    minT = dataStart - buffer; maxT = displayEnd + buffer;
+  }
+  const range = maxT - minT;
+
+  const screenW = Dimensions.get('window').width;
+  const chartW = Math.max(screenW - 48, Math.max(600, sorted.length * 60));
+  const CARD_W = 160;
+  const CARD_H = 56;
+  const CONNECTOR_H = 14;
+  const BAR_H = 16;
+  const LANE_MIN_MS = Math.max(60_000, range * (CARD_W / chartW));
+
+  const laneEnds: number[] = [];
+  const sessionLanes: number[] = sorted.map(s => {
+    const sStart = Math.max(new Date(s.baslama_at).getTime(), minT);
+    const sEnd = Math.min(new Date(s.son_aktif_at).getTime(), maxT);
+    const visualEnd = Math.max(sEnd, sStart + LANE_MIN_MS);
+    for (let i = 0; i < laneEnds.length; i++) {
+      if (laneEnds[i] <= sStart) { laneEnds[i] = visualEnd; return i; }
+    }
+    laneEnds.push(visualEnd);
+    return laneEnds.length - 1;
+  });
+  const laneCount = Math.max(1, laneEnds.length);
+  const cardAreaH = laneCount * (CARD_H + 4);
+  const chartH = cardAreaH + CONNECTOR_H + BAR_H + 4;
+
+  const tickCount = timelinePeriod === 1 ? 6 : timelinePeriod === 6 ? 6 : 8;
+  const ticks: number[] = [];
+  for (let i = 0; i <= tickCount; i++) ticks.push(minT + (range * i) / tickCount);
+
+  return (
+    <View style={timelineStyles.kart}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+        <Text style={timelineStyles.baslik}>📊 Zaman Çizelgesi</Text>
+        <View style={timelineStyles.periodGroup}>
+          {([1, 6, 24] as const).map(h => (
+            <TouchableOpacity key={h} onPress={() => setTimelinePeriod(h)} style={[timelineStyles.periodChip, timelinePeriod === h && timelineStyles.periodChipActive]}>
+              <Text style={[timelineStyles.periodChipText, timelinePeriod === h && timelineStyles.periodChipTextActive]}>
+                {h === 1 ? '1 sa' : h === 6 ? '6 sa' : '24 sa'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      <Text style={{ fontSize: 10, color: Colors.outline, marginBottom: 6 }}>🔄 8 sn'de bir güncellenir</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+        <View style={{ width: chartW, paddingTop: 30, paddingBottom: 18 }}>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 28 }}>
+            {ticks.map((t, i) => {
+              const l = saatLabel(t);
+              return (
+                <View key={i} style={{ position: 'absolute', left: ((t - minT) / range) * chartW - 22, width: 44, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, fontWeight: '700' }}>{l.time}</Text>
+                  <Text style={{ fontSize: 9, color: Colors.outline, fontWeight: '500' }}>{l.date}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={{ position: 'relative', height: chartH, backgroundColor: Colors.surfaceContainerLow, borderRadius: 6, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+            {ticks.map((t, i) => (
+              <View key={i} style={{ position: 'absolute', top: 0, bottom: 0, left: ((t - minT) / range) * chartW, width: 1, backgroundColor: i === 0 || i === ticks.length - 1 ? Colors.outlineVariant : 'rgba(255,255,255,0.06)' }} />
+            ))}
+            {nowMs >= minT && nowMs <= maxT && (
+              <View style={{ position: 'absolute', top: 0, bottom: 0, left: ((nowMs - minT) / range) * chartW - 1, width: 2, backgroundColor: '#22c55e' }} />
+            )}
+            {sorted.map((s, idx) => {
+              const sStartRaw = new Date(s.baslama_at).getTime();
+              const sEndRaw = new Date(s.son_aktif_at).getTime();
+              const sStart = Math.max(sStartRaw, minT);
+              const sEnd = Math.min(sEndRaw, maxT);
+              const sa = sonAktifText(s.son_aktif_at);
+              const adSoyad = [s.musteri_ad, s.musteri_soyad].filter(Boolean).join(' ') || 'İsimsiz';
+              const ilanLabel = s.paket_token ? (s.paket_baslik || 'Liste') : (s.ilan_baslik || 'İlan');
+              const sureSn = Math.max(1, Math.floor((sEndRaw - sStartRaw) / 1000));
+              const leftPx = ((sStart - minT) / range) * chartW;
+              const realWidthPx = ((sEnd - sStart) / range) * chartW;
+              const barWidthPx = Math.max(realWidthPx, 3);
+              const lane = sessionLanes[idx];
+              const cardTop = lane * (CARD_H + 4);
+              const cardBottom = cardTop + CARD_H;
+              const barTop = cardAreaH + CONNECTOR_H;
+              const color = colorFor(s.musteri_id);
+              const cardLeftPx = Math.min(leftPx, chartW - CARD_W);
+              return (
+                <Fragment key={idx}>
+                  <TouchableOpacity
+                    onPress={() => router.push(`/musteri/${s.musteri_id}` as any)}
+                    style={{
+                      position: 'absolute', left: cardLeftPx, width: CARD_W, top: cardTop, height: CARD_H,
+                      backgroundColor: Colors.surface, borderWidth: 2, borderColor: color, borderRadius: 6,
+                      overflow: 'hidden', flexDirection: 'row', zIndex: 2,
+                      ...(sa.canli ? { shadowColor: '#22c55e', shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 4 } : {}),
+                    }}
+                  >
+                    {s.ilan_fotograf ? (
+                      <R2Image source={s.ilan_fotograf} style={{ width: 44, height: '100%' } as any} resizeMode="cover" size="sm" />
+                    ) : (
+                      <View style={{ width: 44, height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceContainerHigh }}>
+                        <Text style={{ fontSize: 18 }}>{s.paket_token ? '📋' : '🏠'}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1, paddingHorizontal: 5, paddingVertical: 3, justifyContent: 'center' }}>
+                      <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color }}>
+                        {sa.canli ? '🟢 ' : ''}{adSoyad} · {formatSure(sureSn)}
+                      </Text>
+                      <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>{ilanLabel}</Text>
+                      {s.musteri_etiket ? <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color: '#d8b4fe' }}>{s.musteri_etiket}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                  <View style={{ position: 'absolute', left: leftPx - 1, top: cardBottom, width: 2, height: barTop - cardBottom, backgroundColor: color, zIndex: 1 }} />
+                  <View style={{ position: 'absolute', left: leftPx, top: barTop, width: barWidthPx, height: BAR_H, backgroundColor: color, borderRadius: 3, zIndex: 2 }} />
+                </Fragment>
+              );
+            })}
+            {sorted.length === 0 && (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: Colors.outline, fontSize: 12 }}>Bu zaman aralığında oturum yok</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const timelineStyles = StyleSheet.create({
+  kart: { backgroundColor: Colors.surfaceContainerLowest, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: Radius.lg, padding: 12, marginTop: 12 },
+  baslik: { fontSize: 14, fontWeight: '800', color: Colors.onSurface },
+  periodGroup: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerHigh, padding: 3, borderRadius: 7, gap: 2 },
+  periodChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 },
+  periodChipActive: { backgroundColor: Colors.surfaceContainerHighest },
+  periodChipText: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant },
+  periodChipTextActive: { color: Colors.onSurface },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
