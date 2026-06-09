@@ -2528,7 +2528,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler }: { paylasimGecmisi: Pay
           const p = g.items[0];
           const ilan = p.ilanlar;
           if (!ilan) return null;
-          const ilanZ = ziyaretler.filter(z => z.ilan_id === ilan.id);
+          const ilanZ = ziyaretler.filter(z => z.ilan_id === ilan.id && !z.paket_token);
           const canliN = ilanZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
           return (
             <TouchableOpacity key={g.key} onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={paylasimStyles.gecmisKartSingle}>
@@ -2630,28 +2630,49 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler }: { paylasimGecmisi: Pay
                 })}
               </View>
             )}
-            <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 6, marginTop: 4 }}>
+            <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
               {g.items.map((p, i) => {
                 const ilan = p.ilanlar;
                 if (!ilan) return null;
+                const perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && z.paket_token === gPaketToken);
+                const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
                 return (
-                  <TouchableOpacity key={`${g.key}-${ilan.id}-${i}`} onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                    {ilan.fotograflar?.[0] ? (
-                      <R2Image source={ilan.fotograflar[0]} style={{ width: 40, height: 32, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
-                    ) : (
-                      <View style={{ width: 40, height: 32, borderRadius: 4, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 12 }}>🏠</Text></View>
+                  <View key={`${g.key}-${ilan.id}-${i}`} style={{ gap: 4 }}>
+                    <TouchableOpacity onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                      {ilan.fotograflar?.[0] ? (
+                        <R2Image source={ilan.fotograflar[0]} style={{ width: 40, height: 32, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
+                      ) : (
+                        <View style={{ width: 40, height: 32, borderRadius: 4, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 12 }}>🏠</Text></View>
+                      )}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                          {ilan.portfoy_no ? <View style={paylasimStyles.chipRedSmall}><Text style={paylasimStyles.chipRedTextSmall}>#{ilan.portfoy_no}</Text></View> : null}
+                          <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{ilan.baslik}</Text>
+                          {perIlan.length > 0 ? (
+                            <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {perIlan.length}{perIlanCanli > 0 ? ` · 🟢 ${perIlanCanli}` : ''}</Text></View>
+                          ) : null}
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
+                          {ilan.durum && ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{ilan.durum}</Text> : null}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                    {perIlan.length > 0 && (
+                      <View style={{ marginLeft: 48, padding: 6, backgroundColor: Colors.surfaceContainer, borderRadius: 5, gap: 2 }}>
+                        {perIlan.map(z => {
+                          const sa = sonAktifText(z.son_aktif_at);
+                          return (
+                            <View key={`${ilan.id}-${z.device_id}`} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
+                              <Text style={{ fontSize: 10, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
+                              <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>· {formatSure(z.toplam_sure_sn)}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
                     )}
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                        {ilan.portfoy_no ? <View style={paylasimStyles.chipRedSmall}><Text style={paylasimStyles.chipRedTextSmall}>#{ilan.portfoy_no}</Text></View> : null}
-                        <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{ilan.baslik}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
-                        {ilan.durum && ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{ilan.durum}</Text> : null}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
             </View>
