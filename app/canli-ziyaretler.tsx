@@ -152,18 +152,35 @@ export default function CanliZiyaretlerScreen() {
   const benzersizCihaz = new Set(canliRows.map(r => r.device_id)).size;
   const benzersizMusteri = new Set(canliRows.map(r => r.musteri_id)).size;
 
-  const musteriOzet = (() => {
-    const map = new Map<string, { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number }>();
+  type PortfoyOzet = { key: string; isPaket: boolean; baslik: string; portfoy_no: string | null; fotograf: string | null; ilanId: string | null; ziyaretSayisi: number; toplamSn: number; sonAktifMs: number };
+  type MusteriOzet = { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number; canli: boolean; portfoyler: PortfoyOzet[] };
+  const musteriOzet: MusteriOzet[] = (() => {
+    const map = new Map<string, MusteriOzet & { _portMap: Map<string, PortfoyOzet> }>();
     for (const o of oturumlari) {
       const start = new Date(o.baslama_at).getTime();
       const end = new Date(o.son_aktif_at).getTime();
       const sn = Math.max(0, Math.floor((end - start) / 1000));
       const adSoyad = [o.musteri_ad, o.musteri_soyad].filter(Boolean).join(' ') || 'İsimsiz';
-      const cur = map.get(o.musteri_id);
-      if (cur) { cur.oturumSayisi++; cur.toplamSn += sn; if (end > cur.sonAktifMs) cur.sonAktifMs = end; }
-      else map.set(o.musteri_id, { id: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, oturumSayisi: 1, toplamSn: sn, sonAktifMs: end });
+      const portKey = o.paket_token ? `paket:${o.paket_token}` : `ilan:${o.ilan_id}`;
+      const portBaslik = o.paket_token ? (o.paket_baslik || 'Liste') : (o.ilan_baslik || 'İlan');
+      const canli = sonAktifText(o.son_aktif_at).canli;
+      let cur = map.get(o.musteri_id);
+      if (!cur) {
+        cur = { id: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, oturumSayisi: 0, toplamSn: 0, sonAktifMs: 0, canli: false, portfoyler: [], _portMap: new Map() };
+        map.set(o.musteri_id, cur);
+      }
+      cur.oturumSayisi++;
+      cur.toplamSn += sn;
+      if (end > cur.sonAktifMs) cur.sonAktifMs = end;
+      if (canli) cur.canli = true;
+      const pCur = cur._portMap.get(portKey);
+      if (pCur) { pCur.ziyaretSayisi++; pCur.toplamSn += sn; if (end > pCur.sonAktifMs) pCur.sonAktifMs = end; }
+      else cur._portMap.set(portKey, { key: portKey, isPaket: !!o.paket_token, baslik: portBaslik, portfoy_no: o.ilan_portfoy_no, fotograf: o.ilan_fotograf, ilanId: o.ilan_id, ziyaretSayisi: 1, toplamSn: sn, sonAktifMs: end });
     }
-    return Array.from(map.values()).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
+    return Array.from(map.values()).map(m => {
+      m.portfoyler = Array.from(m._portMap.values()).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
+      return m;
+    }).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
   })();
 
   if (loading) {
@@ -201,6 +218,12 @@ export default function CanliZiyaretlerScreen() {
             const sa = sonAktifText(r.son_aktif_at);
             const adSoyad = [r.musteri_ad, r.musteri_soyad].filter(Boolean).join(' ') || 'İsimsiz';
             const isPaket = !!r.paket_token;
+            const aktifOturum = oturumlari
+              .filter(o => o.device_id === r.device_id && sonAktifText(o.son_aktif_at).canli)
+              .sort((a, b) => new Date(b.baslama_at).getTime() - new Date(a.baslama_at).getTime())[0];
+            const aktifSureSn = aktifOturum
+              ? Math.max(1, Math.floor((Date.now() - new Date(aktifOturum.baslama_at).getTime()) / 1000))
+              : null;
             return (
               <TouchableOpacity
                 key={`${r.device_id}-${r.musteri_id}-${r.ilan_id ?? r.paket_token}`}
@@ -257,34 +280,111 @@ export default function CanliZiyaretlerScreen() {
 
                 <View style={styles.alt}>
                   <Text style={styles.altText}>
-                    📊 {r.acilis_sayisi > 1 ? `${r.acilis_sayisi} ziyarette` : 'Bu ziyarette'} toplam {formatSure(r.toplam_sure_sn)}
+                    {aktifSureSn !== null ? `⏱️ ${formatSure(aktifSureSn)} dir bakıyor` : '⏱️ Şu an bakıyor'}
                   </Text>
+                  {r.acilis_sayisi > 1 ? (
+                    <Text style={[styles.altText, { color: Colors.outline }]}>
+                      · geçmişte {r.acilis_sayisi} ziyaret · toplam {formatSure(r.toplam_sure_sn)}
+                    </Text>
+                  ) : null}
                 </View>
               </TouchableOpacity>
             );
           })
         )}
 
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, marginBottom: 8, flexWrap: 'wrap' }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: Colors.onSurface, flex: 1 }}>📁 Geçmiş Ziyaretler</Text>
+          <View style={timelineStyles.periodGroup}>
+            {PERIODS.map(p => (
+              <TouchableOpacity key={p.h} onPress={() => setTimelinePeriod(p.h)} style={[timelineStyles.periodChip, timelinePeriod === p.h && timelineStyles.periodChipActive]}>
+                <Text style={[timelineStyles.periodChipText, timelinePeriod === p.h && timelineStyles.periodChipTextActive]}>{p.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {musteriOzet.length > 0 ? (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>
+                👥 {musteriOzet.length} müşteri · {musteriOzet.reduce((a, m) => a + m.oturumSayisi, 0)} oturum
+              </Text>
+              {selectedMusteriId && (
+                <TouchableOpacity onPress={() => setSelectedMusteriId(null)} style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, backgroundColor: 'rgba(239,68,68,0.18)' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#fca5a5' }}>✕ Filtreyi kaldır</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {musteriOzet.map(m => {
+              const c = colorFor(m.id);
+              const active = selectedMusteriId === m.id;
+              const dim = !!selectedMusteriId && !active;
+              return (
+                <TouchableOpacity key={m.id} onPress={() => setSelectedMusteriId(active ? null : m.id)} style={{
+                  backgroundColor: Colors.surfaceContainerLow, borderWidth: 1.5,
+                  borderColor: active ? c : Colors.outlineVariant, borderRadius: 10, padding: 10, opacity: dim ? 0.45 : 1, marginBottom: 8,
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c }} />
+                    {m.canli ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' }} /> : null}
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.onSurface }}>{m.ad}</Text>
+                    {m.etiket ? (
+                      <View style={styles.chipEtiket}><Text style={styles.chipEtiketText} numberOfLines={1}>{m.etiket}</Text></View>
+                    ) : null}
+                    <Text style={{ marginLeft: 'auto', fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600' }}>
+                      {m.oturumSayisi} oturum · {formatSure(m.toplamSn)}
+                    </Text>
+                  </View>
+                  {m.portfoyler.map(p => (
+                    <TouchableOpacity key={p.key}
+                      onPress={(e: any) => { e?.stopPropagation?.(); if (!p.isPaket && p.ilanId) router.push(`/ilan/${p.ilanId}` as any); }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 6, borderRadius: 6, backgroundColor: Colors.surfaceContainerLowest, marginBottom: 4 }}>
+                      {p.fotograf ? (
+                        <R2Image source={p.fotograf} style={{ width: 36, height: 30, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
+                      ) : (
+                        <View style={{ width: 36, height: 30, borderRadius: 4, backgroundColor: p.isPaket ? 'rgba(245,158,11,0.18)' : Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 16 }}>{p.isPaket ? '📋' : '🏠'}</Text>
+                        </View>
+                      )}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                          <View style={p.isPaket ? styles.chipAmber : styles.chipBlue}>
+                            <Text style={p.isPaket ? styles.chipAmberText : styles.chipBlueText}>{p.isPaket ? 'Liste' : 'İlan'}</Text>
+                          </View>
+                          {p.portfoy_no ? (
+                            <View style={styles.chipRed}><Text style={styles.chipRedText}>#{p.portfoy_no}</Text></View>
+                          ) : null}
+                          <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface, flexShrink: 1 }}>{p.baslik}</Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 1 }}>{p.ziyaretSayisi} ziyaret · {formatSure(p.toplamSn)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        ) : (
+          <View style={{ padding: 20, alignItems: 'center', backgroundColor: Colors.surfaceContainerLow, borderRadius: 10, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+            <Text style={{ fontSize: 12, color: Colors.outline }}>Bu zaman aralığında ziyaret yok.</Text>
+          </View>
+        )}
+
         <ZamanTuneli
           oturumlari={oturumlari}
           timelinePeriod={timelinePeriod}
-          setTimelinePeriod={setTimelinePeriod}
           selectedMusteriId={selectedMusteriId}
-          setSelectedMusteriId={setSelectedMusteriId}
-          musteriOzet={musteriOzet}
         />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod, selectedMusteriId, setSelectedMusteriId, musteriOzet }: {
+function ZamanTuneli({ oturumlari, timelinePeriod, selectedMusteriId }: {
   oturumlari: OturumRow[];
   timelinePeriod: PeriodH;
-  setTimelinePeriod: (p: PeriodH) => void;
   selectedMusteriId: string | null;
-  setSelectedMusteriId: (id: string | null) => void;
-  musteriOzet: { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number }[];
 }) {
   const nowMs = Date.now();
   const filterStart = nowMs - timelinePeriod * 3600 * 1000;
@@ -337,47 +437,8 @@ function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod, selectedMu
     <View style={timelineStyles.kart}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
         <Text style={timelineStyles.baslik}>📊 Zaman Çizelgesi</Text>
-        <View style={timelineStyles.periodGroup}>
-          {PERIODS.map(p => (
-            <TouchableOpacity key={p.h} onPress={() => setTimelinePeriod(p.h)} style={[timelineStyles.periodChip, timelinePeriod === p.h && timelineStyles.periodChipActive]}>
-              <Text style={[timelineStyles.periodChipText, timelinePeriod === p.h && timelineStyles.periodChipTextActive]}>
-                {p.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Text style={{ fontSize: 10, color: Colors.outline }}>🔄 8 sn'de bir güncellenir</Text>
       </View>
-      <Text style={{ fontSize: 10, color: Colors.outline, marginBottom: 6 }}>🔄 8 sn'de bir güncellenir</Text>
-
-      {timelinePeriod >= 24 && musteriOzet.length > 0 && (
-        <View style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurface }}>👥 Bu aralıkta {musteriOzet.length} müşteri</Text>
-            {selectedMusteriId && (
-              <TouchableOpacity onPress={() => setSelectedMusteriId(null)} style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 5, backgroundColor: 'rgba(239,68,68,0.18)' }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#fca5a5' }}>✕ Filtreyi kaldır</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {musteriOzet.map(m => {
-              const c = colorFor(m.id);
-              const active = selectedMusteriId === m.id;
-              return (
-                <TouchableOpacity key={m.id} onPress={() => setSelectedMusteriId(active ? null : m.id)} style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5,
-                  borderRadius: 6, backgroundColor: active ? c : Colors.surfaceContainerLow, borderWidth: 1.5, borderColor: c,
-                }}>
-                  <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: active ? '#fff' : c }} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: active ? '#fff' : Colors.onSurface }}>{m.ad}</Text>
-                  {m.etiket ? <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#fff' : Colors.onSurfaceVariant, opacity: 0.85 }}>· {m.etiket}</Text> : null}
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#fff' : Colors.onSurfaceVariant, opacity: 0.85 }}>· {m.oturumSayisi}x · {formatSure(m.toplamSn)}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <View style={{ width: chartW, paddingTop: 30, paddingBottom: 18 }}>
