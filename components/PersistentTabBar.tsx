@@ -16,10 +16,14 @@ const TABS: { key: TabKey; label: string; icon: keyof typeof MaterialIcons.glyph
 export default function PersistentTabBar() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const goTab = (path: string) => {
+    if (router.canDismiss()) router.dismissAll();
+    router.navigate(path as any);
+  };
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {TABS.map(t => (
-        <Pressable key={t.key} style={styles.tab} onPress={() => router.push(t.path as any)}>
+        <Pressable key={t.key} style={styles.tab} onPress={() => goTab(t.path)}>
           <MaterialIcons name={t.icon} size={22} color={Colors.outlineVariant} />
           <Text style={styles.label}>{t.label}</Text>
         </Pressable>
