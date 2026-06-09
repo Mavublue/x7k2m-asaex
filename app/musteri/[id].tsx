@@ -170,6 +170,7 @@ export default function MusteriDetayScreen() {
   const [showTakipPicker, setShowTakipPicker] = useState(false);
   const [showInlineTakipPicker, setShowInlineTakipPicker] = useState(false);
   const [notEditId, setNotEditId] = useState<string | null>(null);
+  const [notSaving, setNotSaving] = useState(false);
   const [gorevler, setGorevler] = useState<MusteriGorev[]>([]);
   const [gorevEkle, setGorevEkle] = useState(false);
   const [gorevBaslik, setGorevBaslik] = useState('');
@@ -735,6 +736,9 @@ export default function MusteriDetayScreen() {
 
   async function handleNotKaydet() {
     if (!notIcerik.trim()) return;
+    if (notSaving) return;
+    setNotSaving(true);
+    try {
     const tarihIso = notTarih.toISOString();
     const icerik = notIcerik.trim();
     if (notEditId) {
@@ -765,6 +769,9 @@ export default function MusteriDetayScreen() {
     setNotEditId(null);
     setNotIcerik('');
     refreshNotlar();
+    } finally {
+      setNotSaving(false);
+    }
   }
 
   async function handleNotSil(notId: string) {
@@ -1192,7 +1199,7 @@ export default function MusteriDetayScreen() {
                       <TouchableOpacity onPress={() => setShowPicker('date')} style={[styles.notInput, { flex: 1, minWidth: 160, justifyContent: 'center' }]}>
                         <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {notTarihGoster(notTarih.toISOString())}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={handleNotKaydet} style={[styles.notKaydetBtn, !notIcerik.trim() && { opacity: 0.5 }]} disabled={!notIcerik.trim()}>
+                      <TouchableOpacity onPress={handleNotKaydet} style={[styles.notKaydetBtn, (!notIcerik.trim() || notSaving) && { opacity: 0.5 }]} disabled={!notIcerik.trim() || notSaving}>
                         <Text style={styles.notKaydetBtnText}>{notEditId ? 'Güncelle' : 'Kaydet'}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => { setNotEkle(false); setNotEditId(null); setNotIcerik(''); }} style={styles.notIptalBtn}>
@@ -1463,7 +1470,7 @@ export default function MusteriDetayScreen() {
                           <TouchableOpacity onPress={() => setShowPicker('date')} style={[styles.notInput, { flex: 1, minWidth: 160, justifyContent: 'center' }]}>
                             <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {notTarihGoster(notTarih.toISOString())}</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={handleNotKaydet} style={[styles.notKaydetBtn, !notIcerik.trim() && { opacity: 0.5 }]} disabled={!notIcerik.trim()}>
+                          <TouchableOpacity onPress={handleNotKaydet} style={[styles.notKaydetBtn, (!notIcerik.trim() || notSaving) && { opacity: 0.5 }]} disabled={!notIcerik.trim() || notSaving}>
                             <Text style={styles.notKaydetBtnText}>{notEditId ? 'Güncelle' : 'Kaydet'}</Text>
                           </TouchableOpacity>
                           <TouchableOpacity onPress={() => { setNotEkle(false); setNotEditId(null); setNotIcerik(''); }} style={styles.notIptalBtn}>
