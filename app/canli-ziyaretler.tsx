@@ -99,16 +99,27 @@ function cihazAdi(ua: string | null): string {
   return br ? `${os} · ${br}` : os;
 }
 
+const PERIODS = [
+  { h: 1, label: '1 sa' },
+  { h: 6, label: '6 sa' },
+  { h: 24, label: '24 sa' },
+  { h: 168, label: '7 gün' },
+  { h: 1176, label: '7 hafta' },
+] as const;
+type PeriodH = typeof PERIODS[number]['h'];
+
 export default function CanliZiyaretlerScreen() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CanliRow[]>([]);
   const [oturumlari, setOturumlari] = useState<OturumRow[]>([]);
-  const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24>(6);
+  const [timelinePeriod, setTimelinePeriodRaw] = useState<PeriodH>(6);
+  const [selectedMusteriId, setSelectedMusteriId] = useState<string | null>(null);
+  const setTimelinePeriod = useCallback((p: PeriodH) => { setTimelinePeriodRaw(p); setSelectedMusteriId(null); }, []);
   const [refreshing, setRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchData = useCallback(async (period: 1 | 6 | 24) => {
+  const fetchData = useCallback(async (period: PeriodH) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); setOturumlari([]); setLoading(false); return; }
     const [{ data: canli }, { data: otu }] = await Promise.all([
@@ -136,9 +147,24 @@ export default function CanliZiyaretlerScreen() {
     setRefreshing(false);
   }, [fetchData, timelinePeriod]);
 
-  const canliRows = rows.filter(r => sonAktifText(r.son_aktif_at).canli);
+  const canliRowsAll = rows.filter(r => sonAktifText(r.son_aktif_at).canli);
+  const canliRows = selectedMusteriId ? canliRowsAll.filter(r => r.musteri_id === selectedMusteriId) : canliRowsAll;
   const benzersizCihaz = new Set(canliRows.map(r => r.device_id)).size;
   const benzersizMusteri = new Set(canliRows.map(r => r.musteri_id)).size;
+
+  const musteriOzet = (() => {
+    const map = new Map<string, { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number }>();
+    for (const o of oturumlari) {
+      const start = new Date(o.baslama_at).getTime();
+      const end = new Date(o.son_aktif_at).getTime();
+      const sn = Math.max(0, Math.floor((end - start) / 1000));
+      const adSoyad = [o.musteri_ad, o.musteri_soyad].filter(Boolean).join(' ') || 'İsimsiz';
+      const cur = map.get(o.musteri_id);
+      if (cur) { cur.oturumSayisi++; cur.toplamSn += sn; if (end > cur.sonAktifMs) cur.sonAktifMs = end; }
+      else map.set(o.musteri_id, { id: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, oturumSayisi: 1, toplamSn: sn, sonAktifMs: end });
+    }
+    return Array.from(map.values()).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
+  })();
 
   if (loading) {
     return (
@@ -239,20 +265,32 @@ export default function CanliZiyaretlerScreen() {
           })
         )}
 
-        <ZamanTuneli oturumlari={oturumlari} timelinePeriod={timelinePeriod} setTimelinePeriod={setTimelinePeriod} />
+        <ZamanTuneli
+          oturumlari={oturumlari}
+          timelinePeriod={timelinePeriod}
+          setTimelinePeriod={setTimelinePeriod}
+          selectedMusteriId={selectedMusteriId}
+          setSelectedMusteriId={setSelectedMusteriId}
+          musteriOzet={musteriOzet}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod }: {
+function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod, selectedMusteriId, setSelectedMusteriId, musteriOzet }: {
   oturumlari: OturumRow[];
-  timelinePeriod: 1 | 6 | 24;
-  setTimelinePeriod: (p: 1 | 6 | 24) => void;
+  timelinePeriod: PeriodH;
+  setTimelinePeriod: (p: PeriodH) => void;
+  selectedMusteriId: string | null;
+  setSelectedMusteriId: (id: string | null) => void;
+  musteriOzet: { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number }[];
 }) {
   const nowMs = Date.now();
   const filterStart = nowMs - timelinePeriod * 3600 * 1000;
-  const sortedAll = [...oturumlari].sort((a, b) => new Date(a.baslama_at).getTime() - new Date(b.baslama_at).getTime());
+  const sortedAll = [...oturumlari]
+    .filter(s => selectedMusteriId ? s.musteri_id === selectedMusteriId : true)
+    .sort((a, b) => new Date(a.baslama_at).getTime() - new Date(b.baslama_at).getTime());
   const sorted = sortedAll.filter(s => new Date(s.son_aktif_at).getTime() >= filterStart && new Date(s.baslama_at).getTime() <= nowMs);
 
   let minT: number, maxT: number;
@@ -291,7 +329,7 @@ function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod }: {
   const cardAreaH = laneCount * (CARD_H + 4);
   const chartH = cardAreaH + CONNECTOR_H + BAR_H + 4;
 
-  const tickCount = timelinePeriod === 1 ? 6 : timelinePeriod === 6 ? 6 : 8;
+  const tickCount = timelinePeriod === 1 ? 6 : timelinePeriod === 6 ? 6 : timelinePeriod === 24 ? 8 : timelinePeriod === 168 ? 7 : 7;
   const ticks: number[] = [];
   for (let i = 0; i <= tickCount; i++) ticks.push(minT + (range * i) / tickCount);
 
@@ -300,16 +338,46 @@ function ZamanTuneli({ oturumlari, timelinePeriod, setTimelinePeriod }: {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
         <Text style={timelineStyles.baslik}>📊 Zaman Çizelgesi</Text>
         <View style={timelineStyles.periodGroup}>
-          {([1, 6, 24] as const).map(h => (
-            <TouchableOpacity key={h} onPress={() => setTimelinePeriod(h)} style={[timelineStyles.periodChip, timelinePeriod === h && timelineStyles.periodChipActive]}>
-              <Text style={[timelineStyles.periodChipText, timelinePeriod === h && timelineStyles.periodChipTextActive]}>
-                {h === 1 ? '1 sa' : h === 6 ? '6 sa' : '24 sa'}
+          {PERIODS.map(p => (
+            <TouchableOpacity key={p.h} onPress={() => setTimelinePeriod(p.h)} style={[timelineStyles.periodChip, timelinePeriod === p.h && timelineStyles.periodChipActive]}>
+              <Text style={[timelineStyles.periodChipText, timelinePeriod === p.h && timelineStyles.periodChipTextActive]}>
+                {p.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
       <Text style={{ fontSize: 10, color: Colors.outline, marginBottom: 6 }}>🔄 8 sn'de bir güncellenir</Text>
+
+      {timelinePeriod >= 24 && musteriOzet.length > 0 && (
+        <View style={{ marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurface }}>👥 Bu aralıkta {musteriOzet.length} müşteri</Text>
+            {selectedMusteriId && (
+              <TouchableOpacity onPress={() => setSelectedMusteriId(null)} style={{ paddingHorizontal: 9, paddingVertical: 3, borderRadius: 5, backgroundColor: 'rgba(239,68,68,0.18)' }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#fca5a5' }}>✕ Filtreyi kaldır</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {musteriOzet.map(m => {
+              const c = colorFor(m.id);
+              const active = selectedMusteriId === m.id;
+              return (
+                <TouchableOpacity key={m.id} onPress={() => setSelectedMusteriId(active ? null : m.id)} style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5,
+                  borderRadius: 6, backgroundColor: active ? c : Colors.surfaceContainerLow, borderWidth: 1.5, borderColor: c,
+                }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: active ? '#fff' : c }} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: active ? '#fff' : Colors.onSurface }}>{m.ad}</Text>
+                  {m.etiket ? <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#fff' : Colors.onSurfaceVariant, opacity: 0.85 }}>· {m.etiket}</Text> : null}
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: active ? '#fff' : Colors.onSurfaceVariant, opacity: 0.85 }}>· {m.oturumSayisi}x · {formatSure(m.toplamSn)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <View style={{ width: chartW, paddingTop: 30, paddingBottom: 18 }}>
