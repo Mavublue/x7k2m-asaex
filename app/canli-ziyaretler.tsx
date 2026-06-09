@@ -298,6 +298,12 @@ export default function CanliZiyaretlerScreen() {
           })
         )}
 
+        <ZamanTuneli
+          oturumlari={oturumlari}
+          timelinePeriod={timelinePeriod}
+          selectedMusteriId={selectedMusteriId}
+        />
+
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, marginBottom: 8, flexWrap: 'wrap' }}>
           <Text style={{ fontSize: 14, fontWeight: '800', color: Colors.onSurface, flex: 1 }}>📁 Geçmiş Ziyaretler</Text>
           <View style={timelineStyles.periodGroup}>
@@ -390,12 +396,6 @@ export default function CanliZiyaretlerScreen() {
             <Text style={{ fontSize: 12, color: Colors.outline }}>Bu zaman aralığında ziyaret yok.</Text>
           </View>
         )}
-
-        <ZamanTuneli
-          oturumlari={oturumlari}
-          timelinePeriod={timelinePeriod}
-          selectedMusteriId={selectedMusteriId}
-        />
       </ScrollView>
     </SafeAreaView>
   );
