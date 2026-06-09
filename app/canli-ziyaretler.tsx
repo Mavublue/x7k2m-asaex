@@ -153,9 +153,10 @@ export default function CanliZiyaretlerScreen() {
   const benzersizMusteri = new Set(canliRows.map(r => r.musteri_id)).size;
 
   type PortfoyOzet = { key: string; isPaket: boolean; baslik: string; portfoy_no: string | null; fotograf: string | null; ilanId: string | null; ziyaretSayisi: number; toplamSn: number; sonAktifMs: number };
-  type MusteriOzet = { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number; canli: boolean; portfoyler: PortfoyOzet[] };
+  type CihazOzet = { device_id: string; ua: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number };
+  type MusteriOzet = { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number; canli: boolean; portfoyler: PortfoyOzet[]; cihazlar: CihazOzet[] };
   const musteriOzet: MusteriOzet[] = (() => {
-    const map = new Map<string, MusteriOzet & { _portMap: Map<string, PortfoyOzet> }>();
+    const map = new Map<string, MusteriOzet & { _portMap: Map<string, PortfoyOzet>; _cihazMap: Map<string, CihazOzet> }>();
     for (const o of oturumlari) {
       const start = new Date(o.baslama_at).getTime();
       const end = new Date(o.son_aktif_at).getTime();
@@ -166,7 +167,7 @@ export default function CanliZiyaretlerScreen() {
       const canli = sonAktifText(o.son_aktif_at).canli;
       let cur = map.get(o.musteri_id);
       if (!cur) {
-        cur = { id: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, oturumSayisi: 0, toplamSn: 0, sonAktifMs: 0, canli: false, portfoyler: [], _portMap: new Map() };
+        cur = { id: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, oturumSayisi: 0, toplamSn: 0, sonAktifMs: 0, canli: false, portfoyler: [], cihazlar: [], _portMap: new Map(), _cihazMap: new Map() };
         map.set(o.musteri_id, cur);
       }
       cur.oturumSayisi++;
@@ -176,9 +177,13 @@ export default function CanliZiyaretlerScreen() {
       const pCur = cur._portMap.get(portKey);
       if (pCur) { pCur.ziyaretSayisi++; pCur.toplamSn += sn; if (end > pCur.sonAktifMs) pCur.sonAktifMs = end; }
       else cur._portMap.set(portKey, { key: portKey, isPaket: !!o.paket_token, baslik: portBaslik, portfoy_no: o.ilan_portfoy_no, fotograf: o.ilan_fotograf, ilanId: o.ilan_id, ziyaretSayisi: 1, toplamSn: sn, sonAktifMs: end });
+      const cCur = cur._cihazMap.get(o.device_id);
+      if (cCur) { cCur.oturumSayisi++; cCur.toplamSn += sn; if (end > cCur.sonAktifMs) cCur.sonAktifMs = end; }
+      else cur._cihazMap.set(o.device_id, { device_id: o.device_id, ua: o.user_agent, oturumSayisi: 1, toplamSn: sn, sonAktifMs: end });
     }
     return Array.from(map.values()).map(m => {
       m.portfoyler = Array.from(m._portMap.values()).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
+      m.cihazlar = Array.from(m._cihazMap.values()).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
       return m;
     }).sort((a, b) => b.sonAktifMs - a.sonAktifMs);
   })();
@@ -332,10 +337,23 @@ export default function CanliZiyaretlerScreen() {
                     {m.etiket ? (
                       <View style={styles.chipEtiket}><Text style={styles.chipEtiketText} numberOfLines={1}>{m.etiket}</Text></View>
                     ) : null}
-                    <Text style={{ marginLeft: 'auto', fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600' }}>
-                      {m.oturumSayisi} oturum · {formatSure(m.toplamSn)}
-                    </Text>
                   </View>
+                  {m.cihazlar.length === 1 ? (
+                    <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600', marginBottom: 6 }}>
+                      📱 1 cihaz · {cihazAdi(m.cihazlar[0].ua)} · {m.portfoyler.length} ilan · {formatSure(m.toplamSn)}
+                    </Text>
+                  ) : (
+                    <View style={{ marginBottom: 6 }}>
+                      <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '600' }}>
+                        📱 {m.cihazlar.length} cihaz · {m.portfoyler.length} ilan · toplam {formatSure(m.toplamSn)}
+                      </Text>
+                      {m.cihazlar.map(d => (
+                        <Text key={d.device_id} style={{ fontSize: 10, color: Colors.outline, marginTop: 2, marginLeft: 8 }}>
+                          · {cihazAdi(d.ua)} → {formatSure(d.toplamSn)} ({d.oturumSayisi} oturum)
+                        </Text>
+                      ))}
+                    </View>
+                  )}
                   {m.portfoyler.map(p => (
                     <TouchableOpacity key={p.key}
                       onPress={(e: any) => { e?.stopPropagation?.(); if (!p.isPaket && p.ilanId) router.push(`/ilan/${p.ilanId}` as any); }}
