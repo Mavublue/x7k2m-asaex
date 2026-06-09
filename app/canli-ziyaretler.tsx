@@ -232,8 +232,8 @@ export default function CanliZiyaretlerScreen() {
             return (
               <TouchableOpacity
                 key={`${r.device_id}-${r.musteri_id}-${r.ilan_id ?? r.paket_token}`}
-                style={styles.kart}
-                onPress={() => router.push(`/musteri/${r.musteri_id}` as any)}
+                style={[styles.kart, selectedMusteriId === r.musteri_id && { borderColor: colorFor(r.musteri_id), borderWidth: 2 }]}
+                onPress={() => setSelectedMusteriId(selectedMusteriId === r.musteri_id ? null : r.musteri_id)}
               >
                 <View style={styles.kartHeader}>
                   <View style={styles.canliDot} />
@@ -375,7 +375,9 @@ export default function CanliZiyaretlerScreen() {
                           ) : null}
                           <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface, flexShrink: 1 }}>{p.baslik}</Text>
                         </View>
-                        <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 1 }}>{p.ziyaretSayisi} ziyaret · {formatSure(p.toplamSn)}</Text>
+                        <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 1 }}>
+                          {new Date(p.sonAktifMs).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {p.ziyaretSayisi} ziyaret · {formatSure(p.toplamSn)}
+                        </Text>
                       </View>
                     </TouchableOpacity>
                   ))}
