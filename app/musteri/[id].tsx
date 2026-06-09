@@ -2456,11 +2456,12 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
               const cardBottom = cardTop + CARD_H;
               const barTop = cardAreaH + CONNECTOR_H;
               const color = colorFor(key);
+              const cardLeftPx = Math.min(leftPx, chartW - CARD_W);
               return (
                 <Fragment key={idx}>
                   {/* Kart */}
                   <View style={{
-                    position: 'absolute', left: leftPx, width: CARD_W, top: cardTop, height: CARD_H,
+                    position: 'absolute', left: cardLeftPx, width: CARD_W, top: cardTop, height: CARD_H,
                     backgroundColor: Colors.surface, borderWidth: 2, borderColor: color, borderRadius: 6,
                     overflow: 'hidden', flexDirection: 'row', zIndex: 2,
                     ...(sa.canli ? { shadowColor: '#22c55e', shadowOpacity: 0.6, shadowRadius: 4, shadowOffset: { width: 0, height: 0 }, elevation: 4 } : {}),

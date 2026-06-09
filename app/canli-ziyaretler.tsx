@@ -20,6 +20,7 @@ type CanliRow = {
   musteri_id: string;
   musteri_ad: string | null;
   musteri_soyad: string | null;
+  musteri_etiket: string | null;
   ilan_baslik: string | null;
   ilan_portfoy_no: string | null;
   ilan_fotograf: string | null;
@@ -146,7 +147,14 @@ export default function CanliZiyaretlerScreen() {
                 <View style={styles.kartHeader}>
                   <View style={styles.canliDot} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.musteriAd}>{adSoyad}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={styles.musteriAd}>{adSoyad}</Text>
+                      {r.musteri_etiket ? (
+                        <View style={styles.chipEtiket}>
+                          <Text style={styles.chipEtiketText} numberOfLines={1}>{r.musteri_etiket}</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <Text style={styles.musteriSub}>{cihazAdi(r.user_agent)} · {sa.text}</Text>
                   </View>
                   <View style={styles.chipGreen}>
@@ -225,6 +233,8 @@ const styles = StyleSheet.create({
   musteriSub: { fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 1 },
   chipGreen: { backgroundColor: 'rgba(34,197,94,0.22)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 },
   chipGreenText: { fontSize: 10, fontWeight: '800', color: '#86efac' },
+  chipEtiket: { backgroundColor: 'rgba(168,85,247,0.18)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, maxWidth: 140 },
+  chipEtiketText: { fontSize: 10, fontWeight: '700', color: '#d8b4fe' },
   icerikRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   paketIcon: {
     width: 56, height: 46, borderRadius: 6,
