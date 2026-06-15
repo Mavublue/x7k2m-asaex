@@ -328,7 +328,8 @@ export default function IlanDuzenleScreen() {
           return [...base, ...ordered];
         });
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
-        await optimizePhoto(key, isFirst);
+        // Variant üretimi upload havuzunu bloklamasın — arka planda çalışsın
+        optimizePhoto(key, isFirst).catch(() => {});
       } catch (e) {
         if (!cancelledRef.current.has(item.tempId)) console.error(e);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
