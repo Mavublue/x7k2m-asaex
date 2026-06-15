@@ -17,8 +17,14 @@ export default function PersistentTabBar() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const goTab = (path: string) => {
-    if (router.canDismiss()) router.dismissAll();
-    router.navigate(path as any);
+    // dismissAll + navigate aynı tick'te yarışıyor → bazen root stack boş poplanıp
+    // uygulamadan atıyor. Önce kapat, navigate'i bir sonraki frame'e ertele.
+    if (router.canDismiss()) {
+      router.dismissAll();
+      requestAnimationFrame(() => router.navigate(path as any));
+    } else {
+      router.navigate(path as any);
+    }
   };
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
