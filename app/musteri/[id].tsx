@@ -923,9 +923,23 @@ export default function MusteriDetayScreen() {
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.profilAd}>{ad} {soyad}</Text>
               {telefonRaw ? (
-                <TouchableOpacity onPress={() => Linking.openURL(`tel:${telefonRaw}`)}>
-                  <Text style={styles.profilTelefon}>📞 {telefonRaw}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <TouchableOpacity onPress={() => Linking.openURL(`tel:${telefonRaw}`)}>
+                    <Text style={styles.profilTelefon}>📞 {telefonRaw}</Text>
+                  </TouchableOpacity>
+                  {(() => {
+                    const wa = telefonRaw.replace(/\D/g, '').replace(/^0/, '');
+                    if (!wa) return null;
+                    return (
+                      <TouchableOpacity
+                        onPress={() => Linking.openURL(`whatsapp://send?phone=${wa}`).catch(() => Linking.openURL(`https://wa.me/${wa}`))}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#25D366', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4 }}>
+                        <Text style={{ fontSize: 12 }}>💬</Text>
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>WhatsApp</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
+                </View>
               ) : null}
             </View>
 

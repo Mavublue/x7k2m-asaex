@@ -6,7 +6,7 @@ import {
   StyleSheet, Alert, ActivityIndicator, Modal, FlatList, SectionList,
   Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import R2Image from '../../../components/R2Image';
+import R2Image, { prefetchR2 } from '../../../components/R2Image';
 import FotoGridSortable from '../../../components/FotoGridSortable';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -245,6 +245,7 @@ export default function IlanDuzenleScreen() {
           setMusteriLng(ilan.musteri_lng.toString());
         }
         const keys = ilan.fotograflar ?? [];
+        prefetchR2(keys, 'sm');
         setFotograflar(keys);
         setOrijinalFotograflar(keys);
         setGizliFotograflar((ilan as any).gizli_fotograflar ?? []);
@@ -282,14 +283,17 @@ export default function IlanDuzenleScreen() {
     }));
     setPending(prev => [...prev, ...newItems.map(({ asset: _a, ...rest }) => rest)]);
 
-    for (const item of newItems) {
-      if (cancelledRef.current.has(item.tempId)) continue;
+    const baseEmpty = fotograflar.length === 0;
+    const completedKeys: Record<string, string> = {};
+
+    const uploadOne = async (item: typeof newItems[number]) => {
+      if (cancelledRef.current.has(item.tempId)) return;
       try {
         const ext = (item.asset.uri.split('.').pop() ?? 'jpg').toLowerCase();
         const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
         const dosyaAdi = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const { uploadUrl, key } = await getUploadUrl(id as string, dosyaAdi, mimeType);
-        if (cancelledRef.current.has(item.tempId)) continue;
+        if (cancelledRef.current.has(item.tempId)) return;
 
         const task = FileSystem.createUploadTask(
           uploadUrl,
@@ -309,22 +313,40 @@ export default function IlanDuzenleScreen() {
         setPending(prev => prev.map(p => p.tempId === item.tempId ? { ...p, task } : p));
 
         const uploadResult = await task.uploadAsync();
-        if (cancelledRef.current.has(item.tempId)) continue;
+        if (cancelledRef.current.has(item.tempId)) return;
         if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
 
-        let isFirst = false;
-        setFotograflar(prev => {
-          isFirst = prev.length === 0;
-          return [...prev, key];
-        });
+        // İlk foto (kapak) seçim sırasındaki ilk öğedir — bitiş sırasından bağımsız sabit kalsın
+        const isFirst = baseEmpty && newItems[0]?.tempId === item.tempId;
+        completedKeys[item.tempId] = key;
         setLocalPreviews(prev => ({ ...prev, [key]: item.asset.uri }));
+        // Seçim sırasını koru: mevcut (batch dışı) fotolar + tamamlanan batch fotoları seçim sırasıyla
+        setFotograflar(prev => {
+          const batchKeys = new Set(Object.values(completedKeys));
+          const base = prev.filter(k => !batchKeys.has(k));
+          const ordered = newItems.filter(n => completedKeys[n.tempId]).map(n => completedKeys[n.tempId]);
+          return [...base, ...ordered];
+        });
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
         await optimizePhoto(key, isFirst);
       } catch (e) {
         if (!cancelledRef.current.has(item.tempId)) console.error(e);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
       }
-    }
+    };
+
+    // Eşzamanlı havuz: aynı anda en fazla 3 foto yüklensin (tek tek değil)
+    const CONCURRENCY = 3;
+    let next = 0;
+    const worker = async () => {
+      while (next < newItems.length) {
+        const item = newItems[next++];
+        await uploadOne(item);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, newItems.length) }, worker)
+    );
     cancelledRef.current.clear();
   }
 

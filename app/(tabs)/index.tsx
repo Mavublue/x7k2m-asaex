@@ -799,7 +799,7 @@ export default function DashboardScreen() {
       <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }}>
         <View style={styles.bdModalOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }} />
-          <View style={styles.bdModalPanel} onStartShouldSetResponder={() => true}>
+          <View style={styles.bdModalPanel}>
             <View style={styles.bdModalHeader}>
               {(detayBildirim || musteriDetay) ? (
                 <TouchableOpacity onPress={() => {

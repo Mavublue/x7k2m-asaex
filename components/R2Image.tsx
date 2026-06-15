@@ -31,5 +31,13 @@ export default function R2Image({ source, style, resizeMode = 'cover', size = 'm
     ? source
     : toSizedUrl(source, size);
 
-  return <Image source={{ uri }} style={style} contentFit={resizeMode === 'contain' ? 'contain' : 'cover'} cachePolicy="disk" />;
+  return <Image source={{ uri }} style={style} contentFit={resizeMode === 'contain' ? 'contain' : 'cover'} cachePolicy="memory-disk" recyclingKey={uri} transition={0} />;
+}
+
+// Verilen R2 anahtarlarını belirtilen boyutta önceden indir (cache'e ısıt)
+export function prefetchR2(keys: string[], size: Size = 'sm') {
+  const uris = keys
+    .filter(Boolean)
+    .map((k) => (isLocalUri(k) || isFullUrl(k) ? k : toSizedUrl(k, size)));
+  if (uris.length) Image.prefetch(uris, { cachePolicy: 'memory-disk' });
 }

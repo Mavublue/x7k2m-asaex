@@ -101,7 +101,7 @@ export default function IlanEkleScreen() {
   const [ilanId] = useState(() => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
   const [fotograflar, setFotograflar] = useState<string[]>([]);
   const [gizliFotograflar, setGizliFotograflar] = useState<string[]>([]);
-  const [fotograflarPreview, setFotograflarPreview] = useState<string[]>([]);
+  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<{ tempId: string; uri: string; percent: number; task: any | null }[]>([]);
   const cancelledRef = useRef<Set<string>>(new Set());
   const fotoYukleniyor = pending.length > 0;
@@ -209,14 +209,17 @@ export default function IlanEkleScreen() {
     }));
     setPending(prev => [...prev, ...newItems.map(({ asset: _a, ...rest }) => rest)]);
 
-    for (const item of newItems) {
-      if (cancelledRef.current.has(item.tempId)) continue;
+    const baseEmpty = fotograflar.length === 0;
+    const completedKeys: Record<string, string> = {};
+
+    const uploadOne = async (item: typeof newItems[number]) => {
+      if (cancelledRef.current.has(item.tempId)) return;
       try {
         const ext = (item.asset.uri.split('.').pop() ?? 'jpg').toLowerCase();
         const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
         const dosyaAdi = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const { uploadUrl, key } = await getUploadUrl(ilanId, dosyaAdi, mimeType);
-        if (cancelledRef.current.has(item.tempId)) continue;
+        if (cancelledRef.current.has(item.tempId)) return;
 
         const task = FileSystem.createUploadTask(
           uploadUrl,
@@ -236,22 +239,40 @@ export default function IlanEkleScreen() {
         setPending(prev => prev.map(p => p.tempId === item.tempId ? { ...p, task } : p));
 
         const uploadResult = await task.uploadAsync();
-        if (cancelledRef.current.has(item.tempId)) continue;
+        if (cancelledRef.current.has(item.tempId)) return;
         if (!uploadResult || uploadResult.status !== 200) throw new Error('Upload başarısız');
 
-        let isFirst = false;
+        // İlk foto (kapak) seçim sırasındaki ilk öğedir — bitiş sırasından bağımsız sabit kalsın
+        const isFirst = baseEmpty && newItems[0]?.tempId === item.tempId;
+        completedKeys[item.tempId] = key;
+        setLocalPreviews(prev => ({ ...prev, [key]: item.asset.uri }));
+        // Seçim sırasını koru: mevcut (batch dışı) fotolar + tamamlanan batch fotoları seçim sırasıyla
         setFotograflar(prev => {
-          isFirst = prev.length === 0;
-          return [...prev, key];
+          const batchKeys = new Set(Object.values(completedKeys));
+          const base = prev.filter(k => !batchKeys.has(k));
+          const ordered = newItems.filter(n => completedKeys[n.tempId]).map(n => completedKeys[n.tempId]);
+          return [...base, ...ordered];
         });
-        setFotograflarPreview(prev => [...prev, item.asset.uri]);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
         await optimizePhoto(key, isFirst);
       } catch (e) {
         if (!cancelledRef.current.has(item.tempId)) console.error('Fotoğraf hatası:', e);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
       }
-    }
+    };
+
+    // Eşzamanlı havuz: aynı anda en fazla 3 foto yüklensin (tek tek değil)
+    const CONCURRENCY = 3;
+    let next = 0;
+    const worker = async () => {
+      while (next < newItems.length) {
+        const item = newItems[next++];
+        await uploadOne(item);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, newItems.length) }, worker)
+    );
     cancelledRef.current.clear();
   }
 
@@ -353,15 +374,14 @@ export default function IlanEkleScreen() {
               gizliFotograflar={gizliFotograflar}
               pending={pending.map(({ tempId, uri, percent }) => ({ tempId, uri, percent }))}
               renderImage={(_key, i) => (
-                <Image source={{ uri: fotograflarPreview[i] }} style={{ width: '100%', height: '100%' }} />
+                <Image source={{ uri: localPreviews[_key] }} style={{ width: '100%', height: '100%' }} />
               )}
               onReorder={(from, to) => {
                 setFotograflar(prev => { const a = [...prev]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a; });
-                setFotograflarPreview(prev => { const a = [...prev]; const [m] = a.splice(from, 1); a.splice(to, 0, m); return a; });
               }}
               onSilTekli={(key, i) => {
                 setFotograflar(prev => prev.filter((_, j) => j !== i));
-                setFotograflarPreview(prev => prev.filter((_, j) => j !== i));
+                setLocalPreviews(prev => { const n = { ...prev }; delete n[key]; return n; });
                 setGizliFotograflar(prev => prev.filter(k => k !== key));
               }}
               onTopluSil={(keys) => {
@@ -369,7 +389,7 @@ export default function IlanEkleScreen() {
                 const idxs = new Set<number>();
                 fotograflar.forEach((k, i) => { if (setK.has(k)) idxs.add(i); });
                 setFotograflar(prev => prev.filter((_, i) => !idxs.has(i)));
-                setFotograflarPreview(prev => prev.filter((_, i) => !idxs.has(i)));
+                setLocalPreviews(prev => { const n = { ...prev }; keys.forEach(k => delete n[k]); return n; });
                 setGizliFotograflar(prev => prev.filter(k => !setK.has(k)));
               }}
               onGizleToggle={(key) => {
