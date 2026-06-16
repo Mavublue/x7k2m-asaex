@@ -1807,7 +1807,7 @@ export default function MusteriDetayScreen() {
         <Modal visible={true} animationType="slide" transparent onRequestClose={() => { setFilterPage('main'); setActiveIstekIdx(null); setKonumSearch(''); }}>
           <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
             <TouchableOpacity style={styles.modalDimmer} onPress={() => { setFilterPage('main'); setActiveIstekIdx(null); setKonumSearch(''); }} />
-            <View style={styles.modalPanel}>
+            <View style={[styles.modalPanel, { height: '88%' }]}>
               <View style={styles.modalHeader}>
                 <View style={{ flexDirection: 'row', gap: 4 }}>
                   {([['il', 'İl'], ['ilce', 'İlçe'], ['mahalle', 'Mah.']] as ['il'|'ilce'|'mahalle', string][]).map(([p, label]) => {
