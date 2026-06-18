@@ -204,7 +204,7 @@ export default function IlanlarScreen() {
   const [topluKatSayisi, setTopluKatSayisi] = useState<string>('');
   const [topluBulunduguKat, setTopluBulunduguKat] = useState<string>('');
   const [kategoriModal, setKategoriModal] = useState(false);
-  const [topluKategori, setTopluKategori] = useState<string>('');
+  const [topluKategori, setTopluKategori] = useState<Set<string>>(new Set());
 
   type Section = { title: string; showHeader: boolean; data: string[]; key: string };
   let konumSections: Section[] = [];
@@ -520,13 +520,14 @@ export default function IlanlarScreen() {
 
   async function topluKategoriUygula() {
     const ids = Array.from(seciliIds);
-    if (!ids.length || !topluKategori) return;
+    if (!ids.length || !topluKategori.size) return;
+    const kategori = KATEGORILER.filter(k => topluKategori.has(k)).join(', ');
     setTopluIslem(true);
-    await supabase.from('ilanlar').update({ kategori: topluKategori }).in('id', ids);
-    setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, kategori: topluKategori } : i));
+    await supabase.from('ilanlar').update({ kategori }).in('id', ids);
+    setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, kategori } : i));
     setTopluIslem(false);
     setKategoriModal(false);
-    setTopluKategori('');
+    setTopluKategori(new Set());
     secimKapat();
   }
 
@@ -838,7 +839,7 @@ export default function IlanlarScreen() {
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => setDurumModal(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>Durum</Text>
           </TouchableOpacity>
-          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setTopluKategori(''); setKategoriModal(true); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setTopluKategori(new Set()); setKategoriModal(true); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>Kategori</Text>
           </TouchableOpacity>
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setTopluKatSayisi(''); setTopluBulunduguKat(''); setKatModal(true); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
@@ -898,11 +899,12 @@ export default function IlanlarScreen() {
       <Modal visible={kategoriModal} animationType="fade" transparent onRequestClose={() => setKategoriModal(false)}>
         <TouchableOpacity activeOpacity={1} onPress={() => setKategoriModal(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <TouchableOpacity activeOpacity={1} style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 24, width: '100%', maxWidth: 420 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.onSurface, marginBottom: 16 }}>Kategori Değiştir ({seciliIds.size} ilan)</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.onSurface, marginBottom: 4 }}>Kategori Değiştir ({seciliIds.size} ilan)</Text>
+            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 16 }}>Birden fazla seçebilirsin; seçilenler her ilana birlikte uygulanır.</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
               {KATEGORILER.map(k => (
-                <TouchableOpacity key={k} onPress={() => setTopluKategori(topluKategori === k ? '' : k)} style={[styles.chip, topluKategori === k && styles.chipActive]}>
-                  <Text style={[styles.chipText, topluKategori === k && styles.chipTextActive]}>{k}</Text>
+                <TouchableOpacity key={k} onPress={() => setTopluKategori(prev => { const next = new Set(prev); if (next.has(k)) next.delete(k); else next.add(k); return next; })} style={[styles.chip, topluKategori.has(k) && styles.chipActive]}>
+                  <Text style={[styles.chipText, topluKategori.has(k) && styles.chipTextActive]}>{k}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -910,7 +912,7 @@ export default function IlanlarScreen() {
               <TouchableOpacity onPress={() => setKategoriModal(false)} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: Colors.outline, borderRadius: 8 }}>
                 <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, fontWeight: '600' }}>Vazgeç</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={topluKategoriUygula} disabled={!topluKategori || topluIslem} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: Colors.primary, borderRadius: 8, opacity: topluKategori ? 1 : 0.5 }}>
+              <TouchableOpacity onPress={topluKategoriUygula} disabled={!topluKategori.size || topluIslem} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: Colors.primary, borderRadius: 8, opacity: topluKategori.size ? 1 : 0.5 }}>
                 <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>{topluIslem ? 'İşleniyor...' : 'Uygula'}</Text>
               </TouchableOpacity>
             </View>
