@@ -8,7 +8,7 @@ export interface SosyalProfil {
 }
 
 const KATEGORI_EMOJI: Record<string, string> = {
-  Villa: '🏡', Daire: '🏢', Arsa: '🌿', Tarla: '🌾',
+  Villa: '🏡', Daire: '🏢', Dubleks: '🏘️', Tripleks: '🏘️', Arsa: '🌿', Tarla: '🌾',
   'İşyeri': '🏬', 'Müstakil Ev': '🏠', Otel: '🏨',
 };
 

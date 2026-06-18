@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
-const EMLAK_TIPLERI = ['Daire', 'Villa', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
+const EMLAK_TIPLERI = ['Daire', 'Villa', 'Dubleks', 'Tripleks', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
 const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '21-25', '+30'];
 const KAT_SAYILARI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];

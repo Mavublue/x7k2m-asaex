@@ -23,7 +23,7 @@ const ILLER_LISTESI = IL_LISTESI;
 
 const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal'];
 const musteriTipleri = ['Tümü', 'Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
-const kategoriler = ['Tümü', 'Daire', 'Villa', 'Müstakil Ev', 'Arsa', 'İşyeri'];
+const kategoriler = ['Tümü', 'Daire', 'Villa', 'Dubleks', 'Tripleks', 'Müstakil Ev', 'Arsa', 'İşyeri'];
 const satilikKiralik = ['Tümü', 'Satılık', 'Kiralık'];
 
 type Siralama = 'etiket_artan' | 'etiket_azalan' | 'eklenme_yeni' | 'eklenme_eski' | 'guncelleme_yeni' | 'guncelleme_eski';
