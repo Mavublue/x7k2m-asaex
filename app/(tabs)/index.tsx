@@ -75,14 +75,16 @@ export default function DashboardScreen() {
   const [ilanData, setIlanData] = useState<any | null>(null);
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const [aktifFiltre, setAktifFiltre] = useState<string | null>(null);
+  const [sadeceOkunmamis, setSadeceOkunmamis] = useState(false);
+  const [sortAsc, setSortAsc] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const bildirimListRef = useRef<FlatList<any>>(null);
   const takipY = useRef(0);
   const bildirimModalPending = useRef(false);
   const ilkFocus = useRef(true);
 
-  const sirali = useMemo(() => [...bildirimler].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '')), [bildirimler]);
-  const filtreliSirali = useMemo(() => aktifFiltre ? sirali.filter(b => b.tip === aktifFiltre) : sirali, [sirali, aktifFiltre]);
+  const sirali = useMemo(() => [...bildirimler].sort((a, b) => sortAsc ? (a.tarih || '').localeCompare(b.tarih || '') : (b.tarih || '').localeCompare(a.tarih || '')), [bildirimler, sortAsc]);
+  const filtreliSirali = useMemo(() => (aktifFiltre ? sirali.filter(b => b.tip === aktifFiltre) : sirali).filter(b => sadeceOkunmamis ? !b.okundu : true), [sirali, aktifFiltre, sadeceOkunmamis]);
   const filtreSayilar = useMemo(() => {
     const s: Record<string, number> = {};
     FILTRE_SIRA.forEach(t => { s[t] = sirali.filter(b => b.tip === t).length; });
@@ -831,6 +833,12 @@ export default function DashboardScreen() {
                           <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
                         </TouchableOpacity>
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          <TouchableOpacity onPress={() => setSortAsc(s => !s)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{sortAsc ? '↑ Eski' : '↓ Yeni'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => setSadeceOkunmamis(v => !v)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: sadeceOkunmamis ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: sadeceOkunmamis ? '#fff' : Colors.onSurface }}>Okunmamış ({bildirimler.filter(b => !b.okundu).length})</Text>
+                          </TouchableOpacity>
                           <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
                             <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : Colors.onSurface }}>Tümü ({sirali.length})</Text>
                           </TouchableOpacity>
@@ -890,6 +898,12 @@ export default function DashboardScreen() {
                             </TouchableOpacity>
                           </View>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                            <TouchableOpacity onPress={() => setSortAsc(s => !s)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{sortAsc ? '↑ Eski' : '↓ Yeni'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setSadeceOkunmamis(v => !v)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: sadeceOkunmamis ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: sadeceOkunmamis ? '#fff' : Colors.onSurface }}>Okunmamış ({bildirimler.filter(b => !b.okundu).length})</Text>
+                            </TouchableOpacity>
                             <TouchableOpacity onPress={() => setAktifFiltre(null)} style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: aktifFiltre === null ? Colors.primary : Colors.surfaceContainerHigh, borderWidth: 1, borderColor: Colors.outlineVariant }}>
                               <Text style={{ fontSize: 12, fontWeight: '600', color: aktifFiltre === null ? '#fff' : Colors.onSurface }}>Tümü ({sirali.length})</Text>
                             </TouchableOpacity>
