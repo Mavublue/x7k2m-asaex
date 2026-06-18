@@ -48903,9 +48903,16 @@
       {
         "semt": "Özdere",
         "mahalleler": [
-          "Çukuraltı",
           "Orta",
           "Özdere Cumhuriyet"
+        ]
+      },
+      {
+        "semt": "Çukuraltı",
+        "mahalleler": [
+          "Çukuraltı Merkez",
+          "Çukuraltı 14 Evler",
+          "Çukuraltı Havacılar"
         ]
       },
       {
