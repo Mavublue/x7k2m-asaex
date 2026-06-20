@@ -5,7 +5,7 @@ import {
   StyleSheet, Image, ActivityIndicator, Alert,
   FlatList, Dimensions, Linking, Modal, TextInput, Platform, KeyboardAvoidingView, Keyboard, Animated,
 } from 'react-native';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { PanGestureHandler, PinchGestureHandler, TapGestureHandler, State } from 'react-native-gesture-handler';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
@@ -27,12 +27,88 @@ import KolajModal from '../../components/KolajModal';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
 
+function ZoomableImage({ uri, onZoomChange }: { uri: string; onZoomChange: (z: boolean) => void }) {
+  const pinchRef = useRef(null);
+  const panRef = useRef(null);
+  const doubleTapRef = useRef(null);
+
+  const baseScale = useRef(new Animated.Value(1)).current;
+  const pinchScale = useRef(new Animated.Value(1)).current;
+  const scale = Animated.multiply(baseScale, pinchScale);
+  const lastScale = useRef(1);
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const [zoomed, setZoomed] = useState(false);
+
+  const setZoom = (z: boolean) => { setZoomed(z); onZoomChange(z); };
+
+  const reset = () => {
+    lastScale.current = 1;
+    pinchScale.setValue(1);
+    pan.flattenOffset();
+    Animated.parallel([
+      Animated.spring(baseScale, { toValue: 1, useNativeDriver: true }),
+      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
+    ]).start();
+    setZoom(false);
+  };
+
+  const onPinchEvent = Animated.event([{ nativeEvent: { scale: pinchScale } }], { useNativeDriver: true });
+  const onPinchState = (e: any) => {
+    if (e.nativeEvent.state === State.ACTIVE) onZoomChange(true);
+    if (e.nativeEvent.oldState === State.ACTIVE) {
+      lastScale.current *= e.nativeEvent.scale;
+      pinchScale.setValue(1);
+      if (lastScale.current < 1.05) {
+        reset();
+      } else {
+        if (lastScale.current > 4) lastScale.current = 4;
+        baseScale.setValue(lastScale.current);
+        setZoom(true);
+      }
+    }
+  };
+
+  const onPanEvent = Animated.event([{ nativeEvent: { translationX: pan.x, translationY: pan.y } }], { useNativeDriver: true });
+  const onPanState = (e: any) => {
+    if (e.nativeEvent.oldState === State.ACTIVE) pan.extractOffset();
+  };
+
+  const onDoubleTap = (e: any) => {
+    if (e.nativeEvent.state === State.ACTIVE) {
+      if (zoomed) {
+        reset();
+      } else {
+        lastScale.current = 2.5;
+        Animated.spring(baseScale, { toValue: 2.5, useNativeDriver: true }).start();
+        setZoom(true);
+      }
+    }
+  };
+
+  return (
+    <TapGestureHandler ref={doubleTapRef} numberOfTaps={2} onHandlerStateChange={onDoubleTap}>
+      <Animated.View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
+        <PinchGestureHandler ref={pinchRef} simultaneousHandlers={panRef} onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchState}>
+          <Animated.View style={{ flex: 1, width: '100%' }}>
+            <PanGestureHandler ref={panRef} enabled={zoomed} simultaneousHandlers={pinchRef} minPointers={1} maxPointers={2} onGestureEvent={onPanEvent} onHandlerStateChange={onPanState}>
+              <Animated.View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] }}>
+                <R2Image source={uri} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75 }} resizeMode="contain" />
+              </Animated.View>
+            </PanGestureHandler>
+          </Animated.View>
+        </PinchGestureHandler>
+      </Animated.View>
+    </TapGestureHandler>
+  );
+}
+
 function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
   fotos: string[]; initialIdx: number; onClose: () => void;
   listRef: React.RefObject<FlatList<string> | null>;
   thumbRef: React.RefObject<ScrollView | null>;
 }) {
   const [idx, setIdx] = useState(initialIdx);
+  const [zoomed, setZoomed] = useState(false);
   const translateY = useRef(new Animated.Value(0)).current;
   const THUMB_W = 64 + 6;
 
@@ -64,7 +140,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
   return (
     <View style={{ flex: 1 }}>
       <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#000', opacity: bgOpacity }} />
-      <PanGestureHandler onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} activeOffsetY={15} failOffsetX={[-20, 20]}>
+      <PanGestureHandler enabled={!zoomed} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} activeOffsetY={15} failOffsetX={[-20, 20]}>
         <Animated.View style={{ flex: 1, transform: [{ translateY }] }}>
           <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={onClose}>
             <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
@@ -79,13 +155,12 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             initialScrollIndex={initialIdx}
+            scrollEnabled={!zoomed}
             getItemLayout={(_, i) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * i, index: i })}
             keyExtractor={(_, i) => i.toString()}
             onMomentumScrollEnd={e => setIdx(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
             renderItem={({ item }) => (
-              <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
-                <R2Image source={item} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75 }} resizeMode="contain" />
-              </View>
+              <ZoomableImage uri={item} onZoomChange={setZoomed} />
             )}
           />
           <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, height: 72, backgroundColor: 'rgba(0,0,0,0.35)', paddingVertical: 6 }}>
