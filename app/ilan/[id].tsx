@@ -135,12 +135,17 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
     }
   };
 
+  const handleZoom = (z: boolean) => {
+    setZoomed(z);
+    if (z) translateY.setValue(0);
+  };
+
   const bgOpacity = translateY.interpolate({ inputRange: [0, SCREEN_HEIGHT], outputRange: [1, 0], extrapolate: 'clamp' });
 
   return (
     <View style={{ flex: 1 }}>
       <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#000', opacity: bgOpacity }} />
-      <PanGestureHandler enabled={!zoomed} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} activeOffsetY={15} failOffsetX={[-20, 20]}>
+      <PanGestureHandler enabled={!zoomed} maxPointers={1} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} activeOffsetY={15} failOffsetX={[-20, 20]}>
         <Animated.View style={{ flex: 1, transform: [{ translateY }] }}>
           <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={onClose}>
             <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
@@ -160,7 +165,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
             keyExtractor={(_, i) => i.toString()}
             onMomentumScrollEnd={e => setIdx(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
             renderItem={({ item }) => (
-              <ZoomableImage uri={item} onZoomChange={setZoomed} />
+              <ZoomableImage uri={item} onZoomChange={handleZoom} />
             )}
           />
           <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, height: 72, backgroundColor: 'rgba(0,0,0,0.35)', paddingVertical: 6 }}>
