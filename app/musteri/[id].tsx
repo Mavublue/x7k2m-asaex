@@ -289,8 +289,7 @@ export default function MusteriDetayScreen() {
   const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24 | 168>(24);
   const [, setTickNow] = useState(0);
   const [tokenUzatModal, setTokenUzatModal] = useState(false);
-  const [tokenYeniTarih, setTokenYeniTarih] = useState<Date>(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d; });
-  const [tokenUzatPicker, setTokenUzatPicker] = useState<'date' | 'time' | null>(null);
+  const [tokenUzatSaat, setTokenUzatSaat] = useState('24');
 
   const fetchMusteri = useCallback(async () => {
     const { data: rpcData, error: rpcErr } = await supabase.rpc('get_musteri_detay', { mid: id });
@@ -477,7 +476,7 @@ export default function MusteriDetayScreen() {
     if (!aktifToken) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const yeniIso = tokenYeniTarih.toISOString();
+    const yeniIso = new Date(Date.now() + (parseInt(tokenUzatSaat) || 1) * 60 * 60 * 1000).toISOString();
     const { error } = await supabase.from('musteri_tokenler')
       .update({ expires_at: yeniIso })
       .eq('user_id', session.user.id).eq('musteri_id', id);
@@ -1584,9 +1583,7 @@ export default function MusteriDetayScreen() {
                     setTimelinePeriod={setTimelinePeriod}
                     onUzatAc={() => {
                       if (!aktifToken) return;
-                      const def = new Date(aktifToken.expires_at);
-                      if (def.getTime() < Date.now()) { const d = new Date(); d.setDate(d.getDate() + 1); setTokenYeniTarih(d); }
-                      else setTokenYeniTarih(def);
+                      setTokenUzatSaat('24');
                       setTokenUzatModal(true);
                     }}
                     onDoldur={tokenDoldur}
@@ -1939,7 +1936,6 @@ export default function MusteriDetayScreen() {
                         value={linkSaat}
                         onChangeText={v => setLinkSaat(v.replace(/\D/g, ''))}
                         onBlur={() => { if (!linkSaat || linkSaat === '0') setLinkSaat('1'); }}
-                        selectTextOnFocus
                         keyboardType="numeric"
                       />
                       <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>saat</Text>
@@ -1987,35 +1983,26 @@ export default function MusteriDetayScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 16, padding: 22, width: '100%', maxWidth: 360 }}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.onSurface, marginBottom: 14 }}>Süreyi Uzat</Text>
-            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 8 }}>Yeni bitiş tarihi ve saati</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setTokenUzatPicker('date'); }}
-                style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, backgroundColor: Colors.surfaceContainer }}>
-                <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {(() => { const pad = (n: number) => String(n).padStart(2,'0'); const d = tokenYeniTarih; return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; })()}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { Keyboard.dismiss(); setTokenUzatPicker('time'); }}
-                style={{ paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, backgroundColor: Colors.surfaceContainer, minWidth: 100 }}>
-                <Text style={{ fontSize: 13, color: Colors.onSurface }}>⏰ {String(tokenYeniTarih.getHours()).padStart(2,'0')}:{String(tokenYeniTarih.getMinutes()).padStart(2,'0')}</Text>
-              </TouchableOpacity>
+            <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 10 }}>Şu andan itibaren ne kadar süre geçerli olsun?</Text>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              {([1, 24, 72, 168] as const).map(s => (
+                <TouchableOpacity key={s} onPress={() => setTokenUzatSaat(String(s))} style={[styles.saatBtn, tokenUzatSaat === String(s) && styles.saatBtnAktif]}>
+                  <Text style={[styles.saatBtnText, tokenUzatSaat === String(s) && styles.saatBtnTextAktif]}>
+                    {s === 1 ? '1 saat' : s === 24 ? '1 gün' : s === 72 ? '3 gün' : '7 gün'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <TextInput
+                  style={{ width: 50, borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.md, paddingHorizontal: 6, paddingVertical: 4, fontSize: 12, textAlign: 'center', color: Colors.onSurface }}
+                  value={tokenUzatSaat}
+                  onChangeText={v => setTokenUzatSaat(v.replace(/\D/g, ''))}
+                  onBlur={() => { if (!tokenUzatSaat || tokenUzatSaat === '0') setTokenUzatSaat('1'); }}
+                  keyboardType="numeric"
+                />
+                <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>saat</Text>
+              </View>
             </View>
-            {tokenUzatPicker && (
-              <DateTimePicker value={tokenYeniTarih} mode={tokenUzatPicker} is24Hour locale="tr-TR"
-                display={Platform.OS === 'ios' ? (tokenUzatPicker === 'date' ? 'inline' : 'spinner') : tokenUzatPicker === 'date' ? 'calendar' : 'default'}
-                onChange={(_, sel) => {
-                  if (Platform.OS === 'android') { setTokenUzatPicker(null); }
-                  if (sel) {
-                    const merged = new Date(tokenYeniTarih);
-                    if (tokenUzatPicker === 'date') merged.setFullYear(sel.getFullYear(), sel.getMonth(), sel.getDate());
-                    else merged.setHours(sel.getHours(), sel.getMinutes(), 0, 0);
-                    setTokenYeniTarih(merged);
-                  }
-                }} />
-            )}
-            {Platform.OS === 'ios' && tokenUzatPicker && (
-              <TouchableOpacity onPress={() => setTokenUzatPicker(null)} style={{ alignSelf: 'flex-end', paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>Tamam</Text>
-              </TouchableOpacity>
-            )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
               <TouchableOpacity onPress={() => setTokenUzatModal(false)}
                 style={{ flex: 1, padding: 12, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, alignItems: 'center' }}>
