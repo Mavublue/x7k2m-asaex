@@ -277,7 +277,7 @@ export default function MusteriDetayScreen() {
 
   // Paylaşımlar
   type PaylasimGecmisiRow = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
-  type Ziyaret = { paket_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
+  type Ziyaret = { paket_token: string | null; musteri_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
   type Oturum = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
   const [paylasimAcik, setPaylasimAcik] = useState(false);
   const [paylasimYukleniyor, setPaylasimYukleniyor] = useState(false);
@@ -2306,7 +2306,7 @@ function GorevlerBox({
 }
 
 type PaylasimGecmisiItem = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
-type ZiyaretItem = { paket_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
+type ZiyaretItem = { paket_token: string | null; musteri_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
 type OturumItem = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
 
 function PaylasimBox({
@@ -2395,12 +2395,12 @@ function PaylasimBox({
                 <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic' }}>Henüz link oluşturulmadı. Her "Yeni Link" ayrı süreli bağımsız bir bağlantı üretir.</Text>
               ) : paylasilanLinkler.map(link => {
                 const ks = kalanSure(link.expires_at ?? new Date().toISOString());
-                const ilanIdSet = new Set(link.ilan_ids);
                 const byDevice = new Map<string, ZiyaretItem>();
                 ziyaretler.forEach(z => {
+                  // Link bazlı kesin eşleşme: her linkin kendi unique musteri_token'ı.
+                  const matchesToken = !!link.musteri_token && z.musteri_token === link.musteri_token;
                   const matchesPaket = z.paket_token === link.token;
-                  const matchesIlan = z.ilan_id ? ilanIdSet.has(z.ilan_id) : false;
-                  if (!matchesPaket && !matchesIlan) return;
+                  if (!matchesToken && !matchesPaket) return;
                   const existing = byDevice.get(z.device_id);
                   if (!existing) { byDevice.set(z.device_id, { ...z }); }
                   else {
