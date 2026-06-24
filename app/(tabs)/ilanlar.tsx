@@ -437,26 +437,32 @@ export default function IlanlarScreen() {
     const saatSayisi = parseInt(paylasSaat);
     const expiresAt = new Date(Date.now() + saatSayisi * 60 * 60 * 1000).toISOString();
 
-    const { data: mevcutMt } = await supabase.from('musteri_tokenler')
-      .select('token').eq('user_id', session.user.id).eq('musteri_id', paylasMusteri).single();
-    let musteriToken = mevcutMt?.token;
-    if (musteriToken) {
-      await supabase.from('musteri_tokenler').update({ expires_at: expiresAt })
-        .eq('user_id', session.user.id).eq('musteri_id', paylasMusteri);
-    } else {
+    const genel = (paylasMusteriler.find(m => m.id === paylasMusteri)?.ad ?? '').trim().toLowerCase() === 'genel';
+    let musteriToken: string;
+    if (genel) {
+      // Genel: her link bağımsız — kendi unique musteri_token'ı, musteri_tokenler'e dokunma.
       musteriToken = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
-      await supabase.from('musteri_tokenler').insert({ token: musteriToken, user_id: session.user.id, musteri_id: paylasMusteri, expires_at: expiresAt });
+    } else {
+      const { data: mevcutMt } = await supabase.from('musteri_tokenler')
+        .select('token').eq('user_id', session.user.id).eq('musteri_id', paylasMusteri).single();
+      musteriToken = mevcutMt?.token ?? Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
+      if (mevcutMt) {
+        await supabase.from('musteri_tokenler').update({ expires_at: expiresAt })
+          .eq('user_id', session.user.id).eq('musteri_id', paylasMusteri);
+      } else {
+        await supabase.from('musteri_tokenler').insert({ token: musteriToken, user_id: session.user.id, musteri_id: paylasMusteri, expires_at: expiresAt });
+      }
     }
 
     const { error } = await supabase.from('paylasim_paketleri').insert({
-      token, emlakci_id: session.user.id, ilan_ids: ilanIds,
-      baslik: 'Filtrelenmiş İlanlar', expires_at: expiresAt, musteri_token: musteriToken,
+      token, emlakci_id: session.user.id, ilan_ids: ilanIds, musteri_id: paylasMusteri,
+      baslik: genel ? 'Genel Link' : 'Filtrelenmiş İlanlar', expires_at: expiresAt, musteri_token: musteriToken,
     });
     if (error) { Alert.alert('Hata', error.message); setPaylasYukleniyor(false); return; }
     await supabase.from('musteri_paylasim_gecmisi').insert(
       ilanIds.map(ilanId => ({ user_id: session.user.id, musteri_id: paylasMusteri, ilan_id: ilanId }))
     );
-    setPaylasLink(`${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}`);
+    setPaylasLink(genel ? `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}/${musteriToken}` : `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}`);
     setPaylasYukleniyor(false);
   }
 

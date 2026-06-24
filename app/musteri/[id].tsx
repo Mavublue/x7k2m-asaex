@@ -726,16 +726,21 @@ export default function MusteriDetayScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLinkYukleniyor(false); return; }
     const expiresAt = new Date(Date.now() + (parseInt(linkSaat) || 1) * 60 * 60 * 1000).toISOString();
-    const { data: mevcutMt } = await supabase.from('musteri_tokenler').select('token').eq('user_id', session.user.id).eq('musteri_id', id).single();
+    const genel = (musteri?.ad ?? '').trim().toLowerCase() === 'genel';
+    const yeniToken = () => { const arr = new Uint8Array(12); crypto.getRandomValues(arr); return Array.from(arr).map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 16); };
     let musteriToken: string;
-    if (mevcutMt) {
-      musteriToken = mevcutMt.token;
-      await supabase.from('musteri_tokenler').update({ expires_at: expiresAt }).eq('user_id', session.user.id).eq('musteri_id', id);
+    if (genel) {
+      // Genel: her link bağımsız — kendi unique musteri_token'ı, musteri_tokenler'e dokunma.
+      musteriToken = yeniToken();
     } else {
-      const arr = new Uint8Array(12);
-      crypto.getRandomValues(arr);
-      musteriToken = Array.from(arr).map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 16);
-      await supabase.from('musteri_tokenler').insert({ token: musteriToken, user_id: session.user.id, musteri_id: id, expires_at: expiresAt });
+      const { data: mevcutMt } = await supabase.from('musteri_tokenler').select('token').eq('user_id', session.user.id).eq('musteri_id', id).single();
+      if (mevcutMt) {
+        musteriToken = mevcutMt.token;
+        await supabase.from('musteri_tokenler').update({ expires_at: expiresAt }).eq('user_id', session.user.id).eq('musteri_id', id);
+      } else {
+        musteriToken = yeniToken();
+        await supabase.from('musteri_tokenler').insert({ token: musteriToken, user_id: session.user.id, musteri_id: id, expires_at: expiresAt });
+      }
     }
     const trMap: Record<string, string> = { ğ:'g', ü:'u', ş:'s', ı:'i', ö:'o', ç:'c', İ:'i', Ğ:'g', Ü:'u', Ş:'s', Ö:'o', Ç:'c' };
     const adNorm = (musteri?.ad ?? '').toLowerCase().replace(/[ğüşıöçİĞÜŞÖÇ]/g, (c: string) => trMap[c] ?? c).replace(/[^a-z0-9]/g, '').slice(0, 10);
@@ -744,7 +749,7 @@ export default function MusteriDetayScreen() {
     const suffix = Array.from(arr2).map(b => b.toString(36)).join('').slice(0, 4);
     const paketToken = `${adNorm || 'ilan'}-${suffix}`;
     const etiket = linkEtiket.trim() || null;
-    const { error } = await supabase.from('paylasim_paketleri').insert({ token: paketToken, baslik: etiket, ilan_ids: linkSecimIds, emlakci_id: session.user.id, musteri_token: musteriToken, expires_at: expiresAt });
+    const { error } = await supabase.from('paylasim_paketleri').insert({ token: paketToken, baslik: etiket, ilan_ids: linkSecimIds, emlakci_id: session.user.id, musteri_id: id, musteri_token: musteriToken, expires_at: expiresAt });
     if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
     setPaylasilanLinkler(prev => [{ token: paketToken, baslik: etiket, ilan_ids: linkSecimIds, expires_at: expiresAt, olusturma_tarihi: new Date().toISOString(), musteri_token: musteriToken }, ...prev]);
     await supabase.from('musteri_paylasim_gecmisi').insert(
