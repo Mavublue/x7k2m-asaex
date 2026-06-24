@@ -291,7 +291,7 @@ export default function MusteriDetayScreen() {
   const [tokenUzatModal, setTokenUzatModal] = useState(false);
   const [tokenUzatSaat, setTokenUzatSaat] = useState('24');
   const [uzatHedefToken, setUzatHedefToken] = useState<string | null>(null);
-  const [paylasilanLinkler, setPaylasilanLinkler] = useState<{ token: string; baslik: string | null; ilan_ids: string[]; expires_at: string | null; olusturma_tarihi: string; musteri_token: string | null }[]>([]);
+  const [paylasilanLinkler, setPaylasilanLinkler] = useState<{ token: string; baslik: string | null; ilan_ids: string[]; expires_at: string | null; olusturma_tarihi: string; musteri_token: string | null; emlakci_slug?: string | null; tek_ilan_slug?: string | null }[]>([]);
   const [acikLinkler, setAcikLinkler] = useState<string[]>([]);
   const [linkEtiket, setLinkEtiket] = useState('');
 
@@ -2328,7 +2328,7 @@ function PaylasimBox({
   onDoldur: () => void;
   onLinkOlustur: () => void;
   isGenel: boolean;
-  paylasilanLinkler: { token: string; baslik: string | null; ilan_ids: string[]; expires_at: string | null; olusturma_tarihi: string; musteri_token: string | null }[];
+  paylasilanLinkler: { token: string; baslik: string | null; ilan_ids: string[]; expires_at: string | null; olusturma_tarihi: string; musteri_token: string | null; emlakci_slug?: string | null; tek_ilan_slug?: string | null }[];
   acikLinkler: string[];
   setAcikLinkler: (fn: (prev: string[]) => string[]) => void;
   musteriTel: string | null;
@@ -2416,7 +2416,10 @@ function PaylasimBox({
                 const cihazSayisi = linkZiyaretler.length;
                 const canliSayi = linkZiyaretler.filter(z => sonAktifText(z.son_aktif_at).canli).length;
                 const acik2 = acikLinkler.includes(link.token);
-                const url = link.musteri_token ? `https://www.emlak-otomasyon.com/ozel-ilanlar/${link.token}/${link.musteri_token}` : null;
+                const url = !link.musteri_token ? null
+                  : (link.tek_ilan_slug && link.emlakci_slug)
+                    ? `https://www.emlak-otomasyon.com/${link.emlakci_slug}/${link.tek_ilan_slug}?t=${link.musteri_token}`
+                    : `https://www.emlak-otomasyon.com/ozel-ilanlar/${link.token}/${link.musteri_token}`;
                 const waTel = (musteriTel ?? '').replace(/\D/g, '').replace(/^0/, '');
                 return (
                   <View key={link.token} style={{ borderWidth: 1, borderColor: ks.dolmus ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderRadius: Radius.md, padding: 12, backgroundColor: ks.dolmus ? 'rgba(239,68,68,0.05)' : Colors.surfaceContainerLow }}>
