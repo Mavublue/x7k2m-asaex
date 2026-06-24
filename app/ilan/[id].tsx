@@ -224,6 +224,7 @@ export default function IlanDetayScreen() {
   const [linkMusteriAra, setLinkMusteriAra] = useState('');
   const [linkEtiketAra, setLinkEtiketAra] = useState('');
   const [linkSeciliMusteri, setLinkSeciliMusteri] = useState<string>('');
+  const [linkEtiket, setLinkEtiket] = useState('');
   const flatListRef = useRef<any>(null);
   const thumbScrollRef = useRef<ScrollView>(null);
   const [fullscreenIdx, setFullscreenIdx] = useState<number | null>(null);
@@ -468,6 +469,7 @@ export default function IlanDetayScreen() {
     setLinkSeciliMusteri(presetMusteriId ?? '');
     setLinkMusteriAra('');
     setLinkEtiketAra('');
+    setLinkEtiket('');
     setLinkUrl(null);
     setLinkSaat('24');
     const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').eq('durum', 'Aktif').order('ad');
@@ -499,29 +501,42 @@ export default function IlanDetayScreen() {
 
     const expiresAt = new Date(Date.now() + saatSayisi * 60 * 60 * 1000).toISOString();
     let token: string;
+    const genel = (linkMusteriler.find((m: any) => m.id === linkSeciliMusteri)?.ad ?? '').trim().toLowerCase() === 'genel';
 
-    const { data: mevcutToken } = await supabase
-      .from('musteri_tokenler')
-      .select('token')
-      .eq('user_id', session.user.id)
-      .eq('musteri_id', linkSeciliMusteri)
-      .single();
-
-    if (mevcutToken) {
-      token = mevcutToken.token;
-      await supabase.from('musteri_tokenler')
-        .update({ expires_at: expiresAt })
-        .eq('user_id', session.user.id)
-        .eq('musteri_id', linkSeciliMusteri);
-    } else {
+    if (genel) {
+      // Genel: tek-ilan paylaşımı da bağımsız bir paket olsun ki Paylaşımlar
+      // listesinde ayrı satır + süre uzat/iptal + cihaz takibi olsun.
       token = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
-      const { error } = await supabase.from('musteri_tokenler').insert({
-        token,
-        user_id: session.user.id,
-        musteri_id: linkSeciliMusteri,
-        expires_at: expiresAt,
+      const paketToken = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
+      const { error } = await supabase.from('paylasim_paketleri').insert({
+        token: paketToken, baslik: linkEtiket.trim() || null, ilan_ids: [id],
+        emlakci_id: session.user.id, musteri_id: linkSeciliMusteri, musteri_token: token, expires_at: expiresAt,
       });
       if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    } else {
+      const { data: mevcutToken } = await supabase
+        .from('musteri_tokenler')
+        .select('token')
+        .eq('user_id', session.user.id)
+        .eq('musteri_id', linkSeciliMusteri)
+        .single();
+
+      if (mevcutToken) {
+        token = mevcutToken.token;
+        await supabase.from('musteri_tokenler')
+          .update({ expires_at: expiresAt })
+          .eq('user_id', session.user.id)
+          .eq('musteri_id', linkSeciliMusteri);
+      } else {
+        token = Array.from({ length: 16 }, () => Math.random().toString(36)[2]).join('');
+        const { error } = await supabase.from('musteri_tokenler').insert({
+          token,
+          user_id: session.user.id,
+          musteri_id: linkSeciliMusteri,
+          expires_at: expiresAt,
+        });
+        if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+      }
     }
 
     await supabase.from('musteri_paylasim_gecmisi').insert({
@@ -1064,6 +1079,16 @@ export default function IlanDetayScreen() {
                     </Text>
                   ) : <View style={{ marginBottom: 12 }} />}
 
+                  {(linkMusteriler.find(m => m.id === linkSeciliMusteri)?.ad ?? '').trim().toLowerCase() === 'genel' && (
+                    <TextInput
+                      value={linkEtiket}
+                      onChangeText={setLinkEtiket}
+                      placeholder="Etiket (kime gönderiliyor? — opsiyonel)"
+                      placeholderTextColor={Colors.outline}
+                      style={{ borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.onSurface, marginBottom: 16 }}
+                    />
+                  )}
+
                   {/* Süre */}
                   <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 8 }}>Ne kadar aktif olsun?</Text>
                   <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -1124,7 +1149,7 @@ export default function IlanDetayScreen() {
                       </TouchableOpacity>
                     );
                   })()}
-                  <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); setLinkSeciliMusteri(''); setLinkMusteriAra(''); setLinkEtiketAra(''); }} style={{
+                  <TouchableOpacity onPress={() => { setLinkUrl(null); setLinkSaat('24'); setLinkSeciliMusteri(''); setLinkMusteriAra(''); setLinkEtiketAra(''); setLinkEtiket(''); }} style={{
                     borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 8, padding: 12, alignItems: 'center',
                   }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>Yeni Link Oluştur</Text>
