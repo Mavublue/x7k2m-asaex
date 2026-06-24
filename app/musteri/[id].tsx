@@ -290,6 +290,10 @@ export default function MusteriDetayScreen() {
   const [, setTickNow] = useState(0);
   const [tokenUzatModal, setTokenUzatModal] = useState(false);
   const [tokenUzatSaat, setTokenUzatSaat] = useState('24');
+  const [uzatHedefToken, setUzatHedefToken] = useState<string | null>(null);
+  const [paylasilanLinkler, setPaylasilanLinkler] = useState<{ token: string; baslik: string | null; ilan_ids: string[]; expires_at: string | null; olusturma_tarihi: string; musteri_token: string | null }[]>([]);
+  const [acikLinkler, setAcikLinkler] = useState<string[]>([]);
+  const [linkEtiket, setLinkEtiket] = useState('');
 
   const fetchMusteri = useCallback(async () => {
     const { data: rpcData, error: rpcErr } = await supabase.rpc('get_musteri_detay', { mid: id });
@@ -436,7 +440,7 @@ export default function MusteriDetayScreen() {
     if (!silent) setPaylasimYukleniyor(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { if (!silent) setPaylasimYukleniyor(false); return; }
-    const [tokenRes, gecmisRes, ziyaretRes, oturumRes] = await Promise.all([
+    const [tokenRes, gecmisRes, ziyaretRes, oturumRes, linklerRes] = await Promise.all([
       supabase.from('musteri_tokenler').select('token, expires_at').eq('user_id', session.user.id).eq('musteri_id', id).maybeSingle(),
       supabase.from('musteri_paylasim_gecmisi')
         .select('paylasildigi_tarih, paket_token, ilanlar(id, baslik, fiyat, fotograflar, portfoy_no, durum)')
@@ -444,8 +448,10 @@ export default function MusteriDetayScreen() {
         .order('paylasildigi_tarih', { ascending: false }),
       supabase.rpc('get_musteri_ziyaretleri', { p_musteri_id: id }),
       supabase.rpc('get_musteri_oturumlari', { p_musteri_id: id }),
+      supabase.rpc('get_musteri_linkleri', { p_musteri_id: id }),
     ]);
     setAktifToken(tokenRes.data ? { token: tokenRes.data.token, expires_at: tokenRes.data.expires_at } : null);
+    setPaylasilanLinkler((linklerRes.data ?? []) as any);
     setPaylasimGecmisi((gecmisRes.data ?? []) as any);
     setZiyaretler((ziyaretRes.data ?? []) as any);
     const oturumData = (oturumRes.data ?? []) as { ilan_id: string | null }[];
@@ -472,11 +478,28 @@ export default function MusteriDetayScreen() {
     return () => { clearInterval(tick); clearInterval(refresh); };
   }, [paylasimAcik, fetchPaylasim]);
 
+  function tokenUzatAc(hedefToken?: string) {
+    setUzatHedefToken(hedefToken ?? null);
+    setTokenUzatSaat('24');
+    setTokenUzatModal(true);
+  }
+
   async function tokenUzatKaydet() {
-    if (!aktifToken) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const yeniIso = new Date(Date.now() + (parseInt(tokenUzatSaat) || 1) * 60 * 60 * 1000).toISOString();
+    // Tek bir linkin süresi uzatılıyorsa sadece o paketi güncelle, diğerlerine dokunma.
+    if (uzatHedefToken) {
+      const { error } = await supabase.from('paylasim_paketleri')
+        .update({ expires_at: yeniIso })
+        .eq('emlakci_id', session.user.id).eq('token', uzatHedefToken);
+      if (error) { Alert.alert('Hata', error.message); return; }
+      setPaylasilanLinkler(prev => prev.map(l => l.token === uzatHedefToken ? { ...l, expires_at: yeniIso } : l));
+      setTokenUzatModal(false);
+      setUzatHedefToken(null);
+      return;
+    }
+    if (!aktifToken) return;
     const { error } = await supabase.from('musteri_tokenler')
       .update({ expires_at: yeniIso })
       .eq('user_id', session.user.id).eq('musteri_id', id);
@@ -485,7 +508,24 @@ export default function MusteriDetayScreen() {
       .update({ expires_at: yeniIso })
       .eq('emlakci_id', session.user.id).eq('musteri_token', aktifToken.token);
     setAktifToken({ ...aktifToken, expires_at: yeniIso });
+    setPaylasilanLinkler(prev => prev.map(l => l.musteri_token === aktifToken.token ? { ...l, expires_at: yeniIso } : l));
     setTokenUzatModal(false);
+  }
+
+  function linkIptal(linkToken: string) {
+    Alert.alert('Linki İptal Et', 'Bu linkin süresi hemen doldurulsun mu? Açan kişi artık göremez.', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'İptal Et', style: 'destructive', onPress: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const nowIso = new Date().toISOString();
+        const { error } = await supabase.from('paylasim_paketleri')
+          .update({ expires_at: nowIso })
+          .eq('emlakci_id', session.user.id).eq('token', linkToken);
+        if (error) { Alert.alert('Hata', error.message); return; }
+        setPaylasilanLinkler(prev => prev.map(l => l.token === linkToken ? { ...l, expires_at: nowIso } : l));
+      }},
+    ]);
   }
 
   function tokenDoldur() {
@@ -665,6 +705,7 @@ export default function MusteriDetayScreen() {
     setLinkModal(true);
     setLinkUrl(null);
     setLinkSecimIds([]);
+    setLinkEtiket('');
     setLinkSearch('');
     setLinkPortfoySearch('');
     if (linkTumIlanlar.length === 0) {
@@ -702,10 +743,12 @@ export default function MusteriDetayScreen() {
     crypto.getRandomValues(arr2);
     const suffix = Array.from(arr2).map(b => b.toString(36)).join('').slice(0, 4);
     const paketToken = `${adNorm || 'ilan'}-${suffix}`;
-    const { error } = await supabase.from('paylasim_paketleri').insert({ token: paketToken, ilan_ids: linkSecimIds, emlakci_id: session.user.id, musteri_token: musteriToken, expires_at: expiresAt });
+    const etiket = linkEtiket.trim() || null;
+    const { error } = await supabase.from('paylasim_paketleri').insert({ token: paketToken, baslik: etiket, ilan_ids: linkSecimIds, emlakci_id: session.user.id, musteri_token: musteriToken, expires_at: expiresAt });
     if (error) { Alert.alert('Hata', error.message); setLinkYukleniyor(false); return; }
+    setPaylasilanLinkler(prev => [{ token: paketToken, baslik: etiket, ilan_ids: linkSecimIds, expires_at: expiresAt, olusturma_tarihi: new Date().toISOString(), musteri_token: musteriToken }, ...prev]);
     await supabase.from('musteri_paylasim_gecmisi').insert(
-      linkSecimIds.map(ilanId => ({ user_id: session.user.id, musteri_id: id, ilan_id: ilanId }))
+      linkSecimIds.map(ilanId => ({ user_id: session.user.id, musteri_id: id, ilan_id: ilanId, paket_token: linkSecimIds.length > 1 ? paketToken : null }))
     );
     const url = `https://www.emlak-otomasyon.com/ozel-ilanlar/${paketToken}/${musteriToken}`;
     setLinkUrl(url);
@@ -883,6 +926,7 @@ export default function MusteriDetayScreen() {
   }
 
   const initials = `${ad[0] ?? '?'}${soyad[0] ?? ''}`.toUpperCase();
+  const isGenel = (musteri?.ad ?? '').trim().toLowerCase() === 'genel';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -1581,11 +1625,14 @@ export default function MusteriDetayScreen() {
                     oturumlari={oturumlari}
                     timelinePeriod={timelinePeriod}
                     setTimelinePeriod={setTimelinePeriod}
-                    onUzatAc={() => {
-                      if (!aktifToken) return;
-                      setTokenUzatSaat('24');
-                      setTokenUzatModal(true);
-                    }}
+                    isGenel={isGenel}
+                    paylasilanLinkler={paylasilanLinkler}
+                    acikLinkler={acikLinkler}
+                    setAcikLinkler={setAcikLinkler}
+                    musteriTel={musteri?.telefon ?? null}
+                    onLinkUzat={tokenUzatAc}
+                    onLinkIptal={linkIptal}
+                    onUzatAc={() => tokenUzatAc()}
                     onDoldur={tokenDoldur}
                     onLinkOlustur={handleLinkModalAc}
                   />
@@ -1941,6 +1988,15 @@ export default function MusteriDetayScreen() {
                       <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>saat</Text>
                     </View>
                   </View>
+                  {isGenel && (
+                    <TextInput
+                      style={{ borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.onSurface, marginBottom: 10 }}
+                      value={linkEtiket}
+                      onChangeText={setLinkEtiket}
+                      placeholder="Etiket (kime gönderiliyor? — opsiyonel)"
+                      placeholderTextColor={Colors.outline}
+                    />
+                  )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant }}>{linkSecimIds.length > 0 ? `${linkSecimIds.length} ilan seçildi` : 'İlan seçin'}</Text>
                     <TouchableOpacity onPress={handleLinkOlustur} disabled={linkSecimIds.length === 0 || linkYukleniyor}
@@ -2251,6 +2307,7 @@ type OturumItem = { paket_token: string | null; ilan_id: string | null; device_i
 function PaylasimBox({
   acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, oturumlari,
   timelinePeriod, setTimelinePeriod, onUzatAc, onDoldur, onLinkOlustur,
+  isGenel, paylasilanLinkler, acikLinkler, setAcikLinkler, musteriTel, onLinkUzat, onLinkIptal,
 }: {
   acik: boolean;
   setAcik: (v: boolean) => void;
@@ -2265,6 +2322,13 @@ function PaylasimBox({
   onUzatAc: () => void;
   onDoldur: () => void;
   onLinkOlustur: () => void;
+  isGenel: boolean;
+  paylasilanLinkler: { token: string; baslik: string | null; ilan_ids: string[]; expires_at: string | null; olusturma_tarihi: string; musteri_token: string | null }[];
+  acikLinkler: string[];
+  setAcikLinkler: (fn: (prev: string[]) => string[]) => void;
+  musteriTel: string | null;
+  onLinkUzat: (token: string) => void;
+  onLinkIptal: (token: string) => void;
 }) {
   return (
     <View style={paylasimStyles.box}>
@@ -2277,8 +2341,8 @@ function PaylasimBox({
         <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
       ) : (
         <View style={{ gap: 12 }}>
-          {/* Aktif Token */}
-          {aktifToken ? (() => {
+          {/* Aktif Token (Genel müşteride gizli — onun yerine link listesi) */}
+          {!isGenel && (aktifToken ? (() => {
             const ks = kalanSure(aktifToken.expires_at);
             return (
               <View style={[paylasimStyles.tokenKart, { borderColor: ks.dolmus ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)', backgroundColor: ks.dolmus ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)' }]}>
@@ -2310,6 +2374,101 @@ function PaylasimBox({
                   <Text style={paylasimStyles.tokenBtnPrimaryText}>Link Oluştur</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          ))}
+
+          {/* Paylaşılan Linkler (sadece "Genel" müşteride) */}
+          {isGenel && (
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={paylasimStyles.bolumBaslik}>🔗 Paylaşılan Linkler{paylasilanLinkler.length > 0 ? ` (${paylasilanLinkler.length})` : ''}</Text>
+                <TouchableOpacity onPress={onLinkOlustur} style={[paylasimStyles.tokenBtnPrimary, { paddingVertical: 6, paddingHorizontal: 12 }]}>
+                  <Text style={paylasimStyles.tokenBtnPrimaryText}>+ Yeni Link</Text>
+                </TouchableOpacity>
+              </View>
+              {paylasilanLinkler.length === 0 ? (
+                <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic' }}>Henüz link oluşturulmadı. Her "Yeni Link" ayrı süreli bağımsız bir bağlantı üretir.</Text>
+              ) : paylasilanLinkler.map(link => {
+                const ks = kalanSure(link.expires_at ?? new Date().toISOString());
+                const ilanIdSet = new Set(link.ilan_ids);
+                const byDevice = new Map<string, ZiyaretItem>();
+                ziyaretler.forEach(z => {
+                  const matchesPaket = z.paket_token === link.token;
+                  const matchesIlan = z.ilan_id ? ilanIdSet.has(z.ilan_id) : false;
+                  if (!matchesPaket && !matchesIlan) return;
+                  const existing = byDevice.get(z.device_id);
+                  if (!existing) { byDevice.set(z.device_id, { ...z }); }
+                  else {
+                    existing.toplam_sure_sn += z.toplam_sure_sn;
+                    existing.acilis_sayisi = Math.max(existing.acilis_sayisi, z.acilis_sayisi);
+                    if (new Date(z.son_aktif_at).getTime() > new Date(existing.son_aktif_at).getTime()) {
+                      existing.son_aktif_at = z.son_aktif_at;
+                      existing.user_agent = z.user_agent;
+                    }
+                  }
+                });
+                const linkZiyaretler = Array.from(byDevice.values());
+                const cihazSayisi = linkZiyaretler.length;
+                const canliSayi = linkZiyaretler.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+                const acik2 = acikLinkler.includes(link.token);
+                const url = link.musteri_token ? `https://www.emlak-otomasyon.com/ozel-ilanlar/${link.token}/${link.musteri_token}` : null;
+                const waTel = (musteriTel ?? '').replace(/\D/g, '').replace(/^0/, '');
+                return (
+                  <View key={link.token} style={{ borderWidth: 1, borderColor: ks.dolmus ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderRadius: Radius.md, padding: 12, backgroundColor: ks.dolmus ? 'rgba(239,68,68,0.05)' : Colors.surfaceContainerLow }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface, marginBottom: 2 }} numberOfLines={1}>
+                          {link.baslik || 'Etiketsiz'}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>{paylasimTarihKisa(link.olusturma_tarihi)} · {link.ilan_ids.length} ilan</Text>
+                      </View>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: ks.dolmus ? '#fca5a5' : '#86efac' }}>{ks.dolmus ? '⌛ Doldu' : `🟢 ${ks.text}`}</Text>
+                    </View>
+                    {cihazSayisi > 0 ? (
+                      <TouchableOpacity onPress={() => setAcikLinkler(prev => prev.includes(link.token) ? prev.filter(t => t !== link.token) : [...prev, link.token])}
+                        style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(14,165,233,0.15)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#7dd3fc' }}>👁️ {cihazSayisi} cihaz{canliSayi > 0 ? ` · 🟢 ${canliSayi}` : ''} {acik2 ? '▲' : '▼'}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={{ fontSize: 11, color: Colors.outline, marginBottom: 8 }}>Henüz açılmadı</Text>
+                    )}
+                    {acik2 && cihazSayisi > 0 && (
+                      <View style={{ gap: 4, marginBottom: 8, padding: 8, backgroundColor: Colors.surface, borderRadius: 6 }}>
+                        {linkZiyaretler.map(z => {
+                          const sa = sonAktifText(z.son_aktif_at);
+                          return (
+                            <Text key={z.device_id} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>
+                              <Text style={{ fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
+                              {'  '}<Text style={{ color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
+                              {`  · Toplam ${formatSure(z.toplam_sure_sn)}`}{z.acilis_sayisi > 1 ? ` · ${z.acilis_sayisi} oturum` : ''}
+                            </Text>
+                          );
+                        })}
+                      </View>
+                    )}
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                      {url && !ks.dolmus && (
+                        <TouchableOpacity onPress={() => Share.share({ message: url })} style={paylasimStyles.linkMiniBtn}>
+                          <Text style={paylasimStyles.linkMiniBtnText}>Paylaş</Text>
+                        </TouchableOpacity>
+                      )}
+                      {url && !ks.dolmus && waTel ? (
+                        <TouchableOpacity onPress={() => Linking.openURL(`whatsapp://send?phone=${waTel}&text=${encodeURIComponent(url)}`).catch(() => Linking.openURL(`https://wa.me/${waTel}?text=${encodeURIComponent(url)}`))} style={[paylasimStyles.linkMiniBtn, { backgroundColor: '#25D366' }]}>
+                          <Text style={[paylasimStyles.linkMiniBtnText, { color: '#fff' }]}>WhatsApp</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      <TouchableOpacity onPress={() => onLinkUzat(link.token)} style={paylasimStyles.linkMiniBtn}>
+                        <Text style={[paylasimStyles.linkMiniBtnText, { color: '#7dd3fc' }]}>Uzat</Text>
+                      </TouchableOpacity>
+                      {!ks.dolmus && (
+                        <TouchableOpacity onPress={() => onLinkIptal(link.token)} style={[paylasimStyles.linkMiniBtn, { borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)' }]}>
+                          <Text style={[paylasimStyles.linkMiniBtnText, { color: '#fca5a5' }]}>İptal Et</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -2705,6 +2864,8 @@ const paylasimStyles = StyleSheet.create({
   tokenBtnPrimaryText: { fontSize: 12, color: '#fff', fontWeight: '700' },
   tokenBtnDanger: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.1)' },
   tokenBtnDangerText: { fontSize: 12, color: '#fca5a5', fontWeight: '700' },
+  linkMiniBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: Colors.surfaceContainerHigh },
+  linkMiniBtnText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
   timelineKart: { backgroundColor: Colors.surfaceContainerLowest, borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: 10, padding: 10 },
   periodGroup: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerHigh, padding: 3, borderRadius: 7, gap: 2 },
   periodChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 },
