@@ -1320,7 +1320,7 @@ export default function MusteriDetayScreen() {
                           <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                         </TouchableOpacity>
                       </View>
-                      <Text style={styles.notIcerik}>{n.icerik}</Text>
+                      <Text selectable style={styles.notIcerik}>{n.icerik}</Text>
                     </View>
                   ))
                 )}
@@ -1591,7 +1591,7 @@ export default function MusteriDetayScreen() {
                               <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                             </TouchableOpacity>
                           </View>
-                          <Text style={styles.notIcerik}>{n.icerik}</Text>
+                          <Text selectable style={styles.notIcerik}>{n.icerik}</Text>
                         </View>
                       ))
                     )}
