@@ -602,7 +602,7 @@ export default function MusteriEkleScreen() {
             {notForm && (
               <View style={styles.notForm}>
                 <TextInput
-                  style={[styles.notInput, { minHeight: 60 }]}
+                  style={[styles.notInput, { minHeight: 140 }]}
                   placeholder="Not içeriği..."
                   placeholderTextColor={Colors.outlineVariant}
                   value={notIcerik}
