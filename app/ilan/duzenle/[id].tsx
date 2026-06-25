@@ -439,6 +439,16 @@ export default function IlanDuzenleScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
+          <FormGroup label="İlan Durumu">
+            <View style={styles.chipRow}>
+              {['Aktif', 'İptal'].map(d => (
+                <TouchableOpacity key={d} style={[styles.chip, durum === d && styles.chipActive]} onPress={() => setDurum(d)}>
+                  <Text style={[styles.chipText, durum === d && styles.chipTextActive]}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </FormGroup>
+
           {/* Fotoğraflar */}
           <FormGroup label="Fotoğraflar">
             <FotoGridSortable
@@ -482,16 +492,6 @@ export default function IlanDuzenleScreen() {
 
           <FormGroup label="İlan Başlığı *">
             <TextInput style={[styles.input, submitted && !baslik && styles.inputErr]} value={baslik} onChangeText={setBaslik} placeholderTextColor={Colors.outlineVariant} />
-          </FormGroup>
-
-          <FormGroup label="İlan Durumu">
-            <View style={styles.chipRow}>
-              {['Aktif', 'İptal'].map(d => (
-                <TouchableOpacity key={d} style={[styles.chip, durum === d && styles.chipActive]} onPress={() => setDurum(d)}>
-                  <Text style={[styles.chipText, durum === d && styles.chipTextActive]}>{d}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </FormGroup>
 
           {/* Müşteriye Gizle */}
