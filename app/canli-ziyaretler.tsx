@@ -16,6 +16,7 @@ type CanliRow = {
   acilis_sayisi: number;
   user_agent: string | null;
   paket_token: string | null;
+  musteri_token: string | null;
   ilan_id: string | null;
   musteri_id: string;
   musteri_ad: string | null;
@@ -34,6 +35,7 @@ type OturumRow = {
   son_aktif_at: string;
   user_agent: string | null;
   paket_token: string | null;
+  musteri_token: string | null;
   ilan_id: string | null;
   musteri_id: string;
   musteri_ad: string | null;
@@ -99,6 +101,14 @@ function cihazAdi(ua: string | null): string {
   return br ? `${os} · ${br}` : os;
 }
 
+function isGenelAd(ad: string | null): boolean {
+  return (ad ?? '').trim().toLocaleLowerCase('tr') === 'genel';
+}
+// "Genel" müşteride her link (musteri_token) ayrı grup; diğer müşteriler musteri_id ile tek grup.
+function groupKeyFor(r: { musteri_id: string; musteri_ad: string | null; musteri_token: string | null }): string {
+  return isGenelAd(r.musteri_ad) ? `g:${r.musteri_token ?? ''}` : r.musteri_id;
+}
+
 const PERIODS = [
   { h: 1, label: '1 sa' },
   { h: 6, label: '6 sa' },
@@ -148,13 +158,13 @@ export default function CanliZiyaretlerScreen() {
   }, [fetchData, timelinePeriod]);
 
   const canliRowsAll = rows.filter(r => sonAktifText(r.son_aktif_at).canli);
-  const canliRows = selectedMusteriId ? canliRowsAll.filter(r => r.musteri_id === selectedMusteriId) : canliRowsAll;
+  const canliRows = selectedMusteriId ? canliRowsAll.filter(r => groupKeyFor(r) === selectedMusteriId) : canliRowsAll;
   const benzersizCihaz = new Set(canliRows.map(r => r.device_id)).size;
-  const benzersizMusteri = new Set(canliRows.map(r => r.musteri_id)).size;
+  const benzersizMusteri = new Set(canliRows.map(r => groupKeyFor(r))).size;
 
   type PortfoyOzet = { key: string; isPaket: boolean; baslik: string; portfoy_no: string | null; fotograf: string | null; ilanId: string | null; ziyaretSayisi: number; toplamSn: number; sonAktifMs: number };
   type CihazOzet = { device_id: string; ua: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number };
-  type MusteriOzet = { id: string; ad: string; etiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number; canli: boolean; portfoyler: PortfoyOzet[]; cihazlar: CihazOzet[] };
+  type MusteriOzet = { key: string; musteriId: string; ad: string; etiket: string | null; linkEtiket: string | null; oturumSayisi: number; toplamSn: number; sonAktifMs: number; canli: boolean; portfoyler: PortfoyOzet[]; cihazlar: CihazOzet[] };
   const musteriOzet: MusteriOzet[] = (() => {
     const map = new Map<string, MusteriOzet & { _portMap: Map<string, PortfoyOzet>; _cihazMap: Map<string, CihazOzet> }>();
     for (const o of oturumlari) {
@@ -165,10 +175,11 @@ export default function CanliZiyaretlerScreen() {
       const portKey = o.paket_token ? `paket:${o.paket_token}` : `ilan:${o.ilan_id}`;
       const portBaslik = o.paket_token ? (o.paket_baslik || 'Liste') : (o.ilan_baslik || 'İlan');
       const canli = sonAktifText(o.son_aktif_at).canli;
-      let cur = map.get(o.musteri_id);
+      const gkey = groupKeyFor(o);
+      let cur = map.get(gkey);
       if (!cur) {
-        cur = { id: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, oturumSayisi: 0, toplamSn: 0, sonAktifMs: 0, canli: false, portfoyler: [], cihazlar: [], _portMap: new Map(), _cihazMap: new Map() };
-        map.set(o.musteri_id, cur);
+        cur = { key: gkey, musteriId: o.musteri_id, ad: adSoyad, etiket: o.musteri_etiket, linkEtiket: isGenelAd(o.musteri_ad) ? (o.paket_baslik || null) : null, oturumSayisi: 0, toplamSn: 0, sonAktifMs: 0, canli: false, portfoyler: [], cihazlar: [], _portMap: new Map(), _cihazMap: new Map() };
+        map.set(gkey, cur);
       }
       cur.oturumSayisi++;
       cur.toplamSn += sn;
@@ -229,17 +240,24 @@ export default function CanliZiyaretlerScreen() {
             const aktifSureSn = aktifOturum
               ? Math.max(1, Math.floor((Date.now() - new Date(aktifOturum.baslama_at).getTime()) / 1000))
               : null;
+            const gkey = groupKeyFor(r);
+            const linkEtiket = isGenelAd(r.musteri_ad) ? r.paket_baslik : null;
             return (
               <TouchableOpacity
                 key={`${r.device_id}-${r.musteri_id}-${r.ilan_id ?? r.paket_token}`}
-                style={[styles.kart, selectedMusteriId === r.musteri_id && { borderColor: colorFor(r.musteri_id), borderWidth: 2 }]}
-                onPress={() => setSelectedMusteriId(selectedMusteriId === r.musteri_id ? null : r.musteri_id)}
+                style={[styles.kart, selectedMusteriId === gkey && { borderColor: colorFor(gkey), borderWidth: 2 }]}
+                onPress={() => setSelectedMusteriId(selectedMusteriId === gkey ? null : gkey)}
               >
                 <View style={styles.kartHeader}>
                   <View style={styles.canliDot} />
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <Text style={styles.musteriAd}>{adSoyad}</Text>
+                      {linkEtiket ? (
+                        <View style={styles.chipAmber}>
+                          <Text style={styles.chipAmberText} numberOfLines={1}>🏷️ {linkEtiket}</Text>
+                        </View>
+                      ) : null}
                       {r.musteri_etiket ? (
                         <View style={styles.chipEtiket}>
                           <Text style={styles.chipEtiketText} numberOfLines={1}>{r.musteri_etiket}</Text>
@@ -328,11 +346,11 @@ export default function CanliZiyaretlerScreen() {
               )}
             </View>
             {musteriOzet.map(m => {
-              const c = colorFor(m.id);
-              const active = selectedMusteriId === m.id;
+              const c = colorFor(m.key);
+              const active = selectedMusteriId === m.key;
               const dim = !!selectedMusteriId && !active;
               return (
-                <TouchableOpacity key={m.id} onPress={() => setSelectedMusteriId(active ? null : m.id)} style={{
+                <TouchableOpacity key={m.key} onPress={() => setSelectedMusteriId(active ? null : m.key)} style={{
                   backgroundColor: Colors.surfaceContainerLow, borderWidth: 1.5,
                   borderColor: active ? c : Colors.outlineVariant, borderRadius: 10, padding: 10, opacity: dim ? 0.45 : 1, marginBottom: 8,
                 }}>
@@ -340,6 +358,9 @@ export default function CanliZiyaretlerScreen() {
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c }} />
                     {m.canli ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' }} /> : null}
                     <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.onSurface }}>{m.ad}</Text>
+                    {m.linkEtiket ? (
+                      <View style={styles.chipAmber}><Text style={styles.chipAmberText} numberOfLines={1}>🏷️ {m.linkEtiket}</Text></View>
+                    ) : null}
                     {m.etiket ? (
                       <View style={styles.chipEtiket}><Text style={styles.chipEtiketText} numberOfLines={1}>{m.etiket}</Text></View>
                     ) : null}
@@ -409,7 +430,7 @@ function ZamanTuneli({ oturumlari, timelinePeriod, selectedMusteriId }: {
   const nowMs = Date.now();
   const filterStart = nowMs - timelinePeriod * 3600 * 1000;
   const sortedAll = [...oturumlari]
-    .filter(s => selectedMusteriId ? s.musteri_id === selectedMusteriId : true)
+    .filter(s => selectedMusteriId ? groupKeyFor(s) === selectedMusteriId : true)
     .sort((a, b) => new Date(a.baslama_at).getTime() - new Date(b.baslama_at).getTime());
   const sorted = sortedAll.filter(s => new Date(s.son_aktif_at).getTime() >= filterStart && new Date(s.baslama_at).getTime() <= nowMs);
 
@@ -497,7 +518,7 @@ function ZamanTuneli({ oturumlari, timelinePeriod, selectedMusteriId }: {
               const cardTop = lane * (CARD_H + 4);
               const cardBottom = cardTop + CARD_H;
               const barTop = cardAreaH + CONNECTOR_H;
-              const color = colorFor(s.musteri_id);
+              const color = colorFor(groupKeyFor(s));
               const cardLeftPx = Math.min(leftPx, chartW - CARD_W);
               return (
                 <Fragment key={idx}>
@@ -522,6 +543,7 @@ function ZamanTuneli({ oturumlari, timelinePeriod, selectedMusteriId }: {
                         {sa.canli ? '🟢 ' : ''}{adSoyad} · {formatSure(sureSn)}
                       </Text>
                       <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>{ilanLabel}</Text>
+                      {isGenelAd(s.musteri_ad) && s.paket_baslik ? <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color: '#fcd34d' }}>🏷️ {s.paket_baslik}</Text> : null}
                       {s.musteri_etiket ? <Text numberOfLines={1} style={{ fontSize: 9, fontWeight: '700', color: '#d8b4fe' }}>{s.musteri_etiket}</Text> : null}
                     </View>
                   </TouchableOpacity>

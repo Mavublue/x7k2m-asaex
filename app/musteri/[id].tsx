@@ -2489,7 +2489,7 @@ function PaylasimBox({
             {paylasimGecmisi.length === 0 ? (
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', marginTop: 6 }}>Henüz ilan paylaşılmadı.</Text>
             ) : (
-              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} />
+              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} paylasilanLinkler={paylasilanLinkler} />
             )}
           </View>
         </View>
@@ -2682,7 +2682,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
   );
 }
 
-function PaylasimListesi({ paylasimGecmisi, ziyaretler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[] }) {
+function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
   const groups: Array<{ key: string; type: 'single' | 'paket'; date: string; items: PaylasimGecmisiItem[] }> = [];
   const seen = new Map<string, number>();
   paylasimGecmisi.forEach((p, i) => {
@@ -2708,6 +2708,19 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler }: { paylasimGecmisi: Pay
           if (!ilan) return null;
           const ilanZ = ziyaretler.filter(z => z.ilan_id === ilan.id && !z.paket_token);
           const canliN = ilanZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+          // Genel: aynı ilan birden çok kişiye/linke gitmiş olabilir; cihazları link bazında ayır.
+          const ilanLinkGruplari = (() => {
+            const m = new Map<string, { label: string; visits: typeof ilanZ }>();
+            ilanZ.forEach(z => {
+              const key = z.musteri_token ?? '_';
+              if (!m.has(key)) {
+                const lnk = paylasilanLinkler.find(l => l.musteri_token === z.musteri_token);
+                m.set(key, { label: lnk?.baslik || 'Etiketsiz link', visits: [] });
+              }
+              m.get(key)!.visits.push(z);
+            });
+            return Array.from(m.values());
+          })();
           return (
             <TouchableOpacity key={g.key} onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={paylasimStyles.gecmisKartSingle}>
               <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -2740,18 +2753,25 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler }: { paylasimGecmisi: Pay
                 )}
               </View>
               {ilanZ.length > 0 && (
-                <View style={paylasimStyles.cihazListe}>
-                  {ilanZ.map(z => {
-                    const sa = sonAktifText(z.son_aktif_at);
-                    return (
-                      <View key={z.device_id} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
-                        <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
-                        <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
-                        {z.acilis_sayisi > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {z.acilis_sayisi} oturum</Text> : null}
-                      </View>
-                    );
-                  })}
+                <View style={{ gap: 6, marginTop: 6 }}>
+                  {ilanLinkGruplari.map((grp, gi) => (
+                    <View key={gi} style={paylasimStyles.cihazListe}>
+                      {ilanLinkGruplari.length > 1 ? (
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>🔗 {grp.label} · {grp.visits.length} cihaz</Text>
+                      ) : null}
+                      {grp.visits.map(z => {
+                        const sa = sonAktifText(z.son_aktif_at);
+                        return (
+                          <View key={z.device_id} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
+                            <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
+                            <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
+                            {z.acilis_sayisi > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {z.acilis_sayisi} oturum</Text> : null}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
                 </View>
               )}
             </TouchableOpacity>
