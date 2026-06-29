@@ -92,7 +92,7 @@ export default function DashboardScreen() {
   }, [sirali]);
 
   useEffect(() => {
-    fetchBildirimler();
+    fetchBildirimler(true);
     fetchData();
     fetchGorevDashboard('bugun');
 
@@ -249,12 +249,14 @@ export default function DashboardScreen() {
     return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri };
   }
 
-  async function fetchBildirimler() {
+  async function fetchBildirimler(seedFromCache = false) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const cacheKey = `app_bildirimler_${session.user.id}`;
-    const cached = await cacheGet<any[]>(cacheKey);
-    if (cached) setBildirimler(cached);
+    if (seedFromCache) {
+      const cached = await cacheGet<any[]>(cacheKey);
+      if (cached) setBildirimler(cached);
+    }
     const { data } = await supabase
       .from('bildirimler')
       .select('id, tip, ilan_id, musteri_id, gorev_id, asistan_oneri_id, veri, okundu_at, silindi_at, created_at, ilan:ilanlar(id, baslik, fotograflar, fiyat), musteri:musteriler(id, ad, soyad, etiketler, telefon, durum, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda)), gorev:musteri_gorevler(id, baslik, hedef_tarih)')
