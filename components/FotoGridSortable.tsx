@@ -150,6 +150,14 @@ export default function FotoGridSortable({
             <Text style={styles.ipucu}>Sıralamak için fotoğrafa basılı tutup sürükle</Text>
           )}
           <View style={{ flex: 1 }} />
+          {secimModu && fotograflar.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSecilen(secilen.length === fotograflar.length ? [] : [...fotograflar])}
+              style={styles.toolbarBtn}
+            >
+              <Text style={styles.toolbarBtnText}>{secilen.length === fotograflar.length ? 'Kaldır' : 'Tümü'}</Text>
+            </TouchableOpacity>
+          )}
           {secimModu && (
             <TouchableOpacity
               onPress={handleTopluSil}
