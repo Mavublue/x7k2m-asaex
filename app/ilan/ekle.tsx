@@ -291,6 +291,12 @@ export default function IlanEkleScreen() {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
     }
+    const sagList = gizliFotograflar.filter(k => !fotograflar.includes(k));
+    const gorunur = fotograflar.filter(k => !gizliFotograflar.includes(k));
+    if ((fotograflar.length + sagList.length) > 0 && gorunur.length === 0) {
+      Alert.alert('Görünür fotoğraf yok', 'Müşteriye görünür en az bir fotoğraf gerekli. Bir fotoğrafı gizli kutusundan çıkar.');
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.from('ilanlar').upsert({
       id: ilanId,
@@ -395,6 +401,14 @@ export default function IlanEkleScreen() {
               }}
               onGizleToggle={(key) => {
                 setGizliFotograflar(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+              }}
+              onMoveToGizli={(key) => {
+                setFotograflar(prev => prev.filter(k => k !== key));
+                setGizliFotograflar(prev => prev.includes(key) ? prev : [...prev, key]);
+              }}
+              onMoveToNormal={(key) => {
+                setGizliFotograflar(prev => prev.filter(k => k !== key));
+                setFotograflar(prev => prev.includes(key) ? prev : [...prev, key]);
               }}
               onEkle={fotografSec}
               onCancelUpload={cancelUpload}

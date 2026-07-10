@@ -308,12 +308,14 @@ export default function IlanDetayScreen() {
     const portfoy_no = prefix ? `${prefix}-${n}` : String(n);
     let yeniFotograflar = fotograflar ?? [];
     let yeniGizliFotograflar = gizli_fotograflar ?? [];
-    if (yeniFotograflar.length) {
+    // Görünür + gizli (sağ kutu) fotoların hepsini kopyala — sağ kutu keyleri fotograflar'da olmayabilir
+    const tumKaynak = [...new Set([...yeniFotograflar, ...yeniGizliFotograflar])];
+    if (tumKaynak.length) {
       try {
-        const kopyalar = await copyIlanFiles(id as string, newId, yeniFotograflar);
-        const eskiYeni = new Map(yeniFotograflar.map((k: string, i: number) => [k, kopyalar[i]]));
+        const kopyalar = await copyIlanFiles(id as string, newId, tumKaynak);
+        const eskiYeni = new Map(tumKaynak.map((k: string, i: number) => [k, kopyalar[i]]));
+        yeniFotograflar = yeniFotograflar.map((k: string) => eskiYeni.get(k) ?? k);
         yeniGizliFotograflar = (yeniGizliFotograflar ?? []).map((k: string) => eskiYeni.get(k) ?? k);
-        yeniFotograflar = kopyalar;
       } catch (e) {
         console.error('R2 kopyalama hatası:', e);
         Alert.alert('Hata', 'Fotoğraflar kopyalanamadı, çoğaltma iptal edildi. Tekrar deneyin.');
@@ -400,7 +402,9 @@ export default function IlanDetayScreen() {
   }
 
   async function tumFotograflariIndir() {
-    const fotograflar = ilan?.fotograflar ?? [];
+    // Emlakçı hepsini indirir: görünür + sağ kutu (fotograflar'da olmayan gizli)
+    const gorunurler = ilan?.fotograflar ?? [];
+    const fotograflar = [...gorunurler, ...((ilan?.gizli_fotograflar ?? []).filter((f: string) => !gorunurler.includes(f)))];
     if (fotograflar.length === 0) return;
     setMenuModal(false);
     const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -584,7 +588,9 @@ export default function IlanDetayScreen() {
     }
   }
 
-  const fotograflar = ilan.fotograflar ?? [];
+  // Emlakçı görünümü: görünür fotolar + sağ kutu (fotograflar'da olmayan gizli) sonda
+  const gorunurFotograflar = ilan.fotograflar ?? [];
+  const fotograflar = [...gorunurFotograflar, ...((ilan.gizli_fotograflar ?? []).filter((f: string) => !gorunurFotograflar.includes(f)))];
 
   const detaylar = [
     { label: 'Portföy No', deger: ilan.portfoy_no },
