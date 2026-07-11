@@ -101,6 +101,7 @@ export default function IlanEkleScreen() {
   const [ilanId] = useState(() => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
   const [fotograflar, setFotograflar] = useState<string[]>([]);
   const [gizliFotograflar, setGizliFotograflar] = useState<string[]>([]);
+  const [fotoDragging, setFotoDragging] = useState(false);
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<{ tempId: string; uri: string; percent: number; task: any | null }[]>([]);
   const cancelledRef = useRef<Set<string>>(new Set());
@@ -373,6 +374,7 @@ export default function IlanEkleScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          scrollEnabled={!fotoDragging}
         >
           {/* Fotoğraflar */}
           <FormGroup label="Fotoğraflar">
@@ -412,6 +414,7 @@ export default function IlanEkleScreen() {
               }}
               onEkle={fotografSec}
               onCancelUpload={cancelUpload}
+              onDragActiveChange={setFotoDragging}
             />
           </FormGroup>
 

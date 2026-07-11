@@ -93,6 +93,7 @@ export default function IlanDuzenleScreen() {
   const [odaSayisi, setOdaSayisi] = useState('');
   const [tip, setTip] = useState('Satılık');
   const [durum, setDurum] = useState('Aktif');
+  const [fotoDragging, setFotoDragging] = useState(false);
   const [secilenKategoriler, setSecilenKategoriler] = useState<string[]>(['Daire']);
   const [aciklama, setAciklama] = useState('');
   const [musteriAciklamasi, setMusteriAciklamasi] = useState('');
@@ -442,7 +443,7 @@ export default function IlanDuzenleScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" scrollEnabled={!fotoDragging}>
 
           <FormGroup label="İlan Durumu">
             <View style={styles.chipRow}>
@@ -490,6 +491,7 @@ export default function IlanDuzenleScreen() {
               }}
               onEkle={fotografEkle}
               onCancelUpload={cancelUpload}
+              onDragActiveChange={setFotoDragging}
             />
           </FormGroup>
 

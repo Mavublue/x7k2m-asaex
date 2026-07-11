@@ -21,11 +21,12 @@ type Props = {
   onMoveToNormal: (key: string) => void;                 // sağ → sol kutu
   onEkle: () => void;
   onCancelUpload: (tempId: string) => void;
+  onDragActiveChange?: (active: boolean) => void;
 };
 
 export default function FotoGridSortable({
   fotograflar, gizliFotograflar, pending, renderImage,
-  onReorder, onSilTekli, onTopluSil, onGizleToggle, onMoveToGizli, onMoveToNormal, onEkle, onCancelUpload,
+  onReorder, onSilTekli, onTopluSil, onGizleToggle, onMoveToGizli, onMoveToNormal, onEkle, onCancelUpload, onDragActiveChange,
 }: Props) {
   const [secimModu, setSecimModu] = useState(false);
   const [secilen, setSecilen] = useState<string[]>([]);
@@ -88,6 +89,7 @@ export default function FotoGridSortable({
     dragBoxRef.current = box;
     setDraggingKey(key);
     pan.setValue({ x: 0, y: 0 });
+    onDragActiveChange?.(true);
   }
 
   function pointInRect(px: number, py: number, r: Rect) {
@@ -137,6 +139,7 @@ export default function FotoGridSortable({
     dragKeyRef.current = null;
     setDraggingKey(null);
     pan.setValue({ x: 0, y: 0 });
+    onDragActiveChange?.(false);
   }
 
   function cellHandlers(key: string, box: Box) {
