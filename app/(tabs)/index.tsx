@@ -72,6 +72,18 @@ export default function DashboardScreen() {
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const [musteriDetay, setMusteriDetay] = useState<any | null>(null);
   const [musteriDetayYukleniyor, setMusteriDetayYukleniyor] = useState(false);
+  // Bildirim popup içi inline not/düzenle
+  const [inlineNotAcik, setInlineNotAcik] = useState(false);
+  const [inlineNotIcerik, setInlineNotIcerik] = useState('');
+  const [inlineNotSaving, setInlineNotSaving] = useState(false);
+  const [inlineDuzenleAcik, setInlineDuzenleAcik] = useState(false);
+  const [inlineDzSaving, setInlineDzSaving] = useState(false);
+  const [dzAd, setDzAd] = useState('');
+  const [dzSoyad, setDzSoyad] = useState('');
+  const [dzTel, setDzTel] = useState('');
+  const [dzEtiket, setDzEtiket] = useState('');
+  const [dzDurum, setDzDurum] = useState('');
+  const [dzTipi, setDzTipi] = useState('');
   const [ilanData, setIlanData] = useState<any | null>(null);
   const [menuAcikId, setMenuAcikId] = useState<string | null>(null);
   const [aktifFiltre, setAktifFiltre] = useState<string | null>(null);
@@ -346,6 +358,59 @@ export default function DashboardScreen() {
       istekler: (istekler ?? []) as any[],
     });
     setMusteriDetayYukleniyor(false);
+  }
+
+  function inlineFormlariKapat() {
+    setInlineNotAcik(false); setInlineNotIcerik(''); setInlineNotSaving(false);
+    setInlineDuzenleAcik(false); setInlineDzSaving(false);
+  }
+
+  useEffect(() => { if (!musteriDetay) inlineFormlariKapat(); }, [musteriDetay]);
+
+  function inlineDuzenleAc() {
+    if (!musteriDetay) return;
+    setDzAd(musteriDetay.ad ?? '');
+    setDzSoyad(musteriDetay.soyad ?? '');
+    setDzTel(musteriDetay.telefon ?? '');
+    setDzEtiket(musteriDetay.etiketler ?? '');
+    setDzDurum(musteriDetay.durum ?? 'Aktif');
+    setDzTipi(musteriDetay.musteri_tipi ?? 'Bireysel');
+    setInlineNotAcik(false);
+    setInlineDuzenleAcik(true);
+  }
+
+  async function inlineDuzenleKaydet() {
+    if (!musteriDetay || inlineDzSaving) return;
+    if (!dzAd.trim()) { Alert.alert('Hata', 'Ad boş olamaz'); return; }
+    setInlineDzSaving(true);
+    const guncel = {
+      ad: dzAd.trim(),
+      soyad: dzSoyad.trim() || null,
+      telefon: dzTel.trim() || null,
+      etiketler: dzEtiket.trim() || null,
+      durum: dzDurum || null,
+      musteri_tipi: dzTipi || null,
+    };
+    const { error } = await supabase.from('musteriler').update(guncel).eq('id', musteriDetay.id);
+    setInlineDzSaving(false);
+    if (error) { Alert.alert('Hata', error.message); return; }
+    setMusteriDetay((prev: any) => prev ? { ...prev, ...guncel } : prev);
+    setInlineDuzenleAcik(false);
+  }
+
+  async function inlineNotKaydet() {
+    if (!musteriDetay || inlineNotSaving) return;
+    const icerik = inlineNotIcerik.trim();
+    if (!icerik) return;
+    setInlineNotSaving(true);
+    const tarih = new Date().toISOString();
+    const { data, error } = await supabase.from('musteri_notlar')
+      .insert({ musteri_id: musteriDetay.id, icerik, tarih }).select().single();
+    setInlineNotSaving(false);
+    if (error) { Alert.alert('Hata', error.message); return; }
+    setMusteriDetay((prev: any) => prev ? { ...prev, notlar: [data, ...(prev.notlar ?? [])].slice(0, 5) } : prev);
+    setInlineNotIcerik('');
+    setInlineNotAcik(false);
   }
 
   async function toggleOkundu(id: string) {
@@ -1033,6 +1098,90 @@ export default function DashboardScreen() {
                     </View>
                   </View>
 
+                  {/* Hızlı Aksiyonlar */}
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity onPress={() => inlineDuzenleAcik ? setInlineDuzenleAcik(false) : inlineDuzenleAc()}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: inlineDuzenleAcik ? Colors.primary : Colors.surfaceContainerHigh }}>
+                      <Text style={{ fontSize: 13 }}>✏️</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: inlineDuzenleAcik ? '#fff' : Colors.onSurface }}>Düzenle</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { if (inlineNotAcik) { setInlineNotAcik(false); } else { setInlineDuzenleAcik(false); setInlineNotIcerik(''); setInlineNotAcik(true); } }}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: inlineNotAcik ? '#92400e' : 'rgba(146,64,14,0.9)' }}>
+                      <Text style={{ fontSize: 13 }}>📝</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Not Ekle</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Inline Düzenle Formu */}
+                  {inlineDuzenleAcik ? (
+                    <View style={{ backgroundColor: Colors.surfaceContainerLow, borderRadius: 14, borderWidth: 1, borderColor: Colors.outlineVariant, padding: Spacing.md, gap: 10 }}>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.bdInputLabel}>Ad</Text>
+                          <TextInput value={dzAd} onChangeText={setDzAd} placeholder="Ad" placeholderTextColor={Colors.onSurfaceVariant} style={styles.bdInput} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.bdInputLabel}>Soyad</Text>
+                          <TextInput value={dzSoyad} onChangeText={setDzSoyad} placeholder="Soyad" placeholderTextColor={Colors.onSurfaceVariant} style={styles.bdInput} />
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.bdInputLabel}>Telefon</Text>
+                          <TextInput value={dzTel} onChangeText={setDzTel} placeholder="Telefon" placeholderTextColor={Colors.onSurfaceVariant} keyboardType="phone-pad" style={styles.bdInput} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.bdInputLabel}>Etiket</Text>
+                          <TextInput value={dzEtiket} onChangeText={setDzEtiket} placeholder="Etiket" placeholderTextColor={Colors.onSurfaceVariant} style={styles.bdInput} />
+                        </View>
+                      </View>
+                      <View>
+                        <Text style={styles.bdInputLabel}>Durum</Text>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          {['Aktif', 'Beklemede', 'İptal'].map(d => (
+                            <TouchableOpacity key={d} onPress={() => setDzDurum(d)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: dzDurum === d ? Colors.primary : Colors.surfaceContainerHigh }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: dzDurum === d ? '#fff' : Colors.onSurfaceVariant }}>{d}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                      <View>
+                        <Text style={styles.bdInputLabel}>Müşteri Tipi</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          {['Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'].map(t => (
+                            <TouchableOpacity key={t} onPress={() => setDzTipi(t)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: dzTipi === t ? Colors.primary : Colors.surfaceContainerHigh }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: dzTipi === t ? '#fff' : Colors.onSurfaceVariant }}>{t}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
+                        <TouchableOpacity onPress={() => setInlineDuzenleAcik(false)} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>Vazgeç</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={inlineDuzenleKaydet} disabled={inlineDzSaving} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.primary, opacity: inlineDzSaving ? 0.6 : 1 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{inlineDzSaving ? 'Kaydediliyor…' : 'Kaydet'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {/* Inline Not Ekle Formu */}
+                  {inlineNotAcik ? (
+                    <View style={{ backgroundColor: 'rgba(234,179,8,0.08)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', padding: Spacing.md, gap: 10 }}>
+                      <Text style={styles.bdInputLabel}>Yeni Not</Text>
+                      <TextInput value={inlineNotIcerik} onChangeText={setInlineNotIcerik} placeholder="Not içeriği…" placeholderTextColor={Colors.onSurfaceVariant} multiline style={[styles.bdInput, { minHeight: 72, textAlignVertical: 'top' }]} />
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity onPress={() => { setInlineNotAcik(false); setInlineNotIcerik(''); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>Vazgeç</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={inlineNotKaydet} disabled={inlineNotSaving || !inlineNotIcerik.trim()} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: '#92400e', opacity: (inlineNotSaving || !inlineNotIcerik.trim()) ? 0.6 : 1 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{inlineNotSaving ? 'Kaydediliyor…' : 'Kaydet'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
+
                   {/* Ek Kişiler */}
                   {(musteriDetay.iletisim ?? []).length > 0 ? (
                     <View>
@@ -1580,6 +1729,8 @@ const styles = StyleSheet.create({
   bdDetayItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.lg, padding: Spacing.md, overflow: 'hidden' },
   bdDetayFoto: { width: 52, height: 52, borderRadius: Radius.md },
   bdSectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.7, marginBottom: 8, textTransform: 'uppercase' },
+  bdInputLabel: { fontSize: 11, fontWeight: '600', color: Colors.onSurfaceVariant, marginBottom: 4 },
+  bdInput: { backgroundColor: Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: Colors.outlineVariant, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: Colors.onSurface },
   bdTag: { backgroundColor: Colors.surfaceContainerHigh, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   bdTagText: { fontSize: 11, fontWeight: '600', color: Colors.onSurface },
   bdTipTag: { backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },

@@ -11,6 +11,7 @@ const TABS: { key: TabKey; label: string; icon: keyof typeof MaterialIcons.glyph
   { key: 'ilanlar', label: 'İlanlar', icon: 'apartment', path: '/(tabs)/ilanlar' },
   { key: 'gorevler', label: 'Görevler', icon: 'check-circle', path: '/(tabs)/gorevler' },
   { key: 'musteriler', label: 'Müşteriler', icon: 'people', path: '/(tabs)/musteriler' },
+  { key: 'ayarlar', label: 'Ayarlar', icon: 'settings', path: '/(tabs)/ayarlar' },
 ];
 
 export default function PersistentTabBar() {
