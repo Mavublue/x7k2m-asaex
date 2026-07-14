@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
@@ -30,17 +30,17 @@ function fmtPin(fiyat: number) {
   return String(fiyat);
 }
 
-function buildMapHtml(ilanlar: Ilan[]) {
-  const list = ilanlar.filter(i => i.lat && i.lng);
-  if (list.length === 0) return '';
-  const markers = list.map(i => ({
-    id: i.id, lat: i.lat, lng: i.lng,
+type MapMarker = { id: string; lat: number; lng: number; fiyat: string; tip: string };
+
+function buildMarkers(ilanlar: Ilan[]): MapMarker[] {
+  return ilanlar.filter(i => i.lat && i.lng).map(i => ({
+    id: i.id, lat: i.lat as number, lng: i.lng as number,
     fiyat: fmtPin(i.fiyat), tip: i.tip,
   }));
-  const merkez = list.length === 1
-    ? `[${list[0].lat}, ${list[0].lng}]`
-    : '[39.925, 32.836]';
-  const zoom = list.length === 1 ? 13 : 6;
+}
+
+// Statik WebView kabuğu; filtre değişince yeniden yüklenmez, pinler injectJavaScript ile güncellenir.
+function buildMapShell() {
   return `<!DOCTYPE html><html>
 <head>
 <meta charset="utf-8"/>
@@ -58,20 +58,25 @@ function buildMapHtml(ilanlar: Ilan[]) {
 </head>
 <body><div id="map"></div>
 <script>
-var map=L.map('map',{zoomControl:false,maxZoom:18}).setView(${merkez},${zoom});
+var map=L.map('map',{zoomControl:false,maxZoom:18}).setView([39.925,32.836],6);
 var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
 map.on('click',function(){window.ReactNativeWebView.postMessage(JSON.stringify({close:true}));});
 var cluster=L.markerClusterGroup({maxClusterRadius:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false});
-var ms=${JSON.stringify(markers)},bs=[];
-ms.forEach(function(m){
-  var icon=L.divIcon({html:'<div class="pm'+(m.tip==='Kiralık'?' k':'')+'">₺'+m.fiyat+'</div>',className:'',iconSize:null,iconAnchor:[28,14]});
-  var mk=L.marker([m.lat,m.lng],{icon:icon});
-  mk.on('click',function(e){var pt=map.latLngToContainerPoint(e.latlng);window.ReactNativeWebView.postMessage(JSON.stringify({id:m.id,px:pt.x,py:pt.y}));});
-  cluster.addLayer(mk);
-  bs.push([m.lat,m.lng]);
-});
 map.addLayer(cluster);
-if(bs.length>1)map.fitBounds(bs,{padding:[30,30]});
+var hasView=false;
+window.__render=function(ms){
+  cluster.clearLayers();
+  var bs=[];
+  ms.forEach(function(m){
+    var icon=L.divIcon({html:'<div class="pm'+(m.tip==='Kiralık'?' k':'')+'">₺'+m.fiyat+'</div>',className:'',iconSize:null,iconAnchor:[28,14]});
+    var mk=L.marker([m.lat,m.lng],{icon:icon});
+    mk.on('click',function(e){var pt=map.latLngToContainerPoint(e.latlng);window.ReactNativeWebView.postMessage(JSON.stringify({id:m.id,px:pt.x,py:pt.y}));});
+    cluster.addLayer(mk);
+    bs.push([m.lat,m.lng]);
+  });
+  if(!hasView&&bs.length){ if(bs.length>1){map.fitBounds(bs,{padding:[30,30]});}else{map.setView(bs[0],13);} hasView=true; }
+};
+if(window.__pending){window.__render(window.__pending);window.__pending=null;}
 </script></body></html>`;
 }
 
@@ -148,6 +153,7 @@ export default function IlanlarScreen() {
   const [ilanlar, setIlanlar] = useState<Ilan[]>([]);
   const [filtered, setFiltered] = useState<Ilan[]>([]);
   const [mapHtml, setMapHtml] = useState('');
+  const [mapReady, setMapReady] = useState(false);
   const [gorunum, setGorunum] = useState<'liste' | 'harita'>('liste');
   const [kartModu, setKartModu] = useState<'buyuk' | 'kucuk'>('buyuk');
   const [seciliIlan, setSeciliIlan] = useState<Ilan | null>(null);
@@ -333,8 +339,21 @@ export default function IlanlarScreen() {
       return new Date(b.olusturma_tarihi).getTime() - new Date(a.olusturma_tarihi).getTime();
     });
     setFiltered(r);
-    setMapHtml(buildMapHtml(r));
   }
+
+  // Harita kabuğunu bir kez kur (yeniden yüklenmesin).
+  useEffect(() => { setMapHtml(buildMapShell()); }, []);
+
+  // Harita görünümünden çıkınca WebView unmount olur; tekrar açılınca yeniden hazır olsun.
+  useEffect(() => { if (gorunum !== 'harita') setMapReady(false); }, [gorunum]);
+
+  // Filtre değişince sadece pinleri WebView'e enjekte et.
+  const mapMarkers = useMemo(() => buildMarkers(filtered), [filtered]);
+  useEffect(() => {
+    if (!mapReady) return;
+    const js = `(function(){var ms=${JSON.stringify(mapMarkers)};if(window.__render){window.__render(ms);}else{window.__pending=ms;}})();true;`;
+    mapRef.current?.injectJavaScript(js);
+  }, [mapMarkers, mapReady]);
 
   function formatFiyat(val: string) {
     const digits = val.replace(/\D/g, '');
@@ -737,6 +756,7 @@ export default function IlanlarScreen() {
               ref={mapRef}
               source={{ html: mapHtml }}
               style={{ flex: 1 }}
+              onLoadEnd={() => setMapReady(true)}
               onMessage={e => {
                 try {
                   const data = JSON.parse(e.nativeEvent.data);
@@ -751,8 +771,9 @@ export default function IlanlarScreen() {
               originWhitelist={['*']}
               mixedContentMode="always"
             />
-          ) : (
-            <View style={styles.center}>
+          ) : null}
+          {mapMarkers.length === 0 && (
+            <View style={[styles.center, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: Colors.background }]} pointerEvents="none">
               <Text style={{ fontSize: 36 }}>🗺️</Text>
               <Text style={{ fontSize: 14, color: Colors.onSurfaceVariant, marginTop: 8 }}>Haritada gösterilecek ilan yok</Text>
             </View>
