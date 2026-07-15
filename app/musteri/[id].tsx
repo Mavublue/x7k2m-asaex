@@ -14,6 +14,7 @@ import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../co
 import TelefonInput from '../../components/TelefonInput';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Clipboard from 'expo-clipboard';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -26,6 +27,37 @@ const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '2
 const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
 
 type EkKisi = { id?: string; ad: string; kod: string; numara: string; tip: string };
+
+function telAra(numara: string) {
+  const temiz = numara.replace(/[^\d+]/g, '');
+  Alert.alert('Ara', numara, [
+    { text: 'İptal', style: 'cancel' },
+    { text: 'Ara', onPress: () => Linking.openURL(`tel:${temiz}`) },
+  ]);
+}
+
+function NotIcerik({ icerik }: { icerik: string }) {
+  const parcalar = icerik.split(/(\+?\d[\d\s()\-]{6,}\d)/g);
+  return (
+    <TouchableOpacity
+      activeOpacity={1}
+      onLongPress={async () => { await Clipboard.setStringAsync(icerik); Alert.alert('Kopyalandı', 'Not panoya kopyalandı.'); }}
+      delayLongPress={350}
+    >
+      <Text style={styles.notIcerik}>
+        {parcalar.map((p, i) => {
+          const rakam = (p.match(/\d/g) || []).length;
+          if (rakam >= 7) {
+            return (
+              <Text key={i} style={styles.notTelLink} onPress={() => telAra(p.trim())}>{p}</Text>
+            );
+          }
+          return <Text key={i}>{p}</Text>;
+        })}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 function tarihFormat(iso: string) {
   if (!iso) return '';
@@ -1320,7 +1352,7 @@ export default function MusteriDetayScreen() {
                           <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                         </TouchableOpacity>
                       </View>
-                      <Text selectable style={styles.notIcerik}>{n.icerik}</Text>
+                      <NotIcerik icerik={n.icerik} />
                     </View>
                   ))
                 )}
@@ -1591,7 +1623,7 @@ export default function MusteriDetayScreen() {
                               <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
                             </TouchableOpacity>
                           </View>
-                          <Text selectable style={styles.notIcerik}>{n.icerik}</Text>
+                          <NotIcerik icerik={n.icerik} />
                         </View>
                       ))
                     )}
@@ -3097,5 +3129,6 @@ const styles = StyleSheet.create({
   notSatirHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   notTarih: { fontSize: 11, fontWeight: '700', color: '#fcd34d' },
   notIcerik: { fontSize: 13, color: '#fde68a', lineHeight: 18 },
+  notTelLink: { color: '#60a5fa', textDecorationLine: 'underline', fontWeight: '700' },
   notIcon: { padding: 2 },
 });
