@@ -2716,6 +2716,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
 
 function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
   const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
+  const [popupIlanId, setPopupIlanId] = useState<string | null>(null);
   const groups: Array<{ key: string; type: 'single' | 'paket'; date: string; items: PaylasimGecmisiItem[] }> = [];
   const seen = new Map<string, number>();
   paylasimGecmisi.forEach((p, i) => {
@@ -2755,7 +2756,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
             return Array.from(m.values());
           })();
           return (
-            <TouchableOpacity key={g.key} onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={paylasimStyles.gecmisKartSingle}>
+            <TouchableOpacity key={g.key} onPress={() => setPopupIlanId(ilan.id)} style={paylasimStyles.gecmisKartSingle}>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 {ilan.fotograflar?.[0] ? (
                   <R2Image source={ilan.fotograflar[0]} style={{ width: 56, height: 46, borderRadius: 6 } as any} resizeMode="cover" size="sm" />
@@ -2873,7 +2874,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
                 const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
                 return (
                   <View key={`${g.key}-${ilan.id}-${i}`} style={{ gap: 4 }}>
-                    <TouchableOpacity onPress={() => router.push(`/ilan/${ilan.id}` as any)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => setPopupIlanId(ilan.id)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                       {ilan.fotograflar?.[0] ? (
                         <R2Image source={ilan.fotograflar[0]} style={{ width: 40, height: 32, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
                       ) : (
@@ -2914,7 +2915,144 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
           </View>
         );
       })}
+      <IlanDetayPopupModal ilanId={popupIlanId} onClose={() => setPopupIlanId(null)} />
     </View>
+  );
+}
+
+function IlanDetayPopupModal({ ilanId, onClose }: { ilanId: string | null; onClose: () => void }) {
+  const [ilan, setIlan] = useState<Ilan | null>(null);
+  const [ozellikler, setOzellikler] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [aktifFoto, setAktifFoto] = useState(0);
+
+  useEffect(() => {
+    if (!ilanId) return;
+    let cancelled = false;
+    setLoading(true); setIlan(null); setOzellikler([]); setAktifFoto(0);
+    (async () => {
+      const { data } = await supabase.from('ilanlar').select('*').eq('id', ilanId).single();
+      if (cancelled) return;
+      if (data) setIlan(data as Ilan);
+      const { data: ozData } = await supabase.from('ilan_ozellikler').select('ozellikler!inner(ad)').eq('ilan_id', ilanId);
+      if (cancelled) return;
+      setOzellikler((ozData ?? []).map((r: any) => r.ozellikler?.ad).filter(Boolean));
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [ilanId]);
+
+  const fotolar = ilan?.fotograflar ?? [];
+  const lokasyon = ilan ? [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ') : '';
+  const detaylar = ilan ? ([
+    ilan.portfoy_no && { label: 'Portföy No', value: String(ilan.portfoy_no) },
+    ilan.kategori && { label: 'Kategori', value: ilan.kategori },
+    ilan.tip && { label: 'Tip', value: ilan.tip },
+    ilan.metrekare && { label: 'Net m²', value: `${ilan.metrekare} m²` },
+    ilan.brut_metrekare && { label: 'Brüt m²', value: `${ilan.brut_metrekare} m²` },
+    ilan.oda_sayisi && { label: 'Oda Sayısı', value: String(ilan.oda_sayisi) },
+    ilan.banyo_sayisi != null && Number(ilan.banyo_sayisi) > 0 && { label: 'Banyo Sayısı', value: String(ilan.banyo_sayisi) },
+    ilan.bina_yasi && { label: 'Bina Yaşı', value: String(ilan.bina_yasi) },
+    ilan.kat_sayisi && { label: 'Kat Sayısı', value: String(ilan.kat_sayisi) },
+    ilan.bulundugu_kat && { label: 'Bulunduğu Kat', value: String(ilan.bulundugu_kat) },
+    lokasyon && { label: 'Konum', value: lokasyon },
+  ].filter(Boolean) as { label: string; value: string }[]) : [];
+
+  return (
+    <Modal visible={!!ilanId} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '92%', overflow: 'hidden' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5 }}>İLAN DETAYI{ilan?.portfoy_no ? ` • ${ilan.portfoy_no}` : ''}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {ilan ? (
+                <TouchableOpacity onPress={() => { const id = ilan.id; onClose(); router.push(`/ilan/${id}` as any); }} style={{ backgroundColor: '#E53935', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6 }}>
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>İlana Git →</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, backgroundColor: Colors.surfaceContainerHigh, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.onSurface }}>×</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            {loading ? (
+              <ActivityIndicator color={Colors.primary} style={{ paddingVertical: 40 }} />
+            ) : !ilan ? (
+              <Text style={{ textAlign: 'center', color: Colors.onSurfaceVariant, paddingVertical: 40 }}>İlan bulunamadı.</Text>
+            ) : (
+              <>
+                {fotolar.length > 0 ? (
+                  <View style={{ marginBottom: 16 }}>
+                    <View style={{ width: '100%', aspectRatio: 4 / 3, backgroundColor: '#000', borderRadius: 12, overflow: 'hidden' }}>
+                      <R2Image source={fotolar[aktifFoto]} style={{ width: '100%', height: '100%' } as any} resizeMode="cover" size="md" />
+                      {fotolar.length > 1 ? (
+                        <View style={{ position: 'absolute', bottom: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{aktifFoto + 1} / {fotolar.length}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    {fotolar.length > 1 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                        {fotolar.map((f, i) => (
+                          <TouchableOpacity key={i} onPress={() => setAktifFoto(i)} style={{ width: 72, height: 54, borderRadius: 8, overflow: 'hidden', marginRight: 6, borderWidth: 2, borderColor: i === aktifFoto ? '#E53935' : 'transparent', opacity: i === aktifFoto ? 1 : 0.65 }}>
+                            <R2Image source={f} style={{ width: '100%', height: '100%' } as any} resizeMode="cover" size="sm" />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                {ilan.tip ? <Text style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: '700', color: '#fff', backgroundColor: '#1a1b21', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 4, letterSpacing: 0.5, marginBottom: 8, overflow: 'hidden' }}>{ilan.tip.toUpperCase()}</Text> : null}
+                <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.onSurface, marginBottom: 6 }}>{ilan.baslik}</Text>
+                {lokasyon ? <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, marginBottom: 10 }}>📍 {lokasyon}</Text> : null}
+                <Text style={{ fontSize: 22, fontWeight: '700', color: Colors.onSurface, marginBottom: 16 }}>₺{Number(ilan.fiyat).toLocaleString('tr-TR')}</Text>
+
+                {detaylar.length > 0 ? (
+                  <View style={{ backgroundColor: 'rgba(34,197,94,0.08)', borderWidth: 1.5, borderColor: 'rgba(34,197,94,0.3)', borderRadius: 12, paddingHorizontal: 14, marginBottom: 16 }}>
+                    {detaylar.map(({ label, value }, i) => (
+                      <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16, paddingVertical: 10, borderBottomWidth: i < detaylar.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.onSurface }}>{label}</Text>
+                        <Text style={{ fontSize: 13, color: Colors.onSurfaceVariant, flexShrink: 1, textAlign: 'right' }}>{value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {ozellikler.length > 0 ? (
+                  <View style={{ backgroundColor: Colors.surfaceContainerHigh, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 10 }}>ÖZELLİKLER</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {ozellikler.map(o => (
+                        <View key={o} style={{ backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4ade80' }}>✓ {o}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
+                {ilan.musteri_aciklamasi ? (
+                  <View style={{ backgroundColor: Colors.surfaceContainerHigh, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 8 }}>MÜŞTERİYE GÖSTERİLEN AÇIKLAMA</Text>
+                    <Text style={{ fontSize: 13, color: Colors.onSurface, lineHeight: 20 }}>{ilan.musteri_aciklamasi}</Text>
+                  </View>
+                ) : null}
+
+                {ilan.aciklama ? (
+                  <View style={{ backgroundColor: 'rgba(245,158,11,0.1)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', borderRadius: 10, padding: 14 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#fbbf24', letterSpacing: 0.5, marginBottom: 8 }}>📝 NOTLAR (SADECE SEN GÖRÜYORSUN)</Text>
+                    <Text style={{ fontSize: 13, color: Colors.onSurface, lineHeight: 20 }}>{ilan.aciklama}</Text>
+                  </View>
+                ) : null}
+                <View style={{ height: 20 }} />
+              </>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
