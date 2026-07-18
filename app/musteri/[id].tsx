@@ -2715,6 +2715,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
 }
 
 function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
+  const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
   const groups: Array<{ key: string; type: 'single' | 'paket'; date: string; items: PaylasimGecmisiItem[] }> = [];
   const seen = new Map<string, number>();
   paylasimGecmisi.forEach((p, i) => {
@@ -2832,9 +2833,12 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
         });
         const paketZ = Array.from(byDevice.values());
         const canliN = paketZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+        const acik = acikPaketler.has(g.key);
+        const togglePaket = () => setAcikPaketler(prev => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; });
         return (
           <View key={g.key} style={paylasimStyles.gecmisKartPaket}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            <TouchableOpacity activeOpacity={0.7} onPress={togglePaket} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: acik ? 8 : 0 }}>
+              <Text style={{ fontSize: 12, color: '#b45309', transform: [{ rotate: acik ? '90deg' : '0deg' }] }}>▶</Text>
               <View style={paylasimStyles.chipAmber}><Text style={paylasimStyles.chipAmberText}>📋 Liste — {g.items.length} ilan</Text></View>
               <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📅 {paylasimTarihGoster(g.date)}</Text>
               {paketZ.length > 0 ? (
@@ -2845,8 +2849,8 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
               ) : (
                 <View style={paylasimStyles.chipGray}><Text style={paylasimStyles.chipGrayText}>Henüz açılmadı</Text></View>
               )}
-            </View>
-            {paketZ.length > 0 && (
+            </TouchableOpacity>
+            {acik && paketZ.length > 0 && (
               <View style={paylasimStyles.cihazListe}>
                 {paketZ.map(z => {
                   const sa = sonAktifText(z.son_aktif_at);
@@ -2861,7 +2865,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
                 })}
               </View>
             )}
-            <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
+            {acik && <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
               {g.items.map((p, i) => {
                 const ilan = p.ilanlar;
                 if (!ilan) return null;
@@ -2906,7 +2910,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
                   </View>
                 );
               })}
-            </View>
+            </View>}
           </View>
         );
       })}
