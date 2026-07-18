@@ -14,7 +14,6 @@ import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../co
 import TelefonInput from '../../components/TelefonInput';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as Clipboard from 'expo-clipboard';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -38,24 +37,20 @@ function telAra(numara: string) {
 
 function NotIcerik({ icerik }: { icerik: string }) {
   const parcalar = icerik.split(/(\+?\d[\d\s()\-]{6,}\d)/g);
+  // selectable: basılı tutup sürükleyerek metnin bir kısmını seçip kopyala
+  // (tümünü kopyalamak için "Tümünü Seç" → Kopyala). Telefon linkleri hâlâ tıklanır.
   return (
-    <TouchableOpacity
-      activeOpacity={1}
-      onLongPress={async () => { await Clipboard.setStringAsync(icerik); Alert.alert('Kopyalandı', 'Not panoya kopyalandı.'); }}
-      delayLongPress={350}
-    >
-      <Text style={styles.notIcerik}>
-        {parcalar.map((p, i) => {
-          const rakam = (p.match(/\d/g) || []).length;
-          if (rakam >= 7) {
-            return (
-              <Text key={i} style={styles.notTelLink} onPress={() => telAra(p.trim())}>{p}</Text>
-            );
-          }
-          return <Text key={i}>{p}</Text>;
-        })}
-      </Text>
-    </TouchableOpacity>
+    <Text selectable style={styles.notIcerik}>
+      {parcalar.map((p, i) => {
+        const rakam = (p.match(/\d/g) || []).length;
+        if (rakam >= 7) {
+          return (
+            <Text key={i} style={styles.notTelLink} onPress={() => telAra(p.trim())}>{p}</Text>
+          );
+        }
+        return <Text key={i}>{p}</Text>;
+      })}
+    </Text>
   );
 }
 
