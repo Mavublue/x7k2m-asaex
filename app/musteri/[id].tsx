@@ -2811,6 +2811,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
         }
         // Paket
         const gPaketToken = g.items[0].paket_token;
+        const paketMusteriToken = paylasilanLinkler.find(l => l.token === gPaketToken)?.musteri_token ?? null;
         const paketIlanIds = new Set(g.items.map(p => p.ilanlar?.id).filter(Boolean) as string[]);
         const byDevice = new Map<string, typeof ziyaretler[number]>();
         ziyaretler.forEach(z => {
@@ -2864,7 +2865,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
               {g.items.map((p, i) => {
                 const ilan = p.ilanlar;
                 if (!ilan) return null;
-                const perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && z.paket_token === gPaketToken);
+                const perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && (z.paket_token === gPaketToken || (!z.paket_token && !!paketMusteriToken && z.musteri_token === paketMusteriToken)));
                 const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
                 return (
                   <View key={`${g.key}-${ilan.id}-${i}`} style={{ gap: 4 }}>

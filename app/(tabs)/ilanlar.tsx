@@ -480,7 +480,7 @@ export default function IlanlarScreen() {
     });
     if (error) { Alert.alert('Hata', error.message); setPaylasYukleniyor(false); return; }
     await supabase.from('musteri_paylasim_gecmisi').insert(
-      ilanIds.map(ilanId => ({ user_id: session.user.id, musteri_id: paylasMusteri, ilan_id: ilanId }))
+      ilanIds.map(ilanId => ({ user_id: session.user.id, musteri_id: paylasMusteri, ilan_id: ilanId, paket_token: ilanIds.length > 1 ? token : null }))
     );
     setPaylasLink(genel ? `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}/${musteriToken}` : `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}`);
     setPaylasYukleniyor(false);
