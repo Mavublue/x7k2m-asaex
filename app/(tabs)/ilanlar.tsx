@@ -1323,14 +1323,28 @@ export default function IlanlarScreen() {
                   <TouchableOpacity onPress={() => setFilterPage('main')}>
                     <Text style={styles.modalKapat}>←</Text>
                   </TouchableOpacity>
-                  <Text style={styles.modalBaslik}>
-                    {filterPage === 'il' ? 'İl Seçin' : filterPage === 'ilce' ? 'İlçe Seçin' : 'Mahalle Seçin'}
-                  </Text>
+                  <Text style={styles.modalBaslik}>Konum Seç</Text>
                   <TouchableOpacity onPress={() => setFilterPage('main')}>
                     <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.primary }}>Tamam</Text>
                   </TouchableOpacity>
                 </View>
                 <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                  <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingTop: 10 }}>
+                    {([
+                      { k: 'il' as const, label: 'İl', sayi: gecici.filterIl.length, disabled: false },
+                      { k: 'ilce' as const, label: 'İlçe', sayi: gecici.filterIlce.length, disabled: gecici.filterIl.length === 0 },
+                      { k: 'mahalle' as const, label: 'Mah.', sayi: gecici.filterMahalle.length, disabled: gecici.filterIlce.length === 0 },
+                    ]).map(p => {
+                      const aktif = filterPage === p.k;
+                      return (
+                        <TouchableOpacity key={p.k} disabled={p.disabled} activeOpacity={0.7}
+                          onPress={() => { setKonumSearch(''); setFilterPage(p.k); }}
+                          style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, opacity: p.disabled ? 0.4 : 1, backgroundColor: aktif ? Colors.primary : Colors.surfaceContainerHigh }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: aktif ? '#fff' : Colors.onSurfaceVariant }}>{p.label}{p.sayi > 0 ? ` (${p.sayi})` : ''}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                   <TextInput style={styles.modalSearch} placeholder="Ara..." placeholderTextColor={Colors.outlineVariant} value={konumSearch} onChangeText={setKonumSearch} />
                   <SectionList
                     sections={konumSections}
