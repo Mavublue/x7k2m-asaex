@@ -2711,6 +2711,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
 
 function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
   const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
+  const [paketCihazFiltre, setPaketCihazFiltre] = useState<Record<string, string | null>>({});
   const [popupIlanId, setPopupIlanId] = useState<string | null>(null);
   const groups: Array<{ key: string; type: 'single' | 'paket'; date: string; items: PaylasimGecmisiItem[] }> = [];
   const seen = new Map<string, number>();
@@ -2829,6 +2830,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
         });
         const paketZ = Array.from(byDevice.values());
         const canliN = paketZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+        const selDevice = paketCihazFiltre[g.key] && byDevice.has(paketCihazFiltre[g.key]!) ? paketCihazFiltre[g.key]! : null;
         const acik = acikPaketler.has(g.key);
         const togglePaket = () => setAcikPaketler(prev => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; });
         return (
@@ -2848,25 +2850,36 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
             </TouchableOpacity>
             {acik && paketZ.length > 0 && (
               <View style={paylasimStyles.cihazListe}>
+                {paketZ.length > 1 ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, marginBottom: 2 }}>Cihaza dokun → sadece o cihazın açtığı ilanları göster</Text> : null}
                 {paketZ.map(z => {
                   const sa = sonAktifText(z.son_aktif_at);
+                  const secili = selDevice === z.device_id;
+                  const secilebilir = paketZ.length > 1;
                   return (
-                    <View key={z.device_id} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <TouchableOpacity key={z.device_id} activeOpacity={secilebilir ? 0.6 : 1} onPress={secilebilir ? () => setPaketCihazFiltre(prev => ({ ...prev, [g.key]: secili ? null : z.device_id })) : undefined} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap', paddingVertical: 3, paddingHorizontal: 5, borderRadius: 5, backgroundColor: secili ? 'rgba(59,130,246,0.15)' : 'transparent', borderWidth: 1, borderColor: secili ? '#3b82f6' : 'transparent' }}>
+                      {secilebilir ? <Text style={{ fontSize: 11 }}>{secili ? '☑️' : '⬜'}</Text> : null}
                       <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
                       <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
                       <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
                       {z.acilis_sayisi > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {z.acilis_sayisi} oturum</Text> : null}
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
+                {selDevice ? (
+                  <TouchableOpacity onPress={() => setPaketCihazFiltre(prev => ({ ...prev, [g.key]: null }))}><Text style={{ fontSize: 10, color: '#60a5fa', fontWeight: '600', marginTop: 2 }}>✕ Filtreyi kaldır</Text></TouchableOpacity>
+                ) : null}
               </View>
             )}
             {acik && <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
               {g.items.map((p, i) => {
                 const ilan = p.ilanlar;
                 if (!ilan) return null;
-                const perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && (z.paket_token === gPaketToken || (!z.paket_token && !!paketMusteriToken && z.musteri_token === paketMusteriToken)));
+                let perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && (z.paket_token === gPaketToken || (!z.paket_token && !!paketMusteriToken && z.musteri_token === paketMusteriToken)));
+                if (selDevice) perIlan = perIlan.filter(z => z.device_id === selDevice);
                 const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+                return { i, ilan, perIlan, perIlanCanli, acildi: perIlan.length > 0 };
+              }).filter(Boolean).sort((a, b) => (b!.acildi ? 1 : 0) - (a!.acildi ? 1 : 0)).map(row => {
+                const { i, ilan, perIlan, perIlanCanli } = row!;
                 return (
                   <View key={`${g.key}-${ilan.id}-${i}`} style={{ gap: 4 }}>
                     <TouchableOpacity onPress={() => setPopupIlanId(ilan.id)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
