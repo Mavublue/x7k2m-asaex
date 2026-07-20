@@ -1352,7 +1352,24 @@ export default function IlanlarScreen() {
                     keyboardShouldPersistTaps="handled"
                     stickySectionHeadersEnabled
                     renderSectionHeader={({ section }: any) => section.showHeader ? (
-                      <Text style={styles.listeGrupBaslik}>{section.title}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: Colors.primaryFixed }}>
+                        <Text style={[styles.listeGrupBaslik, { flex: 1, backgroundColor: 'transparent' }]}>{section.title}</Text>
+                        {filterPage === 'mahalle' && section.data.length > 0 && (() => {
+                          const hepsi = section.data.every((m: string) => gecici.filterMahalle.includes(m));
+                          return (
+                            <TouchableOpacity activeOpacity={0.7}
+                              onPress={() => setGecici(g => ({
+                                ...g,
+                                filterMahalle: hepsi
+                                  ? g.filterMahalle.filter(x => !section.data.includes(x))
+                                  : [...g.filterMahalle, ...section.data.filter((m: string) => !g.filterMahalle.includes(m))],
+                              }))}
+                              style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginRight: 8, backgroundColor: hepsi ? Colors.primary : Colors.surfaceContainerHigh }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: hepsi ? '#fff' : Colors.primary }}>{hepsi ? '✓ Tümü' : 'Tümünü Seç'}</Text>
+                            </TouchableOpacity>
+                          );
+                        })()}
+                      </View>
                     ) : null}
                     ListEmptyComponent={<Text style={{ padding: 20, fontSize: 13, color: Colors.outline, textAlign: 'center' }}>Sonuç yok</Text>}
                     renderItem={({ item }) => {
