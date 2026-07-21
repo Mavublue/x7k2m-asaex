@@ -200,6 +200,7 @@ export default function MusteriDetayScreen() {
   const [notSaving, setNotSaving] = useState(false);
   const [gorevler, setGorevler] = useState<MusteriGorev[]>([]);
   const [bildirimler, setBildirimler] = useState<any[]>([]);
+  const [bildirimPopup, setBildirimPopup] = useState(false);
   const [gorevEkle, setGorevEkle] = useState(false);
   const [gorevBaslik, setGorevBaslik] = useState('');
   const [gorevAciklama, setGorevAciklama] = useState('');
@@ -997,6 +998,7 @@ export default function MusteriDetayScreen() {
 
   const initials = `${ad[0] ?? '?'}${soyad[0] ?? ''}`.toUpperCase();
   const isGenel = (musteri?.ad ?? '').trim().toLowerCase() === 'genel';
+  const bildirimlerOkunmamis = bildirimler.filter(b => !b.okundu_at).length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -1012,6 +1014,16 @@ export default function MusteriDetayScreen() {
             </TouchableOpacity>
           ) : (
             <>
+              {bildirimler.length > 0 && (
+                <TouchableOpacity style={[styles.linkBtn, { overflow: 'visible' }]} onPress={() => setBildirimPopup(true)}>
+                  <Text style={styles.linkBtnText}>🔔</Text>
+                  {bildirimlerOkunmamis > 0 && (
+                    <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>{bildirimlerOkunmamis}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={styles.duzenleBtn} onPress={() => { setDuzenle(true); fetchTumOzellikler(); }}>
                 <Text style={styles.duzenleBtnText}>✏️ Düzenle</Text>
               </TouchableOpacity>
@@ -1471,48 +1483,6 @@ export default function MusteriDetayScreen() {
                         </View>
                       </View>
                     ))}
-                  </View>
-                )}
-
-                {/* Bildirimler */}
-                {bildirimler.length > 0 && (
-                  <View style={[styles.infoBox, { gap: 8 }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.sectionTitle}>🔔 Bildirimler</Text>
-                        {bildirimler.filter(b => !b.okundu_at).length > 0 && (
-                          <View style={{ backgroundColor: Colors.primary, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{bildirimler.filter(b => !b.okundu_at).length}</Text>
-                          </View>
-                        )}
-                      </View>
-                      {bildirimler.filter(b => !b.okundu_at).length > 0 && (
-                        <TouchableOpacity onPress={tumBildirimleriOkundu}>
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {bildirimler.map(b => {
-                      const { ico, baslik, alt } = bildirimLabel(b);
-                      const okundu = !!b.okundu_at;
-                      return (
-                        <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: okundu ? Colors.surfaceContainerLow : 'rgba(229,57,53,0.12)', borderRadius: Radius.lg, padding: 12 }}>
-                          <Text style={{ fontSize: 18 }}>{ico}</Text>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                              <Text style={{ fontSize: 14, fontWeight: okundu ? '500' : '700', color: Colors.onSurface }}>{baslik}</Text>
-                              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>{notTarihGoster(b.created_at)}</Text>
-                            </View>
-                            {!!alt && <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 }}>{alt}</Text>}
-                          </View>
-                          {!okundu && (
-                            <TouchableOpacity onPress={() => bildirimOkundu(b.id)} style={{ backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>✓ Okundu</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      );
-                    })}
                   </View>
                 )}
 
@@ -2233,6 +2203,48 @@ export default function MusteriDetayScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={bildirimPopup} transparent animationType="fade" onRequestClose={() => setBildirimPopup(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setBildirimPopup(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 16 }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: Colors.surface, borderRadius: Radius.xl, maxHeight: '80%', overflow: 'hidden' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.onSurface, flex: 1 }} numberOfLines={1}>🔔 {ad} {soyad}</Text>
+              <TouchableOpacity onPress={() => setBildirimPopup(false)}>
+                <Text style={{ fontSize: 18, color: Colors.onSurfaceVariant }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 12, gap: 8 }}>
+              {bildirimlerOkunmamis > 0 && (
+                <TouchableOpacity onPress={tumBildirimleriOkundu} style={{ alignSelf: 'flex-end' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                </TouchableOpacity>
+              )}
+              {bildirimler.map(b => {
+                const { ico, baslik, alt } = bildirimLabel(b);
+                const okundu = !!b.okundu_at;
+                return (
+                  <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: okundu ? Colors.surfaceContainerLow : 'rgba(229,57,53,0.14)', borderRadius: Radius.lg, padding: 12 }}>
+                    <Text style={{ fontSize: 18 }}>{ico}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <Text style={{ fontSize: 14, fontWeight: okundu ? '500' : '700', color: Colors.onSurface }}>{baslik}</Text>
+                        <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>{notTarihGoster(b.created_at)}</Text>
+                      </View>
+                      {!!alt && <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 }}>{alt}</Text>}
+                    </View>
+                    {!okundu && (
+                      <TouchableOpacity onPress={() => bildirimOkundu(b.id)} style={{ backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>✓ Okundu</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <PersistentTabBar />
     </SafeAreaView>
   );
