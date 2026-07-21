@@ -123,6 +123,7 @@ export default function DashboardScreen() {
   useFocusEffect(useCallback(() => {
     fetchData();
     fetchGorevDashboard(gorevFiltre);
+    fetchBildirimler();
   }, []));
 
   const ODALAR_ORDER = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];

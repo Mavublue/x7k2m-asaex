@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, ScrollView,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking, Modal, FlatList, Image, Keyboard, Share, Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
@@ -2205,8 +2205,11 @@ export default function MusteriDetayScreen() {
       </Modal>
 
       <Modal visible={bildirimPopup} transparent animationType="fade" onRequestClose={() => setBildirimPopup(false)}>
-        <TouchableOpacity activeOpacity={1} onPress={() => setBildirimPopup(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 16 }}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: Colors.surface, borderRadius: Radius.xl, maxHeight: '80%', overflow: 'hidden' }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 16 }}>
+          <TouchableWithoutFeedback onPress={() => setBildirimPopup(false)}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+          <View style={{ backgroundColor: Colors.surface, borderRadius: Radius.xl, maxHeight: '80%', overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.onSurface, flex: 1 }} numberOfLines={1}>🔔 {ad} {soyad}</Text>
               <TouchableOpacity onPress={() => setBildirimPopup(false)}>
@@ -2241,8 +2244,8 @@ export default function MusteriDetayScreen() {
                 );
               })}
             </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       <PersistentTabBar />
