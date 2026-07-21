@@ -199,6 +199,7 @@ export default function MusteriDetayScreen() {
   const [notEditId, setNotEditId] = useState<string | null>(null);
   const [notSaving, setNotSaving] = useState(false);
   const [gorevler, setGorevler] = useState<MusteriGorev[]>([]);
+  const [bildirimler, setBildirimler] = useState<any[]>([]);
   const [gorevEkle, setGorevEkle] = useState(false);
   const [gorevBaslik, setGorevBaslik] = useState('');
   const [gorevAciklama, setGorevAciklama] = useState('');
@@ -371,6 +372,12 @@ export default function MusteriDetayScreen() {
       const { data: gData } = await supabase.from('musteri_gorevler')
         .select('*').eq('musteri_id', id).order('tamamlandi').order('hedef_tarih', { ascending: true, nullsFirst: false });
       setGorevler((gData ?? []) as MusteriGorev[]);
+
+      const { data: bData } = await supabase.from('bildirimler')
+        .select('id, tip, veri, okundu_at, created_at')
+        .eq('musteri_id', id).is('silindi_at', null)
+        .order('created_at', { ascending: false });
+      setBildirimler(bData ?? []);
 
       if (jData) {
         setOzelIstekler(jData.map((r: any) => r.ozellik_id));
@@ -806,6 +813,37 @@ export default function MusteriDetayScreen() {
     const { data } = await supabase.from('musteri_notlar')
       .select('*').eq('musteri_id', id).order('tarih', { ascending: false });
     setNotlar((data ?? []) as MusteriNot[]);
+  }
+
+  function bildirimLabel(b: any): { ico: string; baslik: string; alt: string } {
+    const veri = b.veri ?? {};
+    switch (b.tip) {
+      case 'eslesme-musteri': return { ico: '👤', baslik: 'Eşleşen İlanlar', alt: `${veri.eslesen_count ?? 0} uygun ilan eşleşiyor` };
+      case 'takip': {
+        const t = veri.takip_tarihi;
+        if (t) { const [y, mo, d] = String(t).split('-'); return { ico: '⚠️', baslik: 'Takip Tarihi', alt: `Takip tarihi: ${d}.${mo}.${y}` }; }
+        return { ico: '⚠️', baslik: 'Takip Tarihi', alt: 'Takip tarihi geldi' };
+      }
+      case 'sessiz': return { ico: '🔕', baslik: 'Hareketsiz', alt: '7+ gündür iletişim yok' };
+      case 'gorev-gecikti': return { ico: '📋', baslik: 'Gecikmiş Görev', alt: `"${veri.baslik ?? ''}"` };
+      case 'asistan': return { ico: '🤖', baslik: 'Asistan', alt: String(veri.mesaj ?? '').replace(/[#*_`]/g, '').trim() };
+      default: return { ico: '🔔', baslik: 'Bildirim', alt: '' };
+    }
+  }
+
+  async function bildirimOkundu(bid: string) {
+    const b = bildirimler.find(x => x.id === bid);
+    const yeni = b?.okundu_at ? null : new Date().toISOString();
+    setBildirimler(prev => prev.map(x => x.id === bid ? { ...x, okundu_at: yeni } : x));
+    await supabase.from('bildirimler').update({ okundu_at: yeni }).eq('id', bid);
+  }
+
+  async function tumBildirimleriOkundu() {
+    const ids = bildirimler.filter(b => !b.okundu_at).map(b => b.id);
+    if (!ids.length) return;
+    const now = new Date().toISOString();
+    setBildirimler(prev => prev.map(x => ({ ...x, okundu_at: x.okundu_at ?? now })));
+    await supabase.from('bildirimler').update({ okundu_at: now }).in('id', ids);
   }
 
   async function handleNotKaydet() {
@@ -1433,6 +1471,48 @@ export default function MusteriDetayScreen() {
                         </View>
                       </View>
                     ))}
+                  </View>
+                )}
+
+                {/* Bildirimler */}
+                {bildirimler.length > 0 && (
+                  <View style={[styles.infoBox, { gap: 8 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.sectionTitle}>🔔 Bildirimler</Text>
+                        {bildirimler.filter(b => !b.okundu_at).length > 0 && (
+                          <View style={{ backgroundColor: Colors.primary, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{bildirimler.filter(b => !b.okundu_at).length}</Text>
+                          </View>
+                        )}
+                      </View>
+                      {bildirimler.filter(b => !b.okundu_at).length > 0 && (
+                        <TouchableOpacity onPress={tumBildirimleriOkundu}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant, textDecorationLine: 'underline' }}>Tümünü okundu yap</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {bildirimler.map(b => {
+                      const { ico, baslik, alt } = bildirimLabel(b);
+                      const okundu = !!b.okundu_at;
+                      return (
+                        <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: okundu ? Colors.surfaceContainerLow : 'rgba(229,57,53,0.12)', borderRadius: Radius.lg, padding: 12 }}>
+                          <Text style={{ fontSize: 18 }}>{ico}</Text>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <Text style={{ fontSize: 14, fontWeight: okundu ? '500' : '700', color: Colors.onSurface }}>{baslik}</Text>
+                              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>{notTarihGoster(b.created_at)}</Text>
+                            </View>
+                            {!!alt && <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 }}>{alt}</Text>}
+                          </View>
+                          {!okundu && (
+                            <TouchableOpacity onPress={() => bildirimOkundu(b.id)} style={{ backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>✓ Okundu</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
 
