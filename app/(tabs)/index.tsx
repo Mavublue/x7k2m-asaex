@@ -66,8 +66,8 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
-  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}[]>([]);
-  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}|null>(null);
+  const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;musteriId?:string;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}[]>([]);
+  const [detayBildirim, setDetayBildirim] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;musteriId?:string;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}|null>(null);
   const [detayListe, setDetayListe] = useState<any[]>([]);
   const [detayYukleniyor, setDetayYukleniyor] = useState(false);
   const [musteriDetay, setMusteriDetay] = useState<any | null>(null);
@@ -189,7 +189,7 @@ export default function DashboardScreen() {
     return istekler.some(istek => istekEslesiyor(istek, ilan));
   }
 
-  function mapBildirim(b: any): {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]} {
+  function mapBildirim(b: any): {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;musteriId?:string;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]} {
     const veri = b.veri ?? {};
     const ilan = b.ilan;
     const musteri = b.musteri;
@@ -231,7 +231,7 @@ export default function DashboardScreen() {
           ...butceler.slice(0, 2).map(x => ({ label: x, kind: 'butce' as const })),
           ...odalar.slice(0, 1).map(x => ({ label: `Min ${x}`, kind: 'oda' as const })),
         ];
-        return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri, tags };
+        return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri, musteriId: b.musteri_id ?? undefined, tags };
       }
       case 'takip': {
         baslik = musteriLabel || '?';
@@ -259,7 +259,7 @@ export default function DashboardScreen() {
         break;
       }
     }
-    return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri };
+    return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri, musteriId: b.musteri_id ?? undefined };
   }
 
   async function fetchBildirimler(seedFromCache = false) {
@@ -431,6 +431,13 @@ export default function DashboardScreen() {
     const ids = bildirimler.filter(b => !b.okundu).map(b => b.id);
     if (!ids.length) return;
     setBildirimler(prev => prev.map(x => ({ ...x, okundu: true })));
+    await supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).in('id', ids);
+  }
+
+  async function musteriTumunuOkundu(musteriId: string) {
+    const ids = bildirimler.filter(b => b.musteriId === musteriId && !b.okundu).map(b => b.id);
+    if (!ids.length) return;
+    setBildirimler(prev => prev.map(x => x.musteriId === musteriId ? { ...x, okundu: true } : x));
     await supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() }).in('id', ids);
   }
 
@@ -1005,7 +1012,7 @@ export default function DashboardScreen() {
                                 </Text>
                               </TouchableOpacity>
                             )}
-                            <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)}>
+                            <TouchableOpacity style={{ flex: 1 }} onPress={() => bildirimDetayAc(item)} onLongPress={() => setMenuAcikId(item.id)} delayLongPress={300}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
                                 <Text style={[styles.bdBaslik, !isOkundu && { fontWeight: '700' }, { flex: 1 }]} numberOfLines={1}>{item.baslik}</Text>
                                 {item.tarih ? <Text style={styles.bdZaman}>{goreciZaman(item.tarih)}</Text> : null}
@@ -1440,6 +1447,14 @@ export default function DashboardScreen() {
                   <>
                     <TouchableOpacity style={styles.bdMenuItem} onPress={() => { if (menuAcikId) toggleOkundu(menuAcikId); setMenuAcikId(null); }}>
                       <Text style={styles.bdMenuItemText}>Okunmadı yap</Text>
+                    </TouchableOpacity>
+                    <View style={styles.bdMenuSep} />
+                  </>
+                )}
+                {menuAcikId && bildirimler.find(b => b.id === menuAcikId)?.musteriId && (
+                  <>
+                    <TouchableOpacity style={styles.bdMenuItem} onPress={() => { const mid = bildirimler.find(b => b.id === menuAcikId)?.musteriId; if (mid) musteriTumunuOkundu(mid); setMenuAcikId(null); }}>
+                      <Text style={styles.bdMenuItemText}>Bu müşterinin tümünü okundu yap</Text>
                     </TouchableOpacity>
                     <View style={styles.bdMenuSep} />
                   </>
