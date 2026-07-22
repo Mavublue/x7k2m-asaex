@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 import { Colors, Radius, Spacing } from '../constants/theme';
-import { TELEFON_KODLARI_SIRALI, bulKod, bayrakToIso, formatNumara } from '../constants/telefonKodlari';
+import { TELEFON_KODLARI_SIRALI, bulKod, bayrakToIso, formatNumara, normalizeNumara } from '../constants/telefonKodlari';
 
 interface Props {
   kod: string;
@@ -41,7 +41,7 @@ export default function TelefonInput({ kod, numara, onChange, placeholder, sadec
           <TextInput
             style={styles.input}
             value={formatNumara(kod, numara)}
-            onChangeText={v => onChange(kod, v.replace(/\D/g, ''))}
+            onChangeText={v => onChange(kod, normalizeNumara(kod, v))}
             placeholder={placeholder ?? '5xx xxx xx xx'}
             placeholderTextColor={Colors.outlineVariant}
             keyboardType="phone-pad"

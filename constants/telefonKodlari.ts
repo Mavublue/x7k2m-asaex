@@ -248,25 +248,35 @@ export function bayrakToIso(bayrak: string): string {
   } catch { return ''; }
 }
 
+// Girilen numarayı seçili ülke koduna göre kanonik hale getirir:
+// "0505...", "00905...", "905..." (yeterince uzunsa) ve baştaki 0'lar temizlenir.
+export function normalizeNumara(kod: string, raw: string): string {
+  let d = (raw || '').replace(/\D/g, '');
+  if (!d) return '';
+  const cc = kod.replace(/\D/g, '');
+  if (cc && d.startsWith('00' + cc)) d = d.slice(2 + cc.length);
+  else if (cc && d.startsWith(cc) && d.length > cc.length + 6) d = d.slice(cc.length);
+  d = d.replace(/^0+/, '');
+  return d;
+}
+
 export function ayirTelefon(tam: string | null | undefined, varsayilan: string = VARSAYILAN_TELEFON_KODU): { kod: string; numara: string } {
   if (!tam) return { kod: varsayilan, numara: '' };
   const trimmed = tam.trim();
-  if (!trimmed.startsWith('+')) return { kod: varsayilan, numara: trimmed.replace(/^0/, '') };
+  if (!trimmed.startsWith('+')) return { kod: varsayilan, numara: normalizeNumara(varsayilan, trimmed) };
   const sirali = [...TELEFON_KODLARI].sort((a, b) => b.kod.length - a.kod.length);
   for (const t of sirali) {
     if (trimmed.startsWith(t.kod)) {
-      return { kod: t.kod, numara: trimmed.slice(t.kod.length).trim() };
+      return { kod: t.kod, numara: normalizeNumara(t.kod, trimmed.slice(t.kod.length)) };
     }
   }
-  return { kod: varsayilan, numara: trimmed };
+  return { kod: varsayilan, numara: normalizeNumara(varsayilan, trimmed) };
 }
 
 export function birlestirTelefon(kod: string, numara: string): string | null {
-  const temiz = numara.replace(/\D/g, '');
+  const temiz = normalizeNumara(kod, numara);
   if (!temiz) return null;
-  const kodRakam = kod.replace(/\D/g, '');
-  const noPrefix = temiz.startsWith(kodRakam) ? temiz.slice(kodRakam.length) : temiz;
-  return kod + noPrefix;
+  return kod + temiz;
 }
 
 export function formatNumara(kod: string, numara: string): string {
