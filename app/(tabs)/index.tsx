@@ -1732,7 +1732,7 @@ const styles = StyleSheet.create({
   bdButceTagText: { fontSize: 11, fontWeight: '600', color: '#fdba74' },
   bdOdaTag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(124,58,237,0.08)' },
   bdOdaTagText: { fontSize: 11, fontWeight: '600', color: '#c4b5fd' },
-  bdZaman: { fontSize: 11, color: Colors.outlineVariant, marginTop: 2 },
+  bdZaman: { fontSize: 11, color: Colors.outline, marginTop: 2 },
   bdMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   bdMenuText: { fontSize: 22, color: Colors.onSurfaceVariant, fontWeight: '700', lineHeight: 24 },
   bdMenuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'center', alignItems: 'center' },

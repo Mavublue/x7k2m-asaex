@@ -220,7 +220,7 @@ const s = StyleSheet.create({
   kapatBtn: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
   kapatText: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  bos: { fontSize: 14, color: Colors.outlineVariant },
+  bos: { fontSize: 14, color: Colors.outline },
 
   fotoOk: {
     position: 'absolute', top: '50%', marginTop: -22,

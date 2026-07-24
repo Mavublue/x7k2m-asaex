@@ -31,7 +31,7 @@ export default function PersistentTabBar() {
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {TABS.map(t => (
         <Pressable key={t.key} style={styles.tab} onPress={() => goTab(t.path)}>
-          <MaterialIcons name={t.icon} size={22} color={Colors.outlineVariant} />
+          <MaterialIcons name={t.icon} size={22} color={Colors.onSurface} />
           <Text style={styles.label}>{t.label}</Text>
         </Pressable>
       ))}
@@ -48,5 +48,5 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  label: { fontSize: 10, fontWeight: '500', color: Colors.outlineVariant },
+  label: { fontSize: 10, fontWeight: '500', color: Colors.onSurface },
 });

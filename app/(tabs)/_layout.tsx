@@ -28,7 +28,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.outlineVariant,
+        tabBarInactiveTintColor: Colors.onSurfaceVariant,
         tabBarLabelStyle: styles.tabLabel,
         tabBarIcon: ({ focused, color }) => (
           <MaterialIcons

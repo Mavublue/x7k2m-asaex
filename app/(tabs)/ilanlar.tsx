@@ -590,7 +590,7 @@ export default function IlanlarScreen() {
   const SearchPill = ({ style }: { style?: any }) => (
     <TouchableOpacity style={[styles.searchPill, style]} onPress={filtreAc} activeOpacity={0.8}>
       <Text style={styles.searchPillIcon}>🔍</Text>
-      <Text style={[styles.searchPillText, !search && badge === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
+      <Text style={[styles.searchPillText, !search && badge === 0 && { color: Colors.outline }]} numberOfLines={1}>
         {search || (badge > 0 ? `${badge} filtre aktif` : 'Ara ve filtrele...')}
       </Text>
       {badge > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>}
@@ -783,7 +783,7 @@ export default function IlanlarScreen() {
           <View style={styles.floatingSearchWrap} pointerEvents="box-none">
             <TouchableOpacity style={styles.floatingSearch} onPress={filtreAc} activeOpacity={0.85}>
               <Text style={styles.floatingSearchIcon}>🔍</Text>
-              <Text style={[styles.floatingSearchText, !search && badge === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
+              <Text style={[styles.floatingSearchText, !search && badge === 0 && { color: Colors.outline }]} numberOfLines={1}>
                 {search || (badge > 0 ? `${badge} filtre aktif` : 'Ara ve filtrele...')}
               </Text>
               {badge > 0 && (
@@ -1140,14 +1140,14 @@ export default function IlanlarScreen() {
                           onPress={() => { if (gecici.filterIl.length === 0) return; setKonumSearch(''); setFilterPage('ilce'); }}
                           activeOpacity={gecici.filterIl.length > 0 ? 0.7 : 1}
                         >
-                          <Text style={[styles.konumBoxText, gecici.filterIlce.length > 0 && styles.konumBoxTextAktif, gecici.filterIl.length === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
+                          <Text style={[styles.konumBoxText, gecici.filterIlce.length > 0 && styles.konumBoxTextAktif, gecici.filterIl.length === 0 && { color: Colors.outline }]} numberOfLines={1}>
                             {gecici.filterIlce.length > 0 ? `${gecici.filterIlce.length} İlçe Seçildi` : 'İlçe Seçin'}
                           </Text>
                           {gecici.filterIlce.length > 0
                             ? <TouchableOpacity onPress={() => setGecici(g => ({ ...g, filterIlce: [], filterMahalle: [] }))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
                                 <Text style={styles.konumBoxSil}>✕ Temizle</Text>
                               </TouchableOpacity>
-                            : <Text style={[styles.konumBoxChevron, gecici.filterIl.length === 0 && { color: Colors.outlineVariant }]}>▾</Text>
+                            : <Text style={[styles.konumBoxChevron, gecici.filterIl.length === 0 && { color: Colors.outline }]}>▾</Text>
                           }
                         </TouchableOpacity>
 
@@ -1157,14 +1157,14 @@ export default function IlanlarScreen() {
                           onPress={() => { if (gecici.filterIlce.length === 0) return; setKonumSearch(''); setFilterPage('mahalle'); }}
                           activeOpacity={gecici.filterIlce.length > 0 ? 0.7 : 1}
                         >
-                          <Text style={[styles.konumBoxText, gecici.filterMahalle.length > 0 && styles.konumBoxTextAktif, gecici.filterIlce.length === 0 && { color: Colors.outlineVariant }]} numberOfLines={1}>
+                          <Text style={[styles.konumBoxText, gecici.filterMahalle.length > 0 && styles.konumBoxTextAktif, gecici.filterIlce.length === 0 && { color: Colors.outline }]} numberOfLines={1}>
                             {gecici.filterMahalle.length > 0 ? `${gecici.filterMahalle.length} Mahalle Seçildi` : 'Mahalle Seçin'}
                           </Text>
                           {gecici.filterMahalle.length > 0
                             ? <TouchableOpacity onPress={() => setGecici(g => ({ ...g, filterMahalle: [] }))} style={{ paddingLeft: 10, paddingVertical: 4 }}>
                                 <Text style={styles.konumBoxSil}>✕ Temizle</Text>
                               </TouchableOpacity>
-                            : <Text style={[styles.konumBoxChevron, gecici.filterIlce.length === 0 && { color: Colors.outlineVariant }]}>▾</Text>
+                            : <Text style={[styles.konumBoxChevron, gecici.filterIlce.length === 0 && { color: Colors.outline }]}>▾</Text>
                           }
                         </TouchableOpacity>
                       </View>
@@ -1998,7 +1998,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg, paddingVertical: 14,
   },
   secimBtnText: { fontSize: 15, color: Colors.onSurface },
-  placeholder: { color: Colors.outlineVariant },
+  placeholder: { color: Colors.outline },
   secimOk: { fontSize: 18, color: Colors.onSurfaceVariant },
   temizle: { fontSize: 13, color: Colors.primary, fontWeight: '600', marginTop: Spacing.sm, textAlign: 'right' },
   konumChip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.primaryFixed, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 10, marginBottom: 6 },

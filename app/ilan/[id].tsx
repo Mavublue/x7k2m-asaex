@@ -1420,7 +1420,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.onSurface, marginBottom: Spacing.md },
 
   aciklama: { fontSize: 14, color: Colors.onSurfaceVariant, lineHeight: 22 },
-  aciklamaYok: { fontSize: 14, color: Colors.outlineVariant, fontStyle: 'italic' },
+  aciklamaYok: { fontSize: 14, color: Colors.outline, fontStyle: 'italic' },
   aciklamaTabRow: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, padding: 3, marginBottom: Spacing.md },
   aciklamaTab: { flex: 1, paddingVertical: 7, borderRadius: Radius.full, alignItems: 'center' },
   aciklamaTabAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },

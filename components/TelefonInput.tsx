@@ -35,7 +35,7 @@ export default function TelefonInput({ kod, numara, onChange, placeholder, sadec
         </TouchableOpacity>
         {sadeceKod ? (
           <View style={[styles.input, { justifyContent: 'center' }]}>
-            <Text style={{ color: Colors.outlineVariant, fontSize: 14 }}>{placeholder ?? 'Ülke kodu seç'}</Text>
+            <Text style={{ color: Colors.outline, fontSize: 14 }}>{placeholder ?? 'Ülke kodu seç'}</Text>
           </View>
         ) : (
           <TextInput
@@ -77,7 +77,7 @@ export default function TelefonInput({ kod, numara, onChange, placeholder, sadec
                   <Text style={styles.itemKod}>{item.kod}</Text>
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Text style={{ padding: 20, textAlign: 'center', color: Colors.outlineVariant }}>Sonuç yok</Text>}
+              ListEmptyComponent={<Text style={{ padding: 20, textAlign: 'center', color: Colors.outline }}>Sonuç yok</Text>}
             />
           </View>
         </View>
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   kodBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderRightWidth: 1, borderRightColor: Colors.outline, gap: 6 },
   bayrak: { fontSize: 16 },
   kod: { fontSize: 14, color: Colors.onSurface, fontWeight: '600' },
-  chev: { fontSize: 10, color: Colors.outlineVariant },
+  chev: { fontSize: 10, color: Colors.outline },
   input: { flex: 1, paddingHorizontal: Spacing.lg, paddingVertical: 12, fontSize: 15, color: Colors.onSurface },
   overlay: { flex: 1, justifyContent: 'flex-end' },
   dim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },

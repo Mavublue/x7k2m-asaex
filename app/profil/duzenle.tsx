@@ -122,7 +122,7 @@ export default function ProfilDuzenleScreen() {
             <Text style={styles.label}>Varsayılan Ülke Kodu</Text>
             <TelefonInput kod={defaultKod} numara="" sadeceKod placeholder="Ülke kodu seç"
               onChange={(k) => setDefaultKod(k)} />
-            <Text style={{ fontSize: 11, color: Colors.outlineVariant, marginTop: 4 }}>Müşteri telefon alanlarında otomatik gelir.</Text>
+            <Text style={{ fontSize: 11, color: Colors.outline, marginTop: 4 }}>Müşteri telefon alanlarında otomatik gelir.</Text>
           </View>
           <Field label="Emlak Ofisi Adı (opsiyonel)" value={ofisAdi} onChangeText={setOfisAdi} placeholder="Yılmaz Gayrimenkul" />
           <Field label="Fotoğraf Filigranı (opsiyonel)" value={watermarkText} onChangeText={v => setWatermarkText(v.replace(/[<>&"']/g, '').slice(0, 40))} placeholder="ahmetemlak.com" />
@@ -235,12 +235,12 @@ const styles = StyleSheet.create({
   emailKutu: { backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, padding: Spacing.lg, gap: 4 },
   emailLabel: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
   emailDeger: { fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
-  emailNot: { fontSize: 11, color: Colors.outlineVariant, marginTop: 2 },
+  emailNot: { fontSize: 11, color: Colors.outline, marginTop: 2 },
 
   inputContainer: { gap: 6 },
   secimBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 12 },
   secimBtnText: { fontSize: 15, color: Colors.onSurface },
-  secimBtnPlaceholder: { fontSize: 15, color: Colors.outlineVariant },
+  secimBtnPlaceholder: { fontSize: 15, color: Colors.outline },
   chevron: { fontSize: 20, color: Colors.onSurfaceVariant },
   temizle: { fontSize: 16, color: Colors.onSurfaceVariant, paddingHorizontal: 4 },
 

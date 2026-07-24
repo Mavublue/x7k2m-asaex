@@ -1128,7 +1128,7 @@ export default function MusteriDetayScreen() {
                   </TouchableOpacity>
                 </View>
                 {ekKisiler.length === 0 ? (
-                  <Text style={{ fontSize: 12, color: Colors.outlineVariant, marginTop: 4 }}>Eş, oğul, anne gibi başka iletişim kişilerini ekleyebilirsiniz.</Text>
+                  <Text style={{ fontSize: 12, color: Colors.outline, marginTop: 4 }}>Eş, oğul, anne gibi başka iletişim kişilerini ekleyebilirsiniz.</Text>
                 ) : (
                   <View style={{ gap: 8, marginTop: 6 }}>
                     {ekKisiler.map((k, idx) => (
@@ -3316,7 +3316,7 @@ const styles = StyleSheet.create({
 
   secimBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 8 },
   secimBtnText: { fontSize: 13, color: Colors.onSurface },
-  secimBtnPlaceholder: { fontSize: 13, color: Colors.outlineVariant },
+  secimBtnPlaceholder: { fontSize: 13, color: Colors.outline },
   secimChevron: { fontSize: 20, color: Colors.onSurfaceVariant },
   mahalleSatir: { flexDirection: 'row', gap: Spacing.sm, marginTop: 6, alignItems: 'center' },
   temizleBtn: { alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow },

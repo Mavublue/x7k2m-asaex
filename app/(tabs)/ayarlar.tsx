@@ -149,11 +149,11 @@ const styles = StyleSheet.create({
   menuLabel: { fontSize: 15, color: Colors.onSurface },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '50%' },
   menuSub: { fontSize: 13, color: Colors.onSurfaceVariant },
-  menuArrow: { fontSize: 20, color: Colors.outlineVariant },
+  menuArrow: { fontSize: 20, color: Colors.outline },
 
   logoutBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.full, paddingVertical: 16, alignItems: 'center', marginBottom: Spacing.xl },
   logoutText: { color: '#fca5a5', fontWeight: '700', fontSize: 15 },
-  version: { textAlign: 'center', fontSize: 12, color: Colors.outlineVariant },
+  version: { textAlign: 'center', fontSize: 12, color: Colors.outline },
 
   prefixKart: { backgroundColor: Colors.surfaceContainerLowest, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg, gap: Spacing.md },
   prefixLabel: { fontSize: 14, fontWeight: '700', color: Colors.onSurface },

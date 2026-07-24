@@ -357,12 +357,12 @@ const s = StyleSheet.create({
     paddingHorizontal: Spacing.lg, paddingVertical: 12,
   },
   adRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  expandIcon: { fontSize: 13, color: Colors.outlineVariant, width: 14 },
+  expandIcon: { fontSize: 13, color: Colors.outline, width: 14 },
   ozellikAd: { flex: 1, fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
   sayiBadge: { backgroundColor: 'rgba(234,179,8,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, minWidth: 28, alignItems: 'center' },
   sayiBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.onSurface },
   sayiBadgeBos: { backgroundColor: Colors.surfaceContainerLow },
-  sayiBadgeBosText: { color: Colors.outlineVariant },
+  sayiBadgeBosText: { color: Colors.outline },
   duzenleInput: {
     flex: 1, fontSize: 15, color: Colors.onSurface, fontWeight: '500',
     paddingVertical: 0, paddingHorizontal: 8,
@@ -413,5 +413,5 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 18,
   },
   kaldirBtnText: { fontSize: 12, fontWeight: '700', color: '#E53935' },
-  emptyMini: { fontSize: 13, color: Colors.outlineVariant, textAlign: 'center', paddingVertical: 4 },
+  emptyMini: { fontSize: 13, color: Colors.outline, textAlign: 'center', paddingVertical: 4 },
 });
