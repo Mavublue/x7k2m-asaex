@@ -2518,11 +2518,13 @@ function PaylasimBox({
               ) : paylasilanLinkler.map(link => {
                 const ks = kalanSure(link.expires_at ?? new Date().toISOString());
                 const byDevice = new Map<string, ZiyaretItem>();
+                const tekIlanId = link.ilan_ids.length === 1 ? link.ilan_ids[0] : null;
                 ziyaretler.forEach(z => {
-                  // Link bazlı kesin eşleşme: her linkin kendi unique musteri_token'ı.
-                  const matchesToken = !!link.musteri_token && z.musteri_token === link.musteri_token;
+                  // Çoklu liste: paket_token kesin eşleşme (musteri_token tüm linklerde ortak).
                   const matchesPaket = z.paket_token === link.token;
-                  if (!matchesToken && !matchesPaket) return;
+                  // Tek ilanlı link: ziyaret paket_token taşımaz; ilan + link'in musteri_token'ı ile eşleştir.
+                  const matchesTek = !!tekIlanId && !z.paket_token && z.ilan_id === tekIlanId && !!link.musteri_token && z.musteri_token === link.musteri_token;
+                  if (!matchesPaket && !matchesTek) return;
                   const existing = byDevice.get(z.device_id);
                   if (!existing) { byDevice.set(z.device_id, { ...z }); }
                   else {
@@ -2904,13 +2906,11 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
         }
         // Paket
         const gPaketToken = g.items[0].paket_token;
-        const paketMusteriToken = paylasilanLinkler.find(l => l.token === gPaketToken)?.musteri_token ?? null;
-        const paketIlanIds = new Set(g.items.map(p => p.ilanlar?.id).filter(Boolean) as string[]);
+        // Aynı müşterinin farklı listeleri musteri_token'ı paylaşır; sadece paket_token ile
+        // eşleştir. Yoksa ilanı yeni listeden açan cihaz, o ilanı içeren eski listede de sayılır.
         const byDevice = new Map<string, typeof ziyaretler[number]>();
         ziyaretler.forEach(z => {
-          const matchesPaket = z.paket_token === gPaketToken;
-          const matchesIlan = z.ilan_id ? paketIlanIds.has(z.ilan_id) : false;
-          if (!matchesPaket && !matchesIlan) return;
+          if (z.paket_token !== gPaketToken) return;
           const existing = byDevice.get(z.device_id);
           if (!existing) {
             byDevice.set(z.device_id, { ...z });
@@ -2969,7 +2969,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
               {g.items.map((p, i) => {
                 const ilan = p.ilanlar;
                 if (!ilan) return null;
-                let perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && (z.paket_token === gPaketToken || (!z.paket_token && !!paketMusteriToken && z.musteri_token === paketMusteriToken)));
+                let perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && z.paket_token === gPaketToken);
                 if (selDevice) perIlan = perIlan.filter(z => z.device_id === selDevice);
                 const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
                 return { i, ilan, perIlan, perIlanCanli, acildi: perIlan.length > 0 };
