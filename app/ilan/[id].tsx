@@ -208,6 +208,7 @@ export default function IlanDetayScreen() {
   const [loading, setLoading] = useState(true);
   const [aktifFoto, setAktifFoto] = useState(0);
   const [aciklamaTab, setAciklamaTab] = useState<'not' | 'musteri'>('not');
+  const [musteriGorunum, setMusteriGorunum] = useState(false);
   const [telefon, setTelefon] = useState('');
   const [eslesModal, setEslesModal] = useState(false);
   const [musteriler, setMusteriler] = useState<any[]>([]);
@@ -591,6 +592,10 @@ export default function IlanDetayScreen() {
   // Emlakçı görünümü: görünür fotolar + sağ kutu (fotograflar'da olmayan gizli) sonda
   const gorunurFotograflar = ilan.fotograflar ?? [];
   const fotograflar = [...gorunurFotograflar, ...((ilan.gizli_fotograflar ?? []).filter((f: string) => !gorunurFotograflar.includes(f)))];
+  // Müşteri görünümünde sadece görünür (gizli olmayan) fotolar
+  const gosterilenFotograflar = musteriGorunum
+    ? fotograflar.filter((f: string) => !(ilan.gizli_fotograflar ?? []).includes(f))
+    : fotograflar;
 
   const detaylar = [
     { label: 'Portföy No', deger: ilan.portfoy_no },
@@ -613,6 +618,12 @@ export default function IlanDetayScreen() {
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{ilan.baslik}</Text>
+        <TouchableOpacity
+          style={[styles.menuBtn, musteriGorunum && { backgroundColor: Colors.primary, borderRadius: 999 }]}
+          onPress={() => setMusteriGorunum(v => !v)}
+        >
+          <Text style={[styles.menuBtnText, { fontSize: 18 }, musteriGorunum && { color: '#fff' }]}>👁</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuModal(true)}>
           <Text style={styles.menuBtnText}>⋯</Text>
         </TouchableOpacity>
@@ -621,11 +632,11 @@ export default function IlanDetayScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Fotoğraf Galerisi */}
         <View style={styles.galeriContainer}>
-          {fotograflar.length > 0 ? (
+          {gosterilenFotograflar.length > 0 ? (
             <>
               <FlatList
                 ref={flatListRef}
-                data={fotograflar}
+                data={gosterilenFotograflar}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
@@ -653,10 +664,10 @@ export default function IlanDetayScreen() {
                   );
                 }}
               />
-              {fotograflar.length > 1 && (
+              {gosterilenFotograflar.length > 1 && (
                 <View style={styles.thumbRowWrap}>
                   <ScrollView ref={thumbScrollRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
-                    {fotograflar.map((f, i) => {
+                    {gosterilenFotograflar.map((f, i) => {
                       const gizli = (ilan.gizli_fotograflar ?? []).includes(f);
                       return (
                       <TouchableOpacity key={i} onPress={() => {
@@ -734,7 +745,14 @@ export default function IlanDetayScreen() {
           </View>
 
           {/* Açıklama */}
-          {(ilan.aciklama || ilan.musteri_aciklamasi) && (
+          {musteriGorunum ? (
+            ilan.musteri_aciklamasi ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Açıklama</Text>
+                <Text style={styles.aciklama}>{ilan.musteri_aciklamasi}</Text>
+              </View>
+            ) : null
+          ) : (ilan.aciklama || ilan.musteri_aciklamasi) && (
             <View style={styles.section}>
               <View style={styles.aciklamaTabRow}>
                 <TouchableOpacity
@@ -774,7 +792,7 @@ export default function IlanDetayScreen() {
           </View>
 
           {/* Harita - Birebir Konum (Emlakçı) */}
-          {ilan.lat && ilan.lng ? (
+          {ilan.lat && ilan.lng && !musteriGorunum ? (
             <View style={styles.section}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Birebir Konum</Text>
@@ -1301,7 +1319,7 @@ export default function IlanDetayScreen() {
 
       <Modal visible={fullscreenIdx !== null} transparent animationType="fade" onRequestClose={() => setFullscreenIdx(null)}>
         <FullscreenGaleri
-          fotos={fotograflar}
+          fotos={gosterilenFotograflar}
           initialIdx={fullscreenIdx ?? 0}
           onClose={() => setFullscreenIdx(null)}
           listRef={fullscreenListRef}
