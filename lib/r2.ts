@@ -23,19 +23,41 @@ export async function uploadToR2(key: string, body: Uint8Array, contentType: str
   throw new Error('Direkt R2 upload kaldırıldı, getUploadUrl kullan');
 }
 
-export async function optimizePhoto(key: string, isFirst = false): Promise<void> {
+// watermarkText çağıran tarafça bir kez çözülüp verilir. Her foto için ayrı profil
+// sorgusu YAPMA — biri null/hata dönerse o foto watermark'sız kalıp müşteride siyah
+// gözüküyordu. Verilmezse (tek foto) profilden çeker.
+export async function optimizePhoto(
+  key: string,
+  isFirst = false,
+  watermarkText?: string | null,
+): Promise<void> {
   const token = await getToken();
-  const { data: { user } } = await supabase.auth.getUser();
-  let watermarkText: string | null = null;
-  if (user) {
-    const { data } = await supabase.from('profiller').select('watermark_text').eq('id', user.id).single();
-    watermarkText = data?.watermark_text ?? null;
+  let wm = watermarkText;
+  if (wm === undefined) {
+    const { data: { user } } = await supabase.auth.getUser();
+    wm = null;
+    if (user) {
+      const { data } = await supabase.from('profiller').select('watermark_text').eq('id', user.id).single();
+      wm = data?.watermark_text ?? null;
+    }
   }
-  await fetch(`${MEDIA_SERVICE}/optimize`, {
+  const res = await fetch(`${MEDIA_SERVICE}/optimize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ key, isFirst, ...(watermarkText ? { watermarkText } : {}) }),
+    body: JSON.stringify({ key, isFirst, ...(wm ? { watermarkText: wm } : {}) }),
   });
+  // Sessiz başarısızlık = yarım varyant (_wm eksik) = müşteride siyah foto.
+  if (!res.ok) throw new Error(`Foto işlenemedi (optimize ${res.status})`);
+}
+
+// Kullanıcının watermark metnini bir kez çözer (toplu yüklemede tekrar tekrar
+// sorgulamamak için). Çağıran sonucu tüm fotolar için optimizePhoto'ya geçirmeli.
+export async function getWatermarkText(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase.from('profiller').select('watermark_text').eq('id', user.id).single();
+  if (error) throw error;
+  return data?.watermark_text ?? null;
 }
 
 export async function copyIlanFiles(sourceIlanId: string, targetIlanId: string, fotograflar: string[]): Promise<string[]> {

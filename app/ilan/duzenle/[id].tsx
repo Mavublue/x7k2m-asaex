@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../../lib/supabase';
-import { getUploadUrl, optimizePhoto, deleteFile } from '../../../lib/r2';
+import { getUploadUrl, optimizePhoto, deleteFile, getWatermarkText } from '../../../lib/r2';
 import { Colors, Radius, Spacing } from '../../../constants/theme';
 import { Ilan } from '../../../types';
 import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../../constants/turkiye';
@@ -287,6 +287,13 @@ export default function IlanDuzenleScreen() {
     const baseEmpty = fotograflar.length === 0;
     const completedKeys: Record<string, string> = {};
 
+    // Watermark metnini bir kez çöz (tüm fotolar paylaşır). Foto başına ayrı sorgu
+    // yapıp biri null dönünce o foto watermark'sız/siyah kalmasın. Çözülemezse
+    // undefined → optimizePhoto foto başına kendi çeker (fallback).
+    let watermarkText: string | null | undefined;
+    try { watermarkText = await getWatermarkText(); }
+    catch { watermarkText = undefined; }
+
     const uploadOne = async (item: typeof newItems[number]) => {
       if (cancelledRef.current.has(item.tempId)) return;
       try {
@@ -330,7 +337,7 @@ export default function IlanDuzenleScreen() {
         });
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
         // Variant üretimi upload havuzunu bloklamasın — arka planda çalışsın
-        optimizePhoto(key, isFirst).catch(() => {});
+        optimizePhoto(key, isFirst, watermarkText).catch(e => console.error('optimize hata:', key, e));
       } catch (e) {
         if (!cancelledRef.current.has(item.tempId)) console.error(e);
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
