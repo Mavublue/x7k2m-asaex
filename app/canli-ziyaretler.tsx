@@ -64,7 +64,7 @@ function saatLabel(t: number): { time: string; date: string } {
 function sonAktifText(iso: string): { canli: boolean; text: string } {
   const ms = Date.now() - new Date(iso).getTime();
   const sn = Math.floor(ms / 1000);
-  if (sn < 15) return { canli: true, text: 'Şu an bakıyor' };
+  if (sn < 8) return { canli: true, text: 'Şu an bakıyor' };
   const dk = Math.floor(sn / 60);
   if (dk < 60) return { canli: false, text: `${dk} dk önce` };
   const sa = Math.floor(dk / 60);
@@ -147,7 +147,7 @@ export default function CanliZiyaretlerScreen() {
     timerRef.current = setInterval(() => {
       fetchData(timelinePeriod);
       setTick(t => t + 1);
-    }, 8000);
+    }, 2000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [fetchData, timelinePeriod]));
 
