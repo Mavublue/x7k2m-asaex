@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri, Ilan, MusteriNot, MusteriGorev, MusteriIstek } from '../../types';
 import R2Image from '../../components/R2Image';
@@ -324,9 +325,8 @@ export default function MusteriDetayScreen() {
   const [acikLinkler, setAcikLinkler] = useState<string[]>([]);
   const [linkEtiket, setLinkEtiket] = useState('');
 
-  const fetchMusteri = useCallback(async () => {
-    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_musteri_detay', { mid: id });
-    if (rpcErr) { console.error('RPC error:', rpcErr); Alert.alert('Hata', rpcErr.message); setLoading(false); return; }
+  // RPC + görevler + bildirimler verisini state'e uygular (hem cache hem network yolundan çağrılır)
+  const applyMusteri = useCallback((rpcData: any, gData: any, bData: any) => {
     const data = rpcData?.musteri ?? null;
     const dKod = rpcData?.default_telefon_kodu || VARSAYILAN_TELEFON_KODU;
     const kData = rpcData?.iletisim ?? [];
@@ -370,14 +370,7 @@ export default function MusteriDetayScreen() {
 
       setNotlar(((nData ?? []) as MusteriNot[]).slice().sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime()));
 
-      const { data: gData } = await supabase.from('musteri_gorevler')
-        .select('*').eq('musteri_id', id).order('tamamlandi').order('hedef_tarih', { ascending: true, nullsFirst: false });
       setGorevler((gData ?? []) as MusteriGorev[]);
-
-      const { data: bData } = await supabase.from('bildirimler')
-        .select('id, tip, veri, okundu_at, created_at')
-        .eq('musteri_id', id).is('silindi_at', null)
-        .order('created_at', { ascending: false });
       setBildirimler(bData ?? []);
 
       if (jData) {
@@ -391,6 +384,27 @@ export default function MusteriDetayScreen() {
     }
     setLoading(false);
   }, [id]);
+
+  const fetchMusteri = useCallback(async () => {
+    // stale-while-revalidate: cache varsa anında bas, arkada yenile.
+    // panel_ öneki: logout'ta cacheClear('panel_') temizler (müşteri kişisel verisi kalmasın)
+    const cacheKey = `panel_musteri_detay_${id}`;
+    const cached = await cacheGet<any>(cacheKey);
+    if (cached) applyMusteri(cached.rpcData, cached.gData, cached.bData);
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('get_musteri_detay', { mid: id });
+    if (rpcErr) { console.error('RPC error:', rpcErr); if (!cached) Alert.alert('Hata', rpcErr.message); setLoading(false); return; }
+    let gData: any = null, bData: any = null;
+    if (rpcData?.musteri) {
+      ({ data: gData } = await supabase.from('musteri_gorevler')
+        .select('*').eq('musteri_id', id).order('tamamlandi').order('hedef_tarih', { ascending: true, nullsFirst: false }));
+      ({ data: bData } = await supabase.from('bildirimler')
+        .select('id, tip, veri, okundu_at, created_at')
+        .eq('musteri_id', id).is('silindi_at', null)
+        .order('created_at', { ascending: false }));
+    }
+    applyMusteri(rpcData, gData, bData);
+    cacheSet(cacheKey, { rpcData, gData, bData });
+  }, [id, applyMusteri]);
 
   const fetchTumOzellikler = useCallback(async () => {
     if (tumOzellikler.length > 0) return;
