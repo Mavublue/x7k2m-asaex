@@ -275,12 +275,15 @@ export default function IlanlarScreen() {
     const cacheKey = `panel_ilanlar_${session.user.id}`;
     const cached = await cacheGet<Ilan[]>(cacheKey);
     if (cached) { setIlanlar(cached); setLoading(false); }
-    const { data } = await supabase.from('ilanlar').select('*, ilan_ozellikler(ozellik_id)').order('olusturma_tarihi', { ascending: false });
+    // Liste için sadece kart+filtre+harita alanları; aciklama/sosyal_medya_metni/gizli_fotograflar
+    // gibi ağır kolonlar çekilmez (detay açılınca ayrıca çekiliyor). ~515 ilanda büyük fark.
+    const { data } = await supabase.from('ilanlar')
+      .select('id, slug, baslik, fiyat, konum, ilce, mahalle, metrekare, oda_sayisi, tip, durum, musteri_gizle, kategori, bina_yasi, kat_sayisi, bulundugu_kat, fotograflar, portfoy_no, olusturma_tarihi, lat, lng, ilan_ozellikler(ozellik_id)')
+      .order('olusturma_tarihi', { ascending: false });
     if (data) {
       const mapped = (data as any[]).map(i => ({ ...i, ozellik_ids: (i.ilan_ozellikler ?? []).map((r: any) => r.ozellik_id) }));
       setIlanlar(mapped);
       cacheSet(cacheKey, mapped);
-      mapped.forEach((i: any) => cacheSet(`ilan_${i.id}`, i));
     }
     setLoading(false);
   }

@@ -123,7 +123,10 @@ export default function HaritaScreen() {
   const webRef = useRef<WebView>(null);
 
   const fetchIlanlar = useCallback(async () => {
-    const { data } = await supabase.from('ilanlar').select('*').order('olusturma_tarihi', { ascending: false });
+    // Harita için sadece pin+popup alanları; ağır kolonlar (aciklama vs.) çekilmez.
+    const { data } = await supabase.from('ilanlar')
+      .select('id, lat, lng, fiyat, baslik, tip, kategori, ilce, mahalle, konum, musteri_gizle, fotograflar')
+      .order('olusturma_tarihi', { ascending: false });
     if (data) {
       const hepsini = data as Ilan[];
       const koordinatlilar = hepsini.filter(i => i.lat && i.lng);
