@@ -98,6 +98,7 @@ export default function RootLayout() {
         <Stack.Screen name="musteri/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="ozellikler/index" options={{ presentation: 'card' }} />
         <Stack.Screen name="canli-ziyaretler" options={{ presentation: 'card' }} />
+        <Stack.Screen name="esnaf" options={{ presentation: 'card' }} />
       </Stack>
       {downloadProgress && (
         <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 8, left: 0, right: 0, alignItems: 'center', zIndex: 9999 }}>
