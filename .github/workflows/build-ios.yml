@@ -2,6 +2,9 @@ name: Build iOS IPA
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'ios-*'
 
 jobs:
   build:
