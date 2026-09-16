@@ -24,6 +24,8 @@ import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
+import FiligranTemizleModal from '../../components/FiligranTemizleModal';
+import { watermarkYetkili } from '../../lib/filigran';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
 
@@ -241,6 +243,8 @@ export default function IlanDetayScreen() {
   const [ozellikAdlari, setOzellikAdlari] = useState<string[]>([]);
   const [satildiModal, setSatildiModal] = useState(false);
   const [kolajModal, setKolajModal] = useState(false);
+  const [filigranModal, setFiligranModal] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const fetchIlan = useCallback(() => {
     cacheGet<Ilan>(`ilan_${id}`).then(cached => {
@@ -272,6 +276,7 @@ export default function IlanDetayScreen() {
     fetchIlan();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
+        setUserEmail(user.email ?? null);
         supabase.from('profiller').select('ad, soyad, telefon, sosyal_medya_sablonu').eq('id', user.id).single().then(({ data }) => {
           if (data) {
             if (data.telefon) setTelefon(data.telefon);
@@ -986,6 +991,12 @@ export default function IlanDetayScreen() {
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setKolajModal(true); }}>
               <Text style={styles.menuItemText}>🖼  Kolaj</Text>
             </TouchableOpacity>
+
+            {watermarkYetkili(userEmail) && fotograflar.length > 0 && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setFiligranModal(true); }}>
+                <Text style={styles.menuItemText}>🧹  Filigran Temizle</Text>
+              </TouchableOpacity>
+            )}
             <View style={styles.menuSep} />
             <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); linkModalAc(); }}>
               <Text style={styles.menuItemText}>🔗  Link Paylaş</Text>
@@ -1314,6 +1325,15 @@ export default function IlanDetayScreen() {
           ilan={ilan}
           visible={kolajModal}
           onClose={() => setKolajModal(false)}
+        />
+      )}
+
+      {filigranModal && (
+        <FiligranTemizleModal
+          ilan={ilan}
+          visible={filigranModal}
+          onClose={() => setFiligranModal(false)}
+          onChanged={fetchIlan}
         />
       )}
 
