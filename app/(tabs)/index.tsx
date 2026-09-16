@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import R2Image from '../../components/R2Image';
+import FiligranDurumKarti from '../../components/FiligranDurumKarti';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
 import { cacheGet, cacheSet } from '../../lib/cache';
@@ -603,6 +604,9 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Filigran temizleme durumu (aktif iş varsa görünür) */}
+        <FiligranDurumKarti />
 
         {/* Hızlı Aksiyonlar */}
         <View style={styles.section}>
