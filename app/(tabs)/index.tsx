@@ -13,6 +13,8 @@ import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Eslesme } from '../../types';
 
+const DASH_CACHE = 'app_dash';
+const GOREV_CACHE = 'app_dash_gorev';
 const FILTRE_SIRA = ['eslesme-ilan', 'eslesme-musteri', 'fiyat-indi', 'takip', 'gorev-gecikti', 'sessiz', 'asistan'];
 const FILTRE_BASLIK: Record<string, { baslik: string; ico: string }> = {
   'eslesme-ilan': { baslik: 'Eşleşen Müşteriler', ico: '🏠' },
@@ -105,6 +107,18 @@ export default function DashboardScreen() {
   }, [sirali]);
 
   useEffect(() => {
+    (async () => {
+      const c = await cacheGet<any>(DASH_CACHE);
+      if (c) {
+        setUserName(c.userName ?? '');
+        setIlanSayisi(c.ilanSayisi ?? 0);
+        setMusteriSayisi(c.musteriSayisi ?? 0);
+        setTakipMusteriler(c.takipMusteriler ?? []);
+        setLoading(false);
+      }
+      const g = await cacheGet<any>(GOREV_CACHE);
+      if (g) { setGorevDashboard(g.gorevDashboard ?? []); setGecmisCount(g.gecmisCount ?? 0); }
+    })();
     fetchBildirimler(true);
     fetchData();
     fetchGorevDashboard('bugun');
@@ -449,14 +463,12 @@ export default function DashboardScreen() {
   }
 
   async function fetchData() {
+    let adStr = '';
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: profil } = await supabase.from('profiller').select('ad, soyad').eq('id', user.id).single();
-      if (profil?.ad) {
-        setUserName([profil.ad, profil.soyad].filter(Boolean).join(' '));
-      } else {
-        setUserName(user.email?.split('@')[0] ?? '');
-      }
+      adStr = profil?.ad ? [profil.ad, profil.soyad].filter(Boolean).join(' ') : (user.email?.split('@')[0] ?? '');
+      setUserName(adStr);
     }
 
     const [ilanRes, musteriRes, eslesmeRes] = await Promise.all([
@@ -491,6 +503,13 @@ export default function DashboardScreen() {
     if (mListe) setMusteriListesi(mListe);
 
     setLoading(false);
+
+    cacheSet(DASH_CACHE, {
+      userName: adStr,
+      ilanSayisi: ilanRes.count ?? 0,
+      musteriSayisi: musteriRes.count ?? 0,
+      takipMusteriler: takip ?? [],
+    });
   }
 
   async function fetchGorevDashboard(filtre: 'gecmis' | 'bugun' | 'yarin' | '7gun' | 'tumu') {
@@ -527,6 +546,8 @@ export default function DashboardScreen() {
       .not('hedef_tarih', 'is', null)
       .lt('hedef_tarih', new Date().toISOString());
     setGecmisCount(count ?? 0);
+
+    if (filtre === 'bugun') cacheSet(GOREV_CACHE, { gorevDashboard: data ?? [], gecmisCount: count ?? 0 });
   }
 
   async function gorevDuzenleKaydet() {
