@@ -18,6 +18,8 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   const [baslatiliyor, setBaslatiliyor] = useState(false);
   const [islem, setIslem] = useState<Set<string>>(new Set());
   const [incele, setIncele] = useState(false);
+  const [idx, setIdx] = useState(0); // incelenen foto sırası (sağ/sol gezinme)
+  const [yatay, setYatay] = useState(true); // foto yatay mı (yataysa alt-üst, dikse yan yana)
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const kararlanan = useRef<Set<string>>(new Set());
 
@@ -41,6 +43,14 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   const secilebilir = fotolar.filter((k) => !mesgul.has(k));
 
   useEffect(() => { if (hazir.length === 0) setIncele(false); }, [hazir.length]);
+  useEffect(() => { if (idx > hazir.length - 1) setIdx(Math.max(0, hazir.length - 1)); }, [hazir.length, idx]);
+  const cur = Math.min(idx, Math.max(0, hazir.length - 1)); // gösterilen hazır foto
+  // gösterilen fotonun yönünü ölç (yatay→alt-üst, dik→yan yana)
+  useEffect(() => {
+    const r = hazir[cur];
+    if (!r) return;
+    Image.getSize(oncesiUrl(r.foto_key), (w, h) => setYatay(w >= h), () => setYatay(true));
+  }, [hazir, cur]);
   const pipeline = aktif.length + hazir.length;
   const biten = hazir.length;
   const kalanDk = Math.ceil(aktif.length * 3);
@@ -90,7 +100,7 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
                 <Text style={s.sectionTitle}>İncele — {hazir.length} kaldı</Text>
                 {hazir.length > 1 && <TouchableOpacity style={s.onayHepsi} onPress={hepsiniOnayla}><Text style={s.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>}
               </View>
-              {(() => { const r = hazir[0]; return (
+              {(() => { const r = hazir[cur]; return (
                 <TouchableOpacity activeOpacity={0.9} style={s.card} onPress={() => setIncele(true)}>
                   <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
                     <View style={{ flex: 1 }}>
@@ -140,23 +150,41 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
             </TouchableOpacity>
           </View>
         </ScrollView>
-        {incele && hazir.length > 0 && (() => { const r = hazir[0]; return (
+        {incele && hazir.length > 0 && (() => { const r = hazir[cur]; return (
           <Modal visible transparent animationType="fade" onRequestClose={() => setIncele(false)}>
             <View style={s.fsWrap}>
               <View style={s.fsHeader}>
-                <Text style={s.fsTitle}>İncele — {hazir.length} kaldı</Text>
+                <Text style={s.fsTitle}>İncele — {cur + 1}/{hazir.length}</Text>
                 <TouchableOpacity onPress={() => setIncele(false)} hitSlop={12}><Text style={s.fsClose}>✕</Text></TouchableOpacity>
               </View>
-              <View style={s.fsRow}>
+              {/* yatay foto → alt-üst; dik foto → yan yana. Her görsel pinch ile yakınlaştırılabilir. */}
+              <View style={[s.fsRow, { flexDirection: yatay ? 'column' : 'row' }]}>
                 <View style={s.fsCol}>
                   <Text style={s.fsCap}>ÖNCESİ</Text>
-                  <Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.fsHalf} resizeMode="contain" />
+                  <ScrollView style={s.fsZoom} contentContainerStyle={s.fsZoomC} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
+                    <Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.fsHalf} resizeMode="contain" />
+                  </ScrollView>
                 </View>
                 <View style={s.fsCol}>
                   <Text style={[s.fsCap, { color: '#6ee7a8' }]}>SONRASI</Text>
-                  {r.temiz_key ? <Image source={{ uri: sonrasiUrl(r.temiz_key) }} style={s.fsHalf} resizeMode="contain" /> : null}
+                  {r.temiz_key ? (
+                    <ScrollView style={s.fsZoom} contentContainerStyle={s.fsZoomC} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
+                      <Image source={{ uri: sonrasiUrl(r.temiz_key) }} style={s.fsHalf} resizeMode="contain" />
+                    </ScrollView>
+                  ) : null}
                 </View>
               </View>
+              {/* sağ/sol foto geçişi */}
+              {hazir.length > 1 && (
+                <View style={s.navRow}>
+                  <TouchableOpacity onPress={() => setIdx((i) => Math.max(0, i - 1))} disabled={cur === 0} style={[s.navBtn, cur === 0 && s.navOff]}>
+                    <Text style={s.navTxt}>‹ Önceki</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIdx((i) => Math.min(hazir.length - 1, i + 1))} disabled={cur >= hazir.length - 1} style={[s.navBtn, cur >= hazir.length - 1 && s.navOff]}>
+                    <Text style={s.navTxt}>Sonraki ›</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               <View style={s.fsBtnRow}>
                 <TouchableOpacity style={[s.fsBtn, s.fsRed]} disabled={islem.has(r.id)} onPress={() => karar(r, false)}>
                   <Text style={s.fsBtnText}>✕ Olmamış</Text>
@@ -198,6 +226,12 @@ const s = StyleSheet.create({
   fsCol: { flex: 1 },
   fsCap: { color: '#e5e7eb', fontSize: 11, fontWeight: '700', paddingVertical: 4 },
   fsHalf: { flex: 1, width: '100%', borderRadius: 6 },
+  fsZoom: { flex: 1, width: '100%' },
+  fsZoomC: { flexGrow: 1 },
+  navRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10 },
+  navBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
+  navOff: { opacity: 0.3 },
+  navTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
   fsBtnRow: { flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 28 },
   fsBtn: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   fsRed: { backgroundColor: 'rgba(229,57,53,0.3)' },
