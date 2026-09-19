@@ -29,11 +29,11 @@ async function token(): Promise<string> {
   return session.access_token;
 }
 
-export async function filigranBaslat(ilanId: string, fotoKeys: string[]): Promise<number> {
+export async function filigranBaslat(ilanId: string, fotoKeys: string[], officeAdi?: string): Promise<number> {
   const res = await fetch(`${MEDIA_SERVICE}/filigran/baslat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
-    body: JSON.stringify({ ilanId, fotoKeys }),
+    body: JSON.stringify({ ilanId, fotoKeys, officeAdi: officeAdi || '' }),
   });
   if (!res.ok && res.status !== 202) throw new Error('Başlatılamadı');
   const j = await res.json().catch(() => ({}));

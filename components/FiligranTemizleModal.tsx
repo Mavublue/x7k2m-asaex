@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Modal, Image, Alert, StyleSheet, ActivityIndicator,
+  View, Text, TouchableOpacity, ScrollView, Modal, Image, Alert, StyleSheet, ActivityIndicator, TextInput, Switch,
 } from 'react-native';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import type { Ilan } from '../types';
@@ -15,6 +15,8 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   const fotolar = (ilan.fotograflar ?? []) as string[];
   const [rows, setRows] = useState<FiligranRow[]>([]);
   const [secili, setSecili] = useState<Set<string>>(new Set());
+  const [ofisVar, setOfisVar] = useState(false);
+  const [ofisAdi, setOfisAdi] = useState('');
   const [baslatiliyor, setBaslatiliyor] = useState(false);
   const [islem, setIslem] = useState<Set<string>>(new Set());
   const [incele, setIncele] = useState(false);
@@ -61,7 +63,7 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   async function baslat() {
     if (!secili.size || baslatiliyor) return;
     setBaslatiliyor(true);
-    try { await filigranBaslat(ilan.id, [...secili]); setSecili(new Set()); await yenile(); }
+    try { await filigranBaslat(ilan.id, [...secili], ofisVar ? ofisAdi.trim() : ''); setSecili(new Set()); await yenile(); }
     catch (e: any) { Alert.alert('Hata', e.message); }
     setBaslatiliyor(false);
   }
@@ -145,6 +147,21 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
                 })}
               </View>
             )}
+            {/* Ofis adı: sahibinden.com altındaki mağaza-adı satırını da sil */}
+            <View style={s.ofisBox}>
+              <View style={s.rowBetween}>
+                <Text style={s.ofisLabel}>Fotoğrafta ofis/mağaza adı var</Text>
+                <Switch value={ofisVar} onValueChange={setOfisVar} />
+              </View>
+              {ofisVar && (
+                <>
+                  <TextInput value={ofisAdi} onChangeText={setOfisAdi} maxLength={60}
+                    placeholder="Ör: TEOK GAYRİMENKUL" placeholderTextColor={Colors.onSurfaceVariant}
+                    style={s.ofisInput} />
+                  <Text style={s.ofisHint}>sahibinden.com yazısının hemen altındaki mağaza adını aynen yazın. Bant harf sayısına göre ayarlanır.</Text>
+                </>
+              )}
+            </View>
             <TouchableOpacity style={[s.temizleBtn, (!secili.size || baslatiliyor) && s.temizleBtnOff]} disabled={!secili.size || baslatiliyor} onPress={baslat}>
               {baslatiliyor ? <ActivityIndicator color="#fff" /> : <Text style={s.temizleText}>Temizle{secili.size ? ` (${secili.size})` : ''}</Text>}
             </TouchableOpacity>
@@ -252,6 +269,10 @@ const s = StyleSheet.create({
   thumb: { width: '100%', height: '100%', backgroundColor: Colors.surfaceContainer },
   check: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   checkText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  ofisBox: { marginTop: Spacing.sm, backgroundColor: Colors.surfaceContainer, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.outlineVariant, gap: Spacing.sm },
+  ofisLabel: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, flex: 1 },
+  ofisInput: { borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.sm, paddingHorizontal: 11, paddingVertical: 9, fontSize: 14, color: Colors.onSurface },
+  ofisHint: { fontSize: 11, color: Colors.onSurfaceVariant },
   temizleBtn: { marginTop: Spacing.sm, backgroundColor: Colors.primary, paddingVertical: 13, borderRadius: Radius.md, alignItems: 'center' },
   temizleBtnOff: { backgroundColor: Colors.surfaceContainerHighest },
   temizleText: { color: '#fff', fontWeight: '700', fontSize: 15 },
