@@ -25,7 +25,7 @@ import R2Image from '../../components/R2Image';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
 import FiligranTemizleModal from '../../components/FiligranTemizleModal';
-import { watermarkYetkili } from '../../lib/filigran';
+import { watermarkYetkili, filigranDurum } from '../../lib/filigran';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
 
@@ -244,6 +244,7 @@ export default function IlanDetayScreen() {
   const [satildiModal, setSatildiModal] = useState(false);
   const [kolajModal, setKolajModal] = useState(false);
   const [filigranModal, setFiligranModal] = useState(false);
+  const [filigranAktif, setFiligranAktif] = useState(false); // bu ilanda filigran işi sürüyor mu → Düzenle kilidi
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const fetchIlan = useCallback(() => {
@@ -287,6 +288,22 @@ export default function IlanDetayScreen() {
     });
   }, [id]);
   useFocusEffect(fetchIlan);
+
+  // Filigran işi sürerken (bekliyor/işleniyor/hazır) Düzenle'yi kilitle — düzenleme kaydı
+  // arka planda süren onayların üstüne yazıp fotoları bozabiliyor. DB'ye bakar → her cihazda geçerli.
+  useEffect(() => {
+    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); return; }
+    let alive = true;
+    const kontrol = async () => {
+      try {
+        const r = await filigranDurum(id);
+        if (alive) setFiligranAktif(r.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir'));
+      } catch { /* sessiz */ }
+    };
+    kontrol();
+    const t = setInterval(kontrol, 4000);
+    return () => { alive = false; clearInterval(t); };
+  }, [id, userEmail, filigranModal]);
 
   function generateSosyalMetin(i: typeof ilan): string {
     if (!i) return '';
@@ -964,8 +981,12 @@ export default function IlanDetayScreen() {
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={styles.modalDimmer} onPress={() => setMenuModal(false)} />
           <View style={styles.menuPanel}>
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); router.push(`/ilan/duzenle/${id}` as any); }}>
-              <Text style={styles.menuItemText}>✏️  Düzenle</Text>
+            <TouchableOpacity style={styles.menuItem} disabled={filigranAktif}
+              onPress={() => {
+                if (filigranAktif) { Alert.alert('Filigran işlemi sürüyor', 'İşlem bitince ilanı düzenleyebilirsin.'); return; }
+                setMenuModal(false); router.push(`/ilan/duzenle/${id}` as any);
+              }}>
+              <Text style={[styles.menuItemText, filigranAktif && { opacity: 0.4 }]}>{filigranAktif ? '🔒  Düzenle (filigran sürüyor)' : '✏️  Düzenle'}</Text>
             </TouchableOpacity>
             <View style={styles.menuSep} />
             <TouchableOpacity style={styles.menuItem} onPress={handleCogalt} disabled={cogaltiyor}>
