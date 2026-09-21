@@ -245,6 +245,7 @@ export default function IlanDetayScreen() {
   const [kolajModal, setKolajModal] = useState(false);
   const [filigranModal, setFiligranModal] = useState(false);
   const [filigranAktif, setFiligranAktif] = useState(false); // bu ilanda filigran işi sürüyor mu → Düzenle kilidi
+  const oncekiFiligran = useRef(false); // filigran işi aktif→bitti geçişini yakala (tazeleme için)
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const fetchIlan = useCallback(() => {
@@ -297,7 +298,12 @@ export default function IlanDetayScreen() {
     const kontrol = async () => {
       try {
         const r = await filigranDurum(id);
-        if (alive) setFiligranAktif(r.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir'));
+        if (!alive) return;
+        const aktifMi = r.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir');
+        setFiligranAktif(aktifMi);
+        // İş aktif→bitti geçince (modal kapalı olsa bile) ilanı tazele → yeni temiz key'ler gelsin
+        if (oncekiFiligran.current && !aktifMi) fetchIlan();
+        oncekiFiligran.current = aktifMi;
       } catch { /* sessiz */ }
     };
     kontrol();

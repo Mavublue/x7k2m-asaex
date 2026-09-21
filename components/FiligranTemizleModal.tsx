@@ -22,6 +22,9 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   const [incele, setIncele] = useState(false);
   const [idx, setIdx] = useState(0); // incelenen foto sırası (sağ/sol gezinme)
   const [yatay, setYatay] = useState(true); // foto yatay mı (yataysa alt-üst, dikse yan yana)
+  const [onaylaniyor, setOnaylaniyor] = useState(false); // "Hepsini Onayla" sunucuda sürüyor
+  const [onaylaToplam, setOnaylaToplam] = useState(0);    // batch başındaki hazır sayısı
+  const [tamamlandi, setTamamlandi] = useState(false);    // toplu onay bitti
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const kararlanan = useRef<Set<string>>(new Set());
 
@@ -78,15 +81,38 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
     setIslem((s) => { const n = new Set(s); n.delete(row.id); return n; });
   }
   async function hepsiniOnayla() {
-    if (!hazir.length) return;
-    // Sunucuya tek istek: arka planda hepsini onaylar. Optimistik olarak hazırları düşür
-    // → modalı kapatıp başka iş yapabilirsin, işlemler sunucuda sürer.
-    hazir.forEach((r) => kararlanan.current.add(r.id));
-    const ids = new Set(hazir.map((r) => r.id));
-    setRows((prev) => prev.filter((r) => !ids.has(r.id)));
-    try { await filigranOnaylaHepsi(ilan.id); onChanged?.(); }
-    catch (e: any) { hazir.forEach((r) => kararlanan.current.delete(r.id)); Alert.alert('Hata', e.message); await yenile(); }
+    if (!hazir.length || onaylaniyor) return;
+    // Sunucuya tek istek → arka planda hepsini onaylar. Optimistik silme YOK: poll ile hazır azaldıkça
+    // ilerleme çubuğu dolar, bitince (hazır=0) otomatik tazelenir.
+    setOnaylaToplam(hazir.length);
+    setOnaylaniyor(true);
+    setTamamlandi(false);
+    setIncele(false);
+    try { await filigranOnaylaHepsi(ilan.id); }
+    catch (e: any) { setOnaylaniyor(false); Alert.alert('Hata', e.message); }
   }
+
+  // Toplu onay bitti mi? (hazır kalmadı) → tazele + "bitti". onChanged burada çağrılır ki ilan detay
+  // YENİ key'leri çeksin (erken çağrılırsa eski fotolar cache'te kalıyordu).
+  useEffect(() => {
+    if (onaylaniyor && hazir.length === 0) {
+      setOnaylaniyor(false);
+      setTamamlandi(true);
+      onChanged?.();
+      const t = setTimeout(() => setTamamlandi(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [onaylaniyor, hazir.length, onChanged]);
+
+  // Komşu fotoları önceden yükle → sağa/sola gezinince anında gelsin
+  useEffect(() => {
+    [cur - 1, cur + 1].forEach((i) => {
+      const r = hazir[i];
+      if (!r) return;
+      Image.prefetch(oncesiUrl(r.foto_key));
+      if (r.temiz_key) Image.prefetch(sonrasiUrl(r.temiz_key));
+    });
+  }, [cur, hazir]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
@@ -104,8 +130,23 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
             </View>
           )}
 
+          {/* TOPLU ONAY İLERLEME */}
+          {onaylaniyor && (
+            <View style={[s.progressBox, { backgroundColor: 'rgba(34,197,94,0.12)', borderColor: '#22c55e' }]}>
+              <Text style={[s.progressText, { color: '#22c55e' }]}>Onaylanıyor… {onaylaToplam - hazir.length}/{onaylaToplam} bitti</Text>
+              <View style={s.barBg}><View style={[s.barFill, { width: `${onaylaToplam ? ((onaylaToplam - hazir.length) / onaylaToplam) * 100 : 0}%`, backgroundColor: '#22c55e' }]} /></View>
+            </View>
+          )}
+
+          {/* TAMAMLANDI */}
+          {tamamlandi && (
+            <View style={[s.progressBox, { backgroundColor: 'rgba(34,197,94,0.12)', borderColor: '#86efac' }]}>
+              <Text style={[s.progressText, { color: '#22c55e' }]}>✓ Tümü onaylandı — fotoğraflar güncellendi</Text>
+            </View>
+          )}
+
           {/* İNCELE — tek tek büyük, dokun tam ekran, onaylayınca sonrakine geç */}
-          {hazir.length > 0 && (
+          {hazir.length > 0 && !onaylaniyor && (
             <View style={{ gap: Spacing.md }}>
               <View style={s.rowBetween}>
                 <Text style={s.sectionTitle}>İncele — {hazir.length} kaldı</Text>
