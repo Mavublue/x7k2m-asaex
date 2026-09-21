@@ -58,6 +58,17 @@ export async function filigranOnayla(id: string): Promise<void> {
   if (!res.ok) throw new Error('Onaylanamadı');
 }
 
+export async function filigranOnaylaHepsi(ilanId: string): Promise<number> {
+  const res = await fetch(`${MEDIA_SERVICE}/filigran/onayla-hepsi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
+    body: JSON.stringify({ ilanId }),
+  });
+  if (!res.ok && res.status !== 202) throw new Error('Onaylanamadı');
+  const j = await res.json().catch(() => ({}));
+  return j.adet ?? 0;
+}
+
 export async function filigranReddet(id: string): Promise<void> {
   const res = await fetch(`${MEDIA_SERVICE}/filigran/reddet`, {
     method: 'POST',

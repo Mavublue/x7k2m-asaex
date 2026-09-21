@@ -5,7 +5,7 @@ import {
 import { Colors, Radius, Spacing } from '../constants/theme';
 import type { Ilan } from '../types';
 import {
-  filigranBaslat, filigranDurum, filigranOnayla, filigranReddet,
+  filigranBaslat, filigranDurum, filigranOnayla, filigranOnaylaHepsi, filigranReddet,
   thumbUrl, oncesiUrl, sonrasiUrl, type FiligranRow,
 } from '../lib/filigran';
 
@@ -77,7 +77,16 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
     } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
     setIslem((s) => { const n = new Set(s); n.delete(row.id); return n; });
   }
-  async function hepsiniOnayla() { for (const r of hazir) await karar(r, true); }
+  async function hepsiniOnayla() {
+    if (!hazir.length) return;
+    // Sunucuya tek istek: arka planda hepsini onaylar. Optimistik olarak hazırları düşür
+    // → modalı kapatıp başka iş yapabilirsin, işlemler sunucuda sürer.
+    hazir.forEach((r) => kararlanan.current.add(r.id));
+    const ids = new Set(hazir.map((r) => r.id));
+    setRows((prev) => prev.filter((r) => !ids.has(r.id)));
+    try { await filigranOnaylaHepsi(ilan.id); onChanged?.(); }
+    catch (e: any) { hazir.forEach((r) => kararlanan.current.delete(r.id)); Alert.alert('Hata', e.message); await yenile(); }
+  }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
