@@ -12,10 +12,11 @@ export default function FiligranDurumKarti() {
   const [gruplar, setGruplar] = useState<Grup[]>([]);
 
   const yenile = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('ilan_filigran')
       .select('ilan_id, durum, ilanlar(baslik)')
       .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
+    if (error) return; // geçici hata: eski listeyi koru, boşaltma
     const rows = (data ?? []) as unknown as Row[];
     const m = new Map<string, Grup>();
     for (const r of rows) {
