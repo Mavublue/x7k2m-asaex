@@ -624,6 +624,9 @@ export default function IlanDetayScreen() {
   const gosterilenFotograflar = musteriGorunum
     ? fotograflar.filter((f: string) => !(ilan.gizli_fotograflar ?? []).includes(f))
     : fotograflar;
+  // Filigran onaylı (_c<ts> key) görünür fotoların HEPSİ onaylı AMA ilan müşteriye gizli → uyarı
+  const filigranHepsiOnayli = gorunurFotograflar.length > 0 && gorunurFotograflar.every((k: string) => /_c\d{10,}/.test(k));
+  const filigranUyari = filigranHepsiOnayli && !!(ilan as any).musteri_gizle;
 
   const detaylar = [
     { label: 'Portföy No', deger: ilan.portfoy_no },
@@ -639,7 +642,8 @@ export default function IlanDetayScreen() {
   ].filter(d => d.deger);
 
   return (
-    <SafeAreaView style={styles.container}>
+    // müşteriye GÖRÜNÜR ilan (!musteri_gizle) → haritadaki gibi yeşil çerçeve
+    <SafeAreaView style={[styles.container, !ilan.musteri_gizle && { borderWidth: 3, borderColor: '#16a34a' }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -658,6 +662,12 @@ export default function IlanDetayScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Filigran onaylı ama müşteriye gizli → açmayı hatırlat */}
+        {filigranUyari && (
+          <View style={styles.filigranUyari}>
+            <Text style={styles.filigranUyariText}>⚠️ Fotoğrafların filigranı temizlenip onaylandı ama ilan müşteriye gizli — görünür yapabilirsin.</Text>
+          </View>
+        )}
         {/* Fotoğraf Galerisi */}
         <View style={styles.galeriContainer}>
           {gosterilenFotograflar.length > 0 ? (
@@ -1447,6 +1457,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   gizliBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  filigranUyari: {
+    backgroundColor: 'rgba(234,179,8,0.15)',
+    borderWidth: 1, borderColor: 'rgba(234,179,8,0.5)',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+    marginHorizontal: 16, marginTop: 12,
+  },
+  filigranUyariText: { color: '#eab308', fontSize: 12.5, fontWeight: '600', lineHeight: 17 },
 
   content: { paddingHorizontal: Spacing.xl, paddingBottom: 100 },
 
