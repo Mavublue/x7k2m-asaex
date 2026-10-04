@@ -188,10 +188,13 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
               <View style={s.grid}>
                 {secilebilir.map((k) => {
                   const sec = secili.has(k);
+                  // Temizlenip onaylanmış foto _c<ts> key taşır (onaylaJob swap'ı) → key'den tespit.
+                  const temizlenmis = /_c\d{10,}/.test(k);
                   return (
-                    <TouchableOpacity key={k} onPress={() => toggle(k)} style={[s.thumbWrap, sec && s.thumbSel]}>
+                    <TouchableOpacity key={k} onPress={() => toggle(k)} style={[s.thumbWrap, temizlenmis && s.thumbTemiz, sec && s.thumbSel]}>
                       <Image source={{ uri: thumbUrl(k) }} style={s.thumb} />
                       {sec && <View style={s.check}><Text style={s.checkText}>✓</Text></View>}
+                      {temizlenmis && <View style={s.temizBanner}><Text style={s.temizBannerText}>✓ temizlendi</Text></View>}
                     </TouchableOpacity>
                   );
                 })}
@@ -316,9 +319,12 @@ const s = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   thumbWrap: { width: '31.5%', aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
   thumbSel: { borderColor: Colors.primary },
+  thumbTemiz: { borderColor: '#3aaa6e' },
   thumb: { width: '100%', height: '100%', backgroundColor: Colors.surfaceContainer },
   check: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   checkText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  temizBanner: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(58,170,110,0.92)', paddingVertical: 2, alignItems: 'center' },
+  temizBannerText: { color: '#fff', fontWeight: '700', fontSize: 10 },
   ofisBox: { marginTop: Spacing.sm, backgroundColor: Colors.surfaceContainer, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.outlineVariant, gap: Spacing.sm },
   ofisLabel: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, flex: 1 },
   ofisInput: { borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.sm, paddingHorizontal: 11, paddingVertical: 9, fontSize: 14, color: Colors.onSurface },
