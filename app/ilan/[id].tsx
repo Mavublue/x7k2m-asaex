@@ -624,9 +624,10 @@ export default function IlanDetayScreen() {
   const gosterilenFotograflar = musteriGorunum
     ? fotograflar.filter((f: string) => !(ilan.gizli_fotograflar ?? []).includes(f))
     : fotograflar;
-  // Filigran onaylı (_c<ts> key) görünür fotoların HEPSİ onaylı AMA ilan müşteriye gizli → uyarı
-  const filigranHepsiOnayli = gorunurFotograflar.length > 0 && gorunurFotograflar.every((k: string) => /_c\d{10,}/.test(k));
-  const filigranUyari = filigranHepsiOnayli && !!(ilan as any).musteri_gizle;
+  // Filigran onaylı (_c<ts> key) görünür fotoların EN AZ BİRİ onaylı AMA ilan müşteriye gizli → uyarı
+  // (every DEĞİL: her ilanda watermark'sız 1-2 foto oluyor, .every ile koşul hiç sağlanmıyordu.)
+  const filigranVarOnayli = gorunurFotograflar.some((k: string) => /_c\d{10,}/.test(k));
+  const filigranUyari = filigranVarOnayli && !!(ilan as any).musteri_gizle;
 
   const detaylar = [
     { label: 'Portföy No', deger: ilan.portfoy_no },
