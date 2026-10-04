@@ -8,9 +8,48 @@ type Row = { ilan_id: string; durum: string; ilanlar: { baslik: string } | null 
 type Grup = { ilan_id: string; baslik: string; islem: number; kuyruk: number; hazir: number };
 type GizliIlan = { id: string; baslik: string };
 
+function grupla(rows: Row[]): Grup[] {
+  const m = new Map<string, Grup>();
+  for (const r of rows) {
+    const g = m.get(r.ilan_id) ?? { ilan_id: r.ilan_id, baslik: r.ilanlar?.baslik ?? 'İlan', islem: 0, kuyruk: 0, hazir: 0 };
+    if (r.durum === 'isleniyor') g.islem++;
+    else if (r.durum === 'bekliyor') g.kuyruk++;
+    else if (r.durum === 'hazir') g.hazir++;
+    m.set(r.ilan_id, g);
+  }
+  return [...m.values()];
+}
+
+function GrupKart({ g, fiil, islemLabel, dkPerFoto, onPress }: { g: Grup; fiil: string; islemLabel: string; dkPerFoto: number; onPress: () => void }) {
+  const toplam = g.kuyruk + g.islem + g.hazir;
+  const biten = g.hazir;
+  const kalan = g.kuyruk + g.islem;
+  const bittiMi = kalan === 0;
+  const yuzde = toplam ? Math.round((biten / toplam) * 100) : 0;
+  const kalanDk = Math.ceil(kalan * dkPerFoto);
+  const parcalar: string[] = [];
+  if (g.islem > 0) parcalar.push(islemLabel);
+  if (g.kuyruk > 0) parcalar.push(`${g.kuyruk} sırada`);
+  if (g.hazir > 0) parcalar.push(`✓ ${g.hazir} inceleme hazır`);
+  const durumSatiri = parcalar.join(' · ') + (!bittiMi && kalanDk > 0 ? ` · ~${kalanDk} dk kaldı` : '');
+  return (
+    <TouchableOpacity onPress={onPress} style={[s.row, g.hazir > 0 && s.rowGreen]}>
+      <View style={s.rowHead}>
+        <Text numberOfLines={1} style={s.rowTitle}>{g.baslik}</Text>
+        <Text style={[s.frac, { color: bittiMi ? '#22c55e' : Colors.secondary }]}>{biten}/{toplam} {fiil}</Text>
+      </View>
+      <View style={s.barBg}>
+        <View style={[s.barFill, { width: `${yuzde}%`, backgroundColor: bittiMi ? '#22c55e' : Colors.secondary }]} />
+      </View>
+      <Text numberOfLines={1} style={s.durum}>{durumSatiri}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function FiligranDurumKarti() {
   const router = useRouter();
   const [gruplar, setGruplar] = useState<Grup[]>([]);
+  const [maskeGruplar, setMaskeGruplar] = useState<Grup[]>([]);
   const [gizliTemiz, setGizliTemiz] = useState<GizliIlan[]>([]); // temizlendi ama müşteriye gizli
 
   const yenile = useCallback(async () => {
@@ -19,16 +58,16 @@ export default function FiligranDurumKarti() {
       .select('ilan_id, durum, ilanlar(baslik)')
       .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
     if (error) return; // geçici hata: eski listeyi koru, boşaltma
-    const rows = (data ?? []) as unknown as Row[];
-    const m = new Map<string, Grup>();
-    for (const r of rows) {
-      const g = m.get(r.ilan_id) ?? { ilan_id: r.ilan_id, baslik: r.ilanlar?.baslik ?? 'İlan', islem: 0, kuyruk: 0, hazir: 0 };
-      if (r.durum === 'isleniyor') g.islem++;
-      else if (r.durum === 'bekliyor') g.kuyruk++;
-      else if (r.durum === 'hazir') g.hazir++;
-      m.set(r.ilan_id, g);
-    }
-    setGruplar([...m.values()]);
+    setGruplar(grupla((data ?? []) as unknown as Row[]));
+  }, []);
+
+  const maskeYenile = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('ilan_maske_sil')
+      .select('ilan_id, durum, ilanlar(baslik)')
+      .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
+    if (error) return;
+    setMaskeGruplar(grupla((data ?? []) as unknown as Row[]));
   }, []);
 
   // Temizlenip onaylanmış (_c<ts> fotolu) AMA müşteriye gizli ilanlar → "görünür yap" hatırlatması.
@@ -45,21 +84,23 @@ export default function FiligranDurumKarti() {
   }, []);
 
   useEffect(() => {
-    yenile(); gizliYenile();
-    const t = setInterval(() => { yenile(); gizliYenile(); }, 5000);
+    yenile(); maskeYenile(); gizliYenile();
+    const t = setInterval(() => { yenile(); maskeYenile(); gizliYenile(); }, 5000);
     return () => clearInterval(t);
-  }, [yenile, gizliYenile]);
+  }, [yenile, maskeYenile, gizliYenile]);
 
-  if (!gruplar.length && !gizliTemiz.length) return null;
+  if (!gruplar.length && !maskeGruplar.length && !gizliTemiz.length) return null;
+
+  const go = (id: string) => router.push(`/ilan/${id}` as any);
 
   return (
     <View style={s.card}>
       {gizliTemiz.length > 0 && (
-        <View style={[s.gizliBox, gruplar.length > 0 && { marginBottom: 16 }]}>
+        <View style={[s.gizliBox, (gruplar.length || maskeGruplar.length) ? { marginBottom: 16 } : null]}>
           <Text style={s.gizliBaslik}>⚠️ Filigranı temizlendi ama müşteriye gizli — görünür yap</Text>
           <View style={{ gap: 6 }}>
             {gizliTemiz.map((i) => (
-              <TouchableOpacity key={i.id} onPress={() => router.push(`/ilan/${i.id}` as any)} style={s.gizliRow}>
+              <TouchableOpacity key={i.id} onPress={() => go(i.id)} style={s.gizliRow}>
                 <Text style={s.gizliEmoji}>🙈</Text>
                 <Text numberOfLines={1} style={s.gizliText}>{i.baslik}</Text>
               </TouchableOpacity>
@@ -69,42 +110,28 @@ export default function FiligranDurumKarti() {
       )}
 
       {gruplar.length > 0 && (
-      <View style={s.head}>
-        <Text style={s.title}>🧹 Filigran Temizleme</Text>
-        <Text style={s.subtitle}>{gruplar.length} ilan işleniyor</Text>
-      </View>
+        <>
+          <View style={s.head}>
+            <Text style={s.title}>🧹 Filigran Temizleme</Text>
+            <Text style={s.subtitle}>{gruplar.length} ilan işleniyor</Text>
+          </View>
+          <View style={{ gap: 10 }}>
+            {gruplar.map((g) => <GrupKart key={g.ilan_id} g={g} fiil="temizlendi" islemLabel="⏳ 1 fotoğraf temizleniyor" dkPerFoto={3} onPress={() => go(g.ilan_id)} />)}
+          </View>
+        </>
       )}
 
-      <View style={{ gap: 10 }}>
-        {gruplar.map((g) => {
-          const toplam = g.kuyruk + g.islem + g.hazir;
-          const biten = g.hazir;
-          const kalan = g.kuyruk + g.islem;
-          const bittiMi = kalan === 0;
-          const yuzde = toplam ? Math.round((biten / toplam) * 100) : 0;
-          const kalanDk = Math.ceil(kalan * 3);
-
-          const parcalar: string[] = [];
-          if (g.islem > 0) parcalar.push('⏳ 1 fotoğraf temizleniyor');
-          if (g.kuyruk > 0) parcalar.push(`${g.kuyruk} sırada`);
-          if (g.hazir > 0) parcalar.push(`✓ ${g.hazir} inceleme hazır`);
-          const durumSatiri = parcalar.join(' · ') + (!bittiMi && kalanDk > 0 ? ` · ~${kalanDk} dk kaldı` : '');
-
-          return (
-            <TouchableOpacity key={g.ilan_id} onPress={() => router.push(`/ilan/${g.ilan_id}` as any)}
-              style={[s.row, g.hazir > 0 && s.rowGreen]}>
-              <View style={s.rowHead}>
-                <Text numberOfLines={1} style={s.rowTitle}>{g.baslik}</Text>
-                <Text style={[s.frac, { color: bittiMi ? '#22c55e' : Colors.secondary }]}>{biten}/{toplam} temizlendi</Text>
-              </View>
-              <View style={s.barBg}>
-                <View style={[s.barFill, { width: `${yuzde}%`, backgroundColor: bittiMi ? '#22c55e' : Colors.secondary }]} />
-              </View>
-              <Text numberOfLines={1} style={s.durum}>{durumSatiri}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {maskeGruplar.length > 0 && (
+        <>
+          <View style={[s.head, gruplar.length > 0 && { marginTop: 16 }]}>
+            <Text style={s.title}>🩹 Maske ile Sil</Text>
+            <Text style={s.subtitle}>{maskeGruplar.length} ilan</Text>
+          </View>
+          <View style={{ gap: 10 }}>
+            {maskeGruplar.map((g) => <GrupKart key={g.ilan_id} g={g} fiil="dolduruldu" islemLabel="⏳ 1 alan dolduruluyor" dkPerFoto={2} onPress={() => go(g.ilan_id)} />)}
+          </View>
+        </>
+      )}
     </View>
   );
 }
