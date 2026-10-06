@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { cacheGet, cacheSet } from '../lib/cache';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
 type Row = { ilan_id: string; durum: string; ilanlar: { baslik: string } | null };
@@ -52,14 +53,22 @@ export default function FiligranDurumKarti() {
   const [maskeGruplar, setMaskeGruplar] = useState<Grup[]>([]);
   const [gizliTemiz, setGizliTemiz] = useState<GizliIlan[]>([]); // temizlendi ama müşteriye gizli
 
+  const cacheKeyRef = useRef<string | null>(null);
+  const son = useRef<{ gruplar: Grup[]; maskeGruplar: Grup[]; gizliTemiz: GizliIlan[] }>({ gruplar: [], maskeGruplar: [], gizliTemiz: [] });
+
+  const cacheYaz = useCallback(() => {
+    if (cacheKeyRef.current) cacheSet(cacheKeyRef.current, son.current);
+  }, []);
+
   const yenile = useCallback(async () => {
     const { data, error } = await supabase
       .from('ilan_filigran')
       .select('ilan_id, durum, ilanlar(baslik)')
       .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
     if (error) return; // geçici hata: eski listeyi koru, boşaltma
-    setGruplar(grupla((data ?? []) as unknown as Row[]));
-  }, []);
+    const g = grupla((data ?? []) as unknown as Row[]);
+    son.current.gruplar = g; setGruplar(g); cacheYaz();
+  }, [cacheYaz]);
 
   const maskeYenile = useCallback(async () => {
     const { data, error } = await supabase
@@ -67,8 +76,9 @@ export default function FiligranDurumKarti() {
       .select('ilan_id, durum, ilanlar(baslik)')
       .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
     if (error) return;
-    setMaskeGruplar(grupla((data ?? []) as unknown as Row[]));
-  }, []);
+    const g = grupla((data ?? []) as unknown as Row[]);
+    son.current.maskeGruplar = g; setMaskeGruplar(g); cacheYaz();
+  }, [cacheYaz]);
 
   // Temizlenip onaylanmış (_c<ts> fotolu) AMA müşteriye gizli ilanlar → "görünür yap" hatırlatması.
   const gizliYenile = useCallback(async () => {
@@ -80,13 +90,25 @@ export default function FiligranDurumKarti() {
     const liste = ((data ?? []) as { id: string; baslik: string | null; fotograflar: string[] | null }[])
       .filter((i) => (i.fotograflar ?? []).some((k) => /_c\d{10,}/.test(k)))
       .map((i) => ({ id: i.id, baslik: i.baslik ?? 'İlan' }));
-    setGizliTemiz(liste);
-  }, []);
+    son.current.gizliTemiz = liste; setGizliTemiz(liste); cacheYaz();
+  }, [cacheYaz]);
 
   useEffect(() => {
-    yenile(); maskeYenile(); gizliYenile();
+    let iptal = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (iptal || !session) return;
+      const key = `app_filigran_${session.user.id}`;
+      cacheKeyRef.current = key;
+      const c = await cacheGet<typeof son.current>(key);
+      if (!iptal && c) {
+        son.current = c;
+        setGruplar(c.gruplar ?? []); setMaskeGruplar(c.maskeGruplar ?? []); setGizliTemiz(c.gizliTemiz ?? []);
+      }
+      yenile(); maskeYenile(); gizliYenile();
+    })();
     const t = setInterval(() => { yenile(); maskeYenile(); gizliYenile(); }, 5000);
-    return () => clearInterval(t);
+    return () => { iptal = true; clearInterval(t); };
   }, [yenile, maskeYenile, gizliYenile]);
 
   if (!gruplar.length && !maskeGruplar.length && !gizliTemiz.length) return null;
