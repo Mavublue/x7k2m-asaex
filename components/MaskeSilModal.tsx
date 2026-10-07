@@ -95,8 +95,10 @@ type Tool = 'rect' | 'brush' | 'eraser';
 export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
   ilan: Ilan; visible: boolean; onClose: () => void; onChanged?: () => void;
 }) {
-  // Sadece müşteriye görünür fotolar; gizli (müşteriden saklanan) fotolar burada gösterilmez.
-  const fotolar = (ilan.fotograflar ?? []) as string[];
+  // Sadece müşteriye görünür fotolar. Gizlilik = gizli_fotograflar KÜMESİNDE olmak (bir key hem
+  // fotograflar hem gizli_fotograflar'da olabilir → gizliSet.has ile ele). ilan/[id] ile aynı mantık.
+  const gizliSet = new Set((ilan.gizli_fotograflar ?? []) as string[]);
+  const fotolar = ((ilan.fotograflar ?? []) as string[]).filter((k) => !gizliSet.has(k));
   const [rows, setRows] = useState<MaskeRow[]>([]);
   const [secili, setSecili] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>('rect');
