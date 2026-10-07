@@ -111,17 +111,22 @@ export default function FiligranDurumKarti() {
     return () => { iptal = true; clearInterval(t); };
   }, [yenile, maskeYenile, gizliYenile]);
 
-  if (!gruplar.length && !maskeGruplar.length && !gizliTemiz.length) return null;
+  // Aktif temizleme/maske işi olan ilanlar zaten alttaki ilerleme kartında görünür → onları
+  // "temizlendi ama gizli" uyarısından çıkar (iş bitince, hâlâ gizliyse, geri gelir).
+  const aktifIds = new Set([...gruplar, ...maskeGruplar].map((g) => g.ilan_id));
+  const gizliGoster = gizliTemiz.filter((i) => !aktifIds.has(i.id));
+
+  if (!gruplar.length && !maskeGruplar.length && !gizliGoster.length) return null;
 
   const go = (id: string) => router.push(`/ilan/${id}` as any);
 
   return (
     <View style={s.card}>
-      {gizliTemiz.length > 0 && (
+      {gizliGoster.length > 0 && (
         <View style={[s.gizliBox, (gruplar.length || maskeGruplar.length) ? { marginBottom: 16 } : null]}>
           <Text style={s.gizliBaslik}>⚠️ Filigranı temizlendi ama müşteriye gizli — görünür yap</Text>
           <View style={{ gap: 6 }}>
-            {gizliTemiz.map((i) => (
+            {gizliGoster.map((i) => (
               <TouchableOpacity key={i.id} onPress={() => go(i.id)} style={s.gizliRow}>
                 <Text style={s.gizliEmoji}>🙈</Text>
                 <Text numberOfLines={1} style={s.gizliText}>{i.baslik}</Text>
