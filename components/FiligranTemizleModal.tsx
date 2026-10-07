@@ -22,6 +22,7 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   const [incele, setIncele] = useState(false);
   const [idx, setIdx] = useState(0); // incelenen foto sırası (sağ/sol gezinme)
   const [yatay, setYatay] = useState(true); // foto yatay mı (yataysa alt-üst, dikse yan yana)
+  const [oncesiAcik, setOncesiAcik] = useState<Set<string>>(new Set()); // sol/orijinal: dokununca yüklenir
   const [onaylaniyor, setOnaylaniyor] = useState(false); // "Hepsini Onayla" sunucuda sürüyor
   const [onaylaToplam, setOnaylaToplam] = useState(0);    // batch başındaki hazır sayısı
   const [tamamlandi, setTamamlandi] = useState(false);    // toplu onay bitti
@@ -50,11 +51,13 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
   useEffect(() => { if (hazir.length === 0) setIncele(false); }, [hazir.length]);
   useEffect(() => { if (idx > hazir.length - 1) setIdx(Math.max(0, hazir.length - 1)); }, [hazir.length, idx]);
   const cur = Math.min(idx, Math.max(0, hazir.length - 1)); // gösterilen hazır foto
-  // gösterilen fotonun yönünü ölç (yatay→alt-üst, dik→yan yana)
+  // gösterilen fotonun yönünü ölç (yatay→alt-üst, dik→yan yana).
+  // Orijinali indirmemek için TEMİZ fotodan ölç (aynı boyutlu; MAT boyutu korur).
   useEffect(() => {
     const r = hazir[cur];
     if (!r) return;
-    Image.getSize(oncesiUrl(r.foto_key), (w, h) => setYatay(w >= h), () => setYatay(true));
+    const u = r.temiz_key ? sonrasiUrl(r.temiz_key) : oncesiUrl(r.foto_key);
+    Image.getSize(u, (w, h) => setYatay(w >= h), () => setYatay(true));
   }, [hazir, cur]);
   const pipeline = aktif.length + hazir.length;
   const biten = hazir.length;
@@ -104,13 +107,11 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
     }
   }, [onaylaniyor, hazir.length, onChanged]);
 
-  // Komşu fotoları önceden yükle → sağa/sola gezinince anında gelsin
+  // Komşu TEMİZ (sağ) fotoları önceden yükle. Orijinal (sol) dokununca yüklenir → prefetch yok.
   useEffect(() => {
     [cur - 1, cur + 1].forEach((i) => {
       const r = hazir[i];
-      if (!r) return;
-      Image.prefetch(oncesiUrl(r.foto_key));
-      if (r.temiz_key) Image.prefetch(sonrasiUrl(r.temiz_key));
+      if (r?.temiz_key) Image.prefetch(sonrasiUrl(r.temiz_key));
     });
   }, [cur, hazir]);
 
@@ -157,7 +158,11 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
                   <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
                     <View style={{ flex: 1 }}>
                       <Text style={s.cap}>ÖNCESİ</Text>
-                      <Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.img} />
+                      {oncesiAcik.has(r.foto_key)
+                        ? <Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.img} />
+                        : <TouchableOpacity activeOpacity={0.8} style={[s.img, s.oncesiPh]} onPress={() => setOncesiAcik((set) => new Set(set).add(r.foto_key))}>
+                            <Text style={s.oncesiPhText}>👆 Orijinali göster</Text>
+                          </TouchableOpacity>}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.cap, { color: '#3aaa6e' }]}>SONRASI</Text>
@@ -231,9 +236,15 @@ export default function FiligranTemizleModal({ ilan, visible, onClose, onChanged
               <View style={[s.fsRow, { flexDirection: yatay ? 'column' : 'row' }]}>
                 <View style={s.fsCol}>
                   <Text style={s.fsCap}>ÖNCESİ</Text>
-                  <ScrollView style={s.fsZoom} contentContainerStyle={s.fsZoomC} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
-                    <Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.fsHalf} resizeMode="contain" />
-                  </ScrollView>
+                  {oncesiAcik.has(r.foto_key) ? (
+                    <ScrollView style={s.fsZoom} contentContainerStyle={s.fsZoomC} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
+                      <Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.fsHalf} resizeMode="contain" />
+                    </ScrollView>
+                  ) : (
+                    <TouchableOpacity activeOpacity={0.8} style={[s.fsHalf, s.oncesiPhFs]} onPress={() => setOncesiAcik((set) => new Set(set).add(r.foto_key))}>
+                      <Text style={s.oncesiPhText}>👆 Orijinali göster</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <View style={s.fsCol}>
                   <Text style={[s.fsCap, { color: '#6ee7a8' }]}>SONRASI</Text>
@@ -287,6 +298,9 @@ const s = StyleSheet.create({
   card: { borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: Radius.md, padding: Spacing.sm },
   cap: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 3 },
   img: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.sm, backgroundColor: Colors.surfaceContainer },
+  oncesiPh: { alignItems: 'center', justifyContent: 'center' },
+  oncesiPhFs: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1f2937', borderRadius: 6 },
+  oncesiPhText: { color: '#9ca3af', fontSize: 12, fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 },
   dokunHintRed: { fontSize: 12, color: Colors.primary, textAlign: 'center', marginTop: 8, fontWeight: '700' },
   fsWrap: { flex: 1, backgroundColor: '#0b0b0b' },
   fsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 44, paddingBottom: 10 },

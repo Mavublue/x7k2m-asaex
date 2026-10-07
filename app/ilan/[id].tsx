@@ -10,7 +10,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
 import { deleteIlanPhotos, copyIlanFiles } from '../../lib/r2';
-import { setDownloadProgress } from '../../lib/downloadProgress';
+import { setDownloadProgress, startDownload, isDownloadCancelled } from '../../lib/downloadProgress';
 import { renderSosyalMetin, type SosyalProfil } from '../../lib/sosyalMedya';
 
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
@@ -445,8 +445,10 @@ export default function IlanDetayScreen() {
     }
     let basarili = 0;
     let ilkHata = '';
+    startDownload();
     setDownloadProgress({ current: 0, total: fotograflar.length });
     for (let i = 0; i < fotograflar.length; i++) {
+      if (isDownloadCancelled()) break;
       try {
         const dotIdx = fotograflar[i].lastIndexOf('.');
         const lgKey = fotograflar[i].slice(0, dotIdx) + '_lg.jpg';

@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { Alert, View, Text } from 'react-native';
+import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { registerPushToken } from '../lib/pushNotifications';
 import { Session } from '@supabase/supabase-js';
-import { useDownloadProgress } from '../lib/downloadProgress';
+import { useDownloadProgress, cancelDownload } from '../lib/downloadProgress';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -101,9 +101,12 @@ export default function RootLayout() {
         <Stack.Screen name="esnaf" options={{ presentation: 'card' }} />
       </Stack>
       {downloadProgress && (
-        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 8, left: 0, right: 0, alignItems: 'center', zIndex: 9999 }}>
-          <View style={{ backgroundColor: '#111', borderRadius: 30, paddingHorizontal: 20, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, elevation: 20 }}>
+        <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 0, right: 0, alignItems: 'center', zIndex: 9999 }}>
+          <View style={{ backgroundColor: '#111', borderRadius: 30, paddingLeft: 20, paddingRight: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 10, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, elevation: 20 }}>
             <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>⬇️  {downloadProgress.current}/{downloadProgress.total} indiriliyor</Text>
+            <TouchableOpacity onPress={() => cancelDownload()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>✕</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
