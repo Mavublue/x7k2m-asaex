@@ -445,7 +445,7 @@ export default function IlanDuzenleScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>İlanı Düzenle</Text>
         <TouchableOpacity style={styles.headerKaydet} onPress={handleKaydet} disabled={loading}>
-          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.headerKaydetText}>Kaydet</Text>}
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.headerKaydetText}>💾 Güncelle</Text>}
         </TouchableOpacity>
       </View>
 
