@@ -105,11 +105,15 @@ export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
   const [brush, setBrush] = useState(32);
   const [sayi, setSayi] = useState(0);        // çizilen şekil sayısı (WebView'den)
   const [gonderiliyor, setGonderiliyor] = useState(false);
-  const [buyut, setBuyut] = useState<MaskeRow | null>(null);
+  const [incele, setIncele] = useState(false);
+  const [idx, setIdx] = useState(0);
   const [islem, setIslem] = useState<Set<string>>(new Set());
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const kararlanan = useRef<Set<string>>(new Set());
   const webRef = useRef<WebView>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);              // picker scroll konumu
+  const restoreScroll = useRef(false);    // foto seçip dönünce konumu geri yükle
 
   const yenile = useCallback(async () => {
     try {
@@ -127,6 +131,11 @@ export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
 
   const aktif = rows.filter((r) => r.durum === 'bekliyor' || r.durum === 'isleniyor');
   const hazir = rows.filter((r) => r.durum === 'hazir');
+  const islenenKeys = new Set(aktif.map((r) => r.foto_key)); // işlenen fotoları picker'da işaretle
+  const cur = Math.min(idx, Math.max(0, hazir.length - 1));  // gösterilen hazır foto
+
+  useEffect(() => { if (hazir.length === 0) setIncele(false); }, [hazir.length]);
+  useEffect(() => { if (idx > hazir.length - 1) setIdx(Math.max(0, hazir.length - 1)); }, [hazir.length, idx]);
 
   const inject = (js: string) => webRef.current?.injectJavaScript(js + ';true;');
   const secTool = (t: Tool) => { setTool(t); inject(`window.setTool(${JSON.stringify(t)})`); };
@@ -157,8 +166,7 @@ export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
     if (islem.has(row.id)) return;
     setIslem((s) => new Set(s).add(row.id));
     kararlanan.current.add(row.id);
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
-    setBuyut(null);
+    setRows((prev) => prev.filter((r) => r.id !== row.id)); // anında sonraki hazıra geç (tam ekran açık kalır)
     try {
       if (onay) { await maskeOnayla(row.id); onChanged?.(); }
       else { await maskeReddet(row.id); }
@@ -210,14 +218,18 @@ export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
             </View>
           </View>
         ) : (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
+          <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}
+            onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
+            onContentSizeChange={() => { if (restoreScroll.current) { restoreScroll.current = false; scrollRef.current?.scrollTo({ y: scrollY.current, animated: false }); } }}>
             {aktif.length > 0 && (
               <View style={s.aktifBox}><Text style={s.aktifTxt}>Dolduruluyor… {aktif.length} işlemde · ~{Math.ceil(aktif.length * 1.5)} dk</Text></View>
             )}
 
-            {hazir.map((r) => (
-              <View key={r.id} style={s.card}>
-                <TouchableOpacity onPress={() => setBuyut(r)} activeOpacity={0.85}>
+            {/* HAZIR onay — tek foto (ilk), dokun→tam ekran, onaylayınca sonrakine geçer */}
+            {hazir.length > 0 && (() => { const r = hazir[cur]; return (
+              <View style={s.card}>
+                <Text style={s.secTitle}>İncele — {hazir.length} kaldı</Text>
+                <TouchableOpacity onPress={() => setIncele(true)} activeOpacity={0.85}>
                   <View style={s.ikili}>
                     <View style={{ flex: 1 }}><Text style={s.cap}>ÖNCESİ</Text><Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.img} /></View>
                     <View style={{ flex: 1 }}><Text style={[s.cap, { color: '#3aaa6e' }]}>SONRASI</Text>{r.temiz_key ? <Image source={{ uri: sonrasiUrl(r.temiz_key) }} style={s.img} /> : <View style={s.img} />}</View>
@@ -229,38 +241,50 @@ export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
                   <TouchableOpacity onPress={() => karar(r, true)} disabled={islem.has(r.id)} style={[s.btn, s.btnYesil, { flex: 1 }]}><Text style={s.btnYesilTxt}>✓ Onayla</Text></TouchableOpacity>
                 </View>
               </View>
-            ))}
+            ); })()}
 
             {rows.some((r) => r.durum === 'hata') && <Text style={s.hata}>Bazı işlemler başarısız oldu, tekrar deneyebilirsin.</Text>}
 
             <Text style={s.secTitle}>Düzenlenecek fotoğrafı seç</Text>
             <View style={s.grid}>
-              {fotolar.map((k) => (
-                <TouchableOpacity key={k} onPress={() => { setSecili(k); setSayi(0); }} style={s.thumbWrap}>
-                  <Image source={{ uri: thumbUrl(k) }} style={s.thumb} />
-                </TouchableOpacity>
-              ))}
+              {fotolar.map((k) => {
+                const isleniyor = islenenKeys.has(k);
+                return (
+                  <TouchableOpacity key={k} disabled={isleniyor} activeOpacity={0.8}
+                    onPress={() => { restoreScroll.current = true; setSecili(k); setSayi(0); }}
+                    style={[s.thumbWrap, isleniyor && s.thumbIsleniyor]}>
+                    <Image source={{ uri: thumbUrl(k) }} style={s.thumb} />
+                    {isleniyor && <View style={s.thumbBadge}><Text style={s.thumbBadgeTxt}>⏳ İşleniyor…</Text></View>}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
         )}
 
-        {/* Tam ekran inceleme */}
-        {buyut && (
+        {/* Tam ekran inceleme — tek foto, sağ/sol gezinme */}
+        {incele && hazir.length > 0 && (() => { const r = hazir[cur]; return (
           <View style={s.fs}>
             <View style={s.fsHead}>
-              <Text style={s.fsTitle}>İncele</Text>
-              <TouchableOpacity onPress={() => setBuyut(null)}><Text style={s.close}>×</Text></TouchableOpacity>
+              <Text style={s.fsTitle}>İncele — {cur + 1}/{hazir.length}</Text>
+              <TouchableOpacity onPress={() => setIncele(false)}><Text style={s.close}>×</Text></TouchableOpacity>
             </View>
             <View style={s.fsBody}>
-              <View style={{ flex: 1 }}><Text style={s.fsCap}>ÖNCESİ</Text><Image source={{ uri: oncesiUrl(buyut.foto_key) }} style={s.fsImg} resizeMode="contain" /></View>
-              <View style={{ flex: 1 }}><Text style={[s.fsCap, { color: '#6ee7a8' }]}>SONRASI</Text>{buyut.temiz_key ? <Image source={{ uri: sonrasiUrl(buyut.temiz_key) }} style={s.fsImg} resizeMode="contain" /> : null}</View>
+              <View style={{ flex: 1 }}><Text style={s.fsCap}>ÖNCESİ</Text><Image source={{ uri: oncesiUrl(r.foto_key) }} style={s.fsImg} resizeMode="contain" /></View>
+              <View style={{ flex: 1 }}><Text style={[s.fsCap, { color: '#6ee7a8' }]}>SONRASI</Text>{r.temiz_key ? <Image source={{ uri: sonrasiUrl(r.temiz_key) }} style={s.fsImg} resizeMode="contain" /> : null}</View>
             </View>
+            {hazir.length > 1 && (
+              <View style={s.navRow}>
+                <TouchableOpacity onPress={() => setIdx((i) => Math.max(0, i - 1))} disabled={cur === 0} style={[s.navBtn, cur === 0 && s.navOff]}><Text style={s.navTxt}>‹ Önceki</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setIdx((i) => Math.min(hazir.length - 1, i + 1))} disabled={cur >= hazir.length - 1} style={[s.navBtn, cur >= hazir.length - 1 && s.navOff]}><Text style={s.navTxt}>Sonraki ›</Text></TouchableOpacity>
+              </View>
+            )}
             <View style={[s.row, { padding: Spacing.lg }]}>
-              <TouchableOpacity onPress={() => karar(buyut, false)} disabled={islem.has(buyut.id)} style={[s.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => karar(buyut, true)} disabled={islem.has(buyut.id)} style={[s.btn, { flex: 1, backgroundColor: '#3aaa6e' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✓ Onayla</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => karar(r, false)} disabled={islem.has(r.id)} style={[s.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => karar(r, true)} disabled={islem.has(r.id)} style={[s.btn, { flex: 1, backgroundColor: '#3aaa6e' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✓ Onayla</Text></TouchableOpacity>
             </View>
           </View>
-        )}
+        ); })()}
       </View>
     </Modal>
   );
@@ -300,6 +324,13 @@ const s = StyleSheet.create({
   secTitle: { fontSize: 14, fontWeight: '700', color: Colors.onSurface, marginBottom: 10, marginTop: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thumbWrap: { width: '48.5%', aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden' },
+  thumbIsleniyor: { borderWidth: 2, borderColor: '#fdba74' },
+  thumbBadge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  thumbBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  navRow: { flexDirection: 'row', gap: 10, paddingHorizontal: Spacing.lg, paddingTop: 6 },
+  navBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
+  navOff: { opacity: 0.3 },
+  navTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
   thumb: { width: '100%', height: '100%', backgroundColor: Colors.surfaceContainer },
   fs: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0b0b0b' },
   fsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md },
