@@ -95,7 +95,8 @@ type Tool = 'rect' | 'brush' | 'eraser';
 export default function MaskeSilModal({ ilan, visible, onClose, onChanged }: {
   ilan: Ilan; visible: boolean; onClose: () => void; onChanged?: () => void;
 }) {
-  const fotolar = [...((ilan.fotograflar ?? []) as string[]), ...((ilan.gizli_fotograflar ?? []) as string[])];
+  // Sadece müşteriye görünür fotolar; gizli (müşteriden saklanan) fotolar burada gösterilmez.
+  const fotolar = (ilan.fotograflar ?? []) as string[];
   const [rows, setRows] = useState<MaskeRow[]>([]);
   const [secili, setSecili] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>('rect');
@@ -296,7 +297,7 @@ const s = StyleSheet.create({
   hata: { fontSize: 12, color: Colors.error, marginBottom: 10 },
   secTitle: { fontSize: 14, fontWeight: '700', color: Colors.onSurface, marginBottom: 10, marginTop: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  thumbWrap: { width: '31.5%', aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden' },
+  thumbWrap: { width: '48.5%', aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden' },
   thumb: { width: '100%', height: '100%', backgroundColor: Colors.surfaceContainer },
   fs: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0b0b0b' },
   fsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md },
