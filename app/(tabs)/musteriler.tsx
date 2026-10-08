@@ -329,16 +329,14 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
   ];
   const avatarBg = avatarColors[(musteri.ad?.charCodeAt(0) ?? 0) % avatarColors.length];
 
-  // Konum/bütçe müşteri_istekler junction'ında (üst seviyede yok). Tüm istek setlerini birleştir:
-  // konumlar benzersiz virgülle, bütçe tüm setlerin min–max aralığı.
+  // Konum/bütçe müşteri_istekler junction'ında (üst seviyede yok). Web gibi: ilk isteği göster,
+  // birden çok varsa "+N istek". Konum çoklu ise ilk parçayı (| ayracından) gösterir.
   const istekler = musteri.musteri_istekler ?? [];
-  const kartKonum = Array.from(new Set(
-    istekler.flatMap(i => (i.tercih_konum ?? '').split('|').map(s => s.trim()).filter(Boolean))
-  )).join(', ');
-  const minler = istekler.map(i => i.butce_min).filter((x): x is number => x != null);
-  const maxlar = istekler.map(i => i.butce_max).filter((x): x is number => x != null);
-  const kartButceMin = minler.length ? Math.min(...minler) : null;
-  const kartButceMax = maxlar.length ? Math.max(...maxlar) : null;
+  const ilkIstek = istekler[0];
+  const kartKonum = ilkIstek?.tercih_konum ? ilkIstek.tercih_konum.split('|')[0].trim() : '';
+  const kartButceMin = ilkIstek?.butce_min ?? null;
+  const kartButceMax = ilkIstek?.butce_max ?? null;
+  const ekIstek = istekler.length > 1 ? istekler.length - 1 : 0;
 
   return (
     <TouchableOpacity style={styles.kart} onPress={() => router.push(`/musteri/${musteri.id}` as any)} activeOpacity={0.85}>
@@ -365,6 +363,9 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
             <Text style={styles.butce}>
               💰 {kartButceMin ? `₺${kartButceMin.toLocaleString('tr-TR')}` : '?'} – {kartButceMax ? `₺${kartButceMax.toLocaleString('tr-TR')}` : '?'}
             </Text>
+          ) : null}
+          {ekIstek > 0 ? (
+            <Text style={styles.ekIstek}>+{ekIstek} istek</Text>
           ) : null}
         </View>
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -484,6 +485,7 @@ const styles = StyleSheet.create({
   etiketPillText: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant },
   konum: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
   butce: { fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  ekIstek: { fontSize: 11, color: Colors.outline, marginTop: 2 },
   notlar: { fontSize: 11, color: Colors.onSurfaceVariant, lineHeight: 16 },
   ekKisiler: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow, gap: 4 },
   ekKisiRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
