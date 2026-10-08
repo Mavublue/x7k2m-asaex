@@ -26,6 +26,7 @@ import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
 import FotoTemizleModal from '../../components/FotoTemizleModal';
 import { watermarkYetkili, filigranDurum } from '../../lib/filigran';
+import { maskeDurum } from '../../lib/maskesil';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
 
@@ -245,6 +246,7 @@ export default function IlanDetayScreen() {
   const [kolajModal, setKolajModal] = useState(false);
   const [filigranModal, setFiligranModal] = useState(false);
   const [filigranAktif, setFiligranAktif] = useState(false); // bu ilanda filigran işi sürüyor mu → Düzenle kilidi
+  const [onayBekleyen, setOnayBekleyen] = useState(0); // temizlenip onay bekleyen (hazır) foto sayısı → uyarı
   const oncekiFiligran = useRef(false); // filigran işi aktif→bitti geçişini yakala (tazeleme için)
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -293,14 +295,17 @@ export default function IlanDetayScreen() {
   // Filigran işi sürerken (bekliyor/işleniyor/hazır) Düzenle'yi kilitle — düzenleme kaydı
   // arka planda süren onayların üstüne yazıp fotoları bozabiliyor. DB'ye bakar → her cihazda geçerli.
   useEffect(() => {
-    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); return; }
+    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); setOnayBekleyen(0); return; }
     let alive = true;
     const kontrol = async () => {
       try {
-        const r = await filigranDurum(id);
+        const [fr, mr] = await Promise.all([filigranDurum(id), maskeDurum(id).catch(() => [])]);
         if (!alive) return;
-        const aktifMi = r.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir');
+        const hepsi = [...fr, ...mr];
+        const aktifMi = hepsi.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir');
         setFiligranAktif(aktifMi);
+        // Temizlenip onay bekleyen (hazır) foto sayısı → ilan detayda uyarı göster
+        setOnayBekleyen(hepsi.filter((x) => x.durum === 'hazir').length);
         // İş aktif→bitti geçince (modal kapalı olsa bile) ilanı tazele → yeni temiz key'ler gelsin
         if (oncekiFiligran.current && !aktifMi) fetchIlan();
         oncekiFiligran.current = aktifMi;
@@ -665,6 +670,12 @@ export default function IlanDetayScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Temizlenip onay bekleyen foto var → onaylamayı hatırlat */}
+        {onayBekleyen > 0 && (
+          <TouchableOpacity style={styles.onayUyari} onPress={() => setFiligranModal(true)} activeOpacity={0.8}>
+            <Text style={styles.onayUyariText}>🧹 {onayBekleyen} temizlenmiş fotoğraf onayını bekliyor — açıp onayla.</Text>
+          </TouchableOpacity>
+        )}
         {/* Filigran onaylı ama müşteriye gizli → açmayı hatırlat */}
         {filigranUyari && (
           <View style={styles.filigranUyari}>
@@ -1467,6 +1478,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginTop: 12,
   },
   filigranUyariText: { color: '#eab308', fontSize: 12.5, fontWeight: '600', lineHeight: 17 },
+  onayUyari: {
+    backgroundColor: 'rgba(59,130,246,0.15)',
+    borderWidth: 1, borderColor: 'rgba(59,130,246,0.5)',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+    marginHorizontal: 16, marginTop: 12,
+  },
+  onayUyariText: { color: '#60a5fa', fontSize: 12.5, fontWeight: '600', lineHeight: 17 },
 
   content: { paddingHorizontal: Spacing.xl, paddingBottom: 100 },
 
