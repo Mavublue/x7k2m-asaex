@@ -24,8 +24,7 @@ import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
-import FiligranTemizleModal from '../../components/FiligranTemizleModal';
-import MaskeSilModal from '../../components/MaskeSilModal';
+import FotoTemizleModal from '../../components/FotoTemizleModal';
 import { watermarkYetkili, filigranDurum } from '../../lib/filigran';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
@@ -245,7 +244,6 @@ export default function IlanDetayScreen() {
   const [satildiModal, setSatildiModal] = useState(false);
   const [kolajModal, setKolajModal] = useState(false);
   const [filigranModal, setFiligranModal] = useState(false);
-  const [maskeModal, setMaskeModal] = useState(false);
   const [filigranAktif, setFiligranAktif] = useState(false); // bu ilanda filigran işi sürüyor mu → Düzenle kilidi
   const oncekiFiligran = useRef(false); // filigran işi aktif→bitti geçişini yakala (tazeleme için)
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -1036,12 +1034,7 @@ export default function IlanDetayScreen() {
 
             {watermarkYetkili(userEmail) && fotograflar.length > 0 && (
               <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setFiligranModal(true); }}>
-                <Text style={styles.menuItemText}>🧹  Filigran Temizle</Text>
-              </TouchableOpacity>
-            )}
-            {watermarkYetkili(userEmail) && fotograflar.length > 0 && (
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setMaskeModal(true); }}>
-                <Text style={styles.menuItemText}>🩹  Maske ile Sil</Text>
+                <Text style={styles.menuItemText}>🧹  Fotoğraf Temizle</Text>
               </TouchableOpacity>
             )}
             <View style={styles.menuSep} />
@@ -1376,19 +1369,10 @@ export default function IlanDetayScreen() {
       )}
 
       {filigranModal && (
-        <FiligranTemizleModal
+        <FotoTemizleModal
           ilan={ilan}
           visible={filigranModal}
           onClose={() => setFiligranModal(false)}
-          onChanged={fetchIlan}
-        />
-      )}
-
-      {maskeModal && (
-        <MaskeSilModal
-          ilan={ilan}
-          visible={maskeModal}
-          onClose={() => setMaskeModal(false)}
           onChanged={fetchIlan}
         />
       )}
