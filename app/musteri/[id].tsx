@@ -1695,15 +1695,19 @@ export default function MusteriDetayScreen() {
                     gorevBaslik={gorevBaslik}
                     gorevAciklama={gorevAciklama}
                     gorevHedefTarih={gorevHedefTarih}
+                    gorevHedefSaat={gorevHedefSaat}
                     gorevEditId={gorevEditId}
                     showGorevPicker={showGorevPicker}
+                    showGorevSaatPicker={showGorevSaatPicker}
                     setGorevBaslik={setGorevBaslik}
                     setGorevAciklama={setGorevAciklama}
                     setGorevHedefTarih={setGorevHedefTarih}
+                    setGorevHedefSaat={setGorevHedefSaat}
                     setShowGorevPicker={setShowGorevPicker}
+                    setShowGorevSaatPicker={setShowGorevSaatPicker}
                     onEkleAc={gorevEkleAc}
                     onKaydet={handleGorevKaydet}
-                    onIptal={() => { setGorevEkle(false); setGorevEditId(null); setGorevBaslik(''); setGorevAciklama(''); setGorevHedefTarih(null); }}
+                    onIptal={() => { setGorevEkle(false); setGorevEditId(null); setGorevBaslik(''); setGorevAciklama(''); setGorevHedefTarih(null); setGorevHedefSaat(null); }}
                     onTamamla={handleGorevTamamla}
                     onDuzenle={gorevDuzenleAc}
                     onSil={handleGorevSil}

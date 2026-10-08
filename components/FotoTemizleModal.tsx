@@ -452,7 +452,9 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
       try {
         await maskeBaslat(ilan.id, secili!, m.data);
         setSecili(null); setSayi(0);
-        await yenile();
+        setGonderiliyor(false);
+        yenile(); // beklenmez: VPS meşgulse durum sorgusu buton'u takmasın
+        return;
       } catch (e: any) { Alert.alert('Hata', e.message); }
       setGonderiliyor(false);
     }

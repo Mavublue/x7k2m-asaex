@@ -228,7 +228,6 @@ const styles = StyleSheet.create({
   avatarEmail: { fontSize: 14, color: Colors.onSurfaceVariant },
 
   satir: { flexDirection: 'row', gap: Spacing.sm },
-  inputContainer: { gap: 6 },
   label: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.5 },
   input: { backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: 12, fontSize: 15, color: Colors.onSurface },
 

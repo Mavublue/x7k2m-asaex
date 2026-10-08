@@ -1921,9 +1921,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow,
   },
   modalItemText: { fontSize: 15, color: Colors.onSurface },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.outline, alignItems: 'center', justifyContent: 'center' },
-  checkboxAktif: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  checkboxTick: { fontSize: 14, color: '#fff', fontWeight: '700' },
 
   listeGrupBaslik: {
     fontSize: 12, fontWeight: '700', color: Colors.primary,
