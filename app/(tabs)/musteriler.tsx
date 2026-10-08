@@ -12,6 +12,7 @@ import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
 
 type MusteriListe = Musteri & {
+  musteri_tipi?: string | null; // DB'de musteriler tablosunda var; Musteri tipinde tanımlı değil
   musteri_iletisim?: { ad: string; telefon: string | null; tip: string | null }[];
   musteri_notlar?: { icerik: string; tarih: string }[];
   musteri_istekler?: { tip: string | null; satilik_kiralik: string | null; butce_min: number | null; butce_max: number | null; tercih_konum: string | null }[];
@@ -96,7 +97,7 @@ export default function MusterilerScreen() {
       result = result.filter(m =>
         `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(q) ||
         m.telefon?.includes(q) ||
-        m.tercih_konum?.toLowerCase().includes(q) ||
+        (m.musteri_istekler ?? []).some(i => i.tercih_konum?.toLowerCase().includes(q)) ||
         (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(q) || k.telefon?.includes(q)) ||
         (m.musteri_notlar ?? []).some(n => n.icerik?.toLowerCase().includes(q))
       );
@@ -109,7 +110,7 @@ export default function MusterilerScreen() {
     const isNameMatch = (m: MusteriListe) => !searchQ ? false : (
       `${m.ad ?? ''} ${m.soyad ?? ''}`.toLowerCase().includes(searchQ) ||
       (m.telefon?.includes(searchQ) ?? false) ||
-      (m.tercih_konum?.toLowerCase().includes(searchQ) ?? false) ||
+      (m.musteri_istekler ?? []).some(i => i.tercih_konum?.toLowerCase().includes(searchQ)) ||
       (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(searchQ) || k.telefon?.includes(searchQ))
     );
     result = [...result].sort((a, b) => {
@@ -328,6 +329,17 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
   ];
   const avatarBg = avatarColors[(musteri.ad?.charCodeAt(0) ?? 0) % avatarColors.length];
 
+  // Konum/bütçe müşteri_istekler junction'ında (üst seviyede yok). Tüm istek setlerini birleştir:
+  // konumlar benzersiz virgülle, bütçe tüm setlerin min–max aralığı.
+  const istekler = musteri.musteri_istekler ?? [];
+  const kartKonum = Array.from(new Set(
+    istekler.flatMap(i => (i.tercih_konum ?? '').split('|').map(s => s.trim()).filter(Boolean))
+  )).join(', ');
+  const minler = istekler.map(i => i.butce_min).filter((x): x is number => x != null);
+  const maxlar = istekler.map(i => i.butce_max).filter((x): x is number => x != null);
+  const kartButceMin = minler.length ? Math.min(...minler) : null;
+  const kartButceMax = maxlar.length ? Math.max(...maxlar) : null;
+
   return (
     <TouchableOpacity style={styles.kart} onPress={() => router.push(`/musteri/${musteri.id}` as any)} activeOpacity={0.85}>
       <View style={styles.kartRow}>
@@ -346,12 +358,12 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
           {musteri.telefon ? (
             <Text style={styles.telefon} numberOfLines={1}>📞 {musteri.telefon}</Text>
           ) : null}
-          {musteri.tercih_konum ? (
-            <Text style={styles.konum} numberOfLines={1}>📍 {musteri.tercih_konum.replace(/\s*\|\s*/g, ', ')}</Text>
+          {kartKonum ? (
+            <Text style={styles.konum} numberOfLines={1}>📍 {kartKonum}</Text>
           ) : null}
-          {(musteri.butce_min || musteri.butce_max) ? (
+          {(kartButceMin || kartButceMax) ? (
             <Text style={styles.butce}>
-              💰 {musteri.butce_min ? `₺${musteri.butce_min.toLocaleString('tr-TR')}` : '?'} – {musteri.butce_max ? `₺${musteri.butce_max.toLocaleString('tr-TR')}` : '?'}
+              💰 {kartButceMin ? `₺${kartButceMin.toLocaleString('tr-TR')}` : '?'} – {kartButceMax ? `₺${kartButceMax.toLocaleString('tr-TR')}` : '?'}
             </Text>
           ) : null}
         </View>
