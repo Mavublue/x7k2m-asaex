@@ -433,6 +433,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const aktif = rows.filter((r) => r.durum === 'bekliyor' || r.durum === 'isleniyor');
   const hazir = rows.filter((r) => r.durum === 'hazir');
   const islenenKeys = new Set(aktif.map((r) => r.foto_key));
+  const hazirKeys = new Set(hazir.map((r) => r.foto_key));
   const cur = Math.min(idx, Math.max(0, hazir.length - 1));
 
   useEffect(() => { onCount(aktif.length + hazir.length); }, [aktif.length, hazir.length, onCount]);
@@ -547,12 +548,15 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
           <View style={sm.grid}>
             {fotolar.map((k) => {
               const isleniyor = islenenKeys.has(k);
+              const onayBekliyor = hazirKeys.has(k);
+              const mesgul = isleniyor || onayBekliyor;
               return (
-                <TouchableOpacity key={k} disabled={isleniyor} activeOpacity={0.8}
+                <TouchableOpacity key={k} disabled={mesgul} activeOpacity={0.8}
                   onPress={() => { restoreScroll.current = true; setSecili(k); setSayi(0); }}
-                  style={[sm.thumbWrap, isleniyor && sm.thumbIsleniyor]}>
+                  style={[sm.thumbWrap, isleniyor && sm.thumbIsleniyor, onayBekliyor && sm.thumbHazir]}>
                   <Image source={{ uri: thumbUrl(k) }} style={sm.thumb} />
                   {isleniyor && <View style={sm.thumbBadge}><Text style={sm.thumbBadgeTxt}>⏳ İşleniyor…</Text></View>}
+                  {onayBekliyor && <View style={[sm.thumbBadge, sm.thumbBadgeOnay]}><Text style={sm.thumbBadgeTxt}>✓ Onay bekliyor</Text></View>}
                 </TouchableOpacity>
               );
             })}
@@ -690,7 +694,9 @@ const sm = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thumbWrap: { width: '48.5%', aspectRatio: 1, borderRadius: Radius.sm, overflow: 'hidden' },
   thumbIsleniyor: { borderWidth: 2, borderColor: '#fdba74' },
+  thumbHazir: { borderWidth: 2, borderColor: '#3aaa6e' },
   thumbBadge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  thumbBadgeOnay: { backgroundColor: 'rgba(58,170,110,0.55)' },
   thumbBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 12 },
   navRow: { flexDirection: 'row', gap: 10, paddingHorizontal: Spacing.lg, paddingTop: 6 },
   navBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
