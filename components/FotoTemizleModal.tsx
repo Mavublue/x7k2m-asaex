@@ -150,7 +150,8 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
   }, [onaylaniyor, hazir.length, onChanged]);
 
   useEffect(() => {
-    [cur - 1, cur + 1].forEach((i) => {
+    // İleri-ağırlıklı: hızlı giderken SONRASI temiz foto (R2'de hep soğuk) hazır gelsin
+    [cur + 1, cur + 2, cur + 3, cur - 1].forEach((i) => {
       const r = hazir[i];
       if (r?.temiz_key) Image.prefetch(filSonrasiUrl(r.temiz_key));
     });
@@ -439,6 +440,16 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   useEffect(() => { onCount(aktif.length + hazir.length); }, [aktif.length, hazir.length, onCount]);
   useEffect(() => { if (hazir.length === 0) setIncele(false); }, [hazir.length]);
   useEffect(() => { if (idx > hazir.length - 1) setIdx(Math.max(0, hazir.length - 1)); }, [hazir.length, idx]);
+  // Onay karuselinde komşuları (öncesi _lg + sonrası temiz) önden yükle → hızlı giderken takılmasın
+  useEffect(() => {
+    if (!hazir.length) return;
+    [cur + 1, cur + 2, cur + 3, cur - 1].forEach((i) => {
+      const r = hazir[i];
+      if (!r) return;
+      Image.prefetch(mskOncesiUrl(r.foto_key));
+      if (r.temiz_key) Image.prefetch(mskSonrasiUrl(r.temiz_key));
+    });
+  }, [cur, hazir]);
 
   const inject = (js: string) => webRef.current?.injectJavaScript(js + ';true;');
   const secTool = (t: Tool) => { setTool(t); inject(`window.setTool(${JSON.stringify(t)})`); };
