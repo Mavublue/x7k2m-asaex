@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
+import { supabase } from '../lib/supabase';
 import type { Ilan } from '../types';
 import {
   filigranBaslat, filigranDurum, filigranOnayla, filigranOnaylaHepsi, filigranReddet,
@@ -86,9 +87,12 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
   useEffect(() => {
     if (!visible) return;
     yenile();
-    poll.current = setInterval(yenile, 5000);
-    return () => { if (poll.current) clearInterval(poll.current); };
-  }, [visible, yenile]);
+    const ch = supabase.channel(`fil-${ilan.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilan_filigran', filter: `ilan_id=eq.${ilan.id}` }, () => yenile())
+      .subscribe();
+    poll.current = setInterval(yenile, 15000); // güvenlik ağı (realtime varken)
+    return () => { if (poll.current) clearInterval(poll.current); supabase.removeChannel(ch); };
+  }, [visible, yenile, ilan.id]);
 
   const aktif = rows.filter((r) => r.durum === 'bekliyor' || r.durum === 'isleniyor');
   const hazir = rows.filter((r) => r.durum === 'hazir');
@@ -321,15 +325,17 @@ const DRAW_HTML = `<!DOCTYPE html><html><head>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html,body{width:100%;height:100%;background:#000;overflow:hidden}
-#wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-#c{display:block;max-width:100%;max-height:100%;touch-action:none}
+#wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#c{display:block;max-width:100%;max-height:100%;touch-action:none;transform-origin:0 0}
 </style></head><body>
 <div id="wrap"><canvas id="c"></canvas></div>
 <script>
 var img=new Image();
 var canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
 var shapes=[], cur=null, tool='rect', brush=32, W=0, H=0, started=false;
+var zoomMode=false, view={s:1,tx:0,ty:0}, pinch=null, panLast=null;
 function post(o){ if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(o)); }
+function applyView(){ canvas.style.transform='translate('+view.tx+'px,'+view.ty+'px) scale('+view.s+')'; }
 img.onload=function(){
   W=img.naturalWidth; H=img.naturalHeight;
   canvas.width=W; canvas.height=H;
@@ -377,12 +383,41 @@ function up(){ if(!cur) return; var s=cur; cur=null;
   if(s.t==='rect'&&(s.w<4||s.h<4)){ render(); return; }
   shapes.push(s); render(); post({type:'count',n:shapes.length});
 }
-canvas.addEventListener('touchstart',down,{passive:false});
-canvas.addEventListener('touchmove',move,{passive:false});
-canvas.addEventListener('touchend',up,{passive:false});
+function dist(a,b){ var dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
+function mid(a,b){ return { x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 }; }
+function tstart(e){
+  if(e.touches.length>=2){ e.preventDefault(); if(cur){ cur=null; render(); }
+    var m=mid(e.touches[0],e.touches[1]); pinch={d:dist(e.touches[0],e.touches[1]),cx:m.x,cy:m.y}; panLast=null; return; }
+  if(zoomMode){ e.preventDefault(); panLast={x:e.touches[0].clientX,y:e.touches[0].clientY}; return; }
+  down(e);
+}
+function tmove(e){
+  if(pinch && e.touches.length>=2){ e.preventDefault();
+    var a=e.touches[0], b=e.touches[1], nd=dist(a,b), m=mid(a,b);
+    var r=canvas.getBoundingClientRect();
+    var ns=Math.max(1,Math.min(8,view.s*(nd/pinch.d))), f=ns/view.s;
+    view.tx+=(m.x-r.left)*(1-f); view.ty+=(m.y-r.top)*(1-f); view.s=ns;
+    view.tx+=(m.x-pinch.cx); view.ty+=(m.y-pinch.cy);
+    if(view.s<=1){ view.tx=0; view.ty=0; }
+    applyView(); pinch.d=nd; pinch.cx=m.x; pinch.cy=m.y; return; }
+  if(panLast && zoomMode){ e.preventDefault(); var t=e.touches[0];
+    view.tx+=t.clientX-panLast.x; view.ty+=t.clientY-panLast.y;
+    if(view.s<=1){ view.tx=0; view.ty=0; }
+    applyView(); panLast={x:t.clientX,y:t.clientY}; return; }
+  move(e);
+}
+function tend(e){
+  if(pinch){ if(e.touches.length<2){ pinch=null; panLast=null; } return; }
+  if(panLast){ if(e.touches.length===0) panLast=null; return; }
+  up();
+}
+canvas.addEventListener('touchstart',tstart,{passive:false});
+canvas.addEventListener('touchmove',tmove,{passive:false});
+canvas.addEventListener('touchend',tend,{passive:false});
 canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
 window.setTool=function(t){ tool=t; };
 window.setBrush=function(n){ brush=n; };
+window.setZoomMode=function(b){ zoomMode=!!b; };
 window.undo=function(){ shapes.pop(); render(); post({type:'count',n:shapes.length}); };
 window.clearAll=function(){ shapes=[]; render(); post({type:'count',n:0}); };
 window.exportMask=function(){
@@ -405,6 +440,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const [secili, setSecili] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>('rect');
   const [brush, setBrush] = useState(32);
+  const [zoomMode, setZoomMode] = useState(false);
   const [sayi, setSayi] = useState(0);
   const [gonderiliyor, setGonderiliyor] = useState(false);
   const [incele, setIncele] = useState(false);
@@ -427,9 +463,12 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   useEffect(() => {
     if (!visible) return;
     yenile();
-    poll.current = setInterval(yenile, 5000);
-    return () => { if (poll.current) clearInterval(poll.current); };
-  }, [visible, yenile]);
+    const ch = supabase.channel(`msk-${ilan.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilan_maske_sil', filter: `ilan_id=eq.${ilan.id}` }, () => yenile())
+      .subscribe();
+    poll.current = setInterval(yenile, 15000); // güvenlik ağı (realtime varken)
+    return () => { if (poll.current) clearInterval(poll.current); supabase.removeChannel(ch); };
+  }, [visible, yenile, ilan.id]);
 
   const aktif = rows.filter((r) => r.durum === 'bekliyor' || r.durum === 'isleniyor');
   const hazir = rows.filter((r) => r.durum === 'hazir');
@@ -454,6 +493,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const inject = (js: string) => webRef.current?.injectJavaScript(js + ';true;');
   const secTool = (t: Tool) => { setTool(t); inject(`window.setTool(${JSON.stringify(t)})`); };
   const secBrush = (n: number) => { setBrush(n); inject(`window.setBrush(${n})`); };
+  const secZoom = () => { const v = !zoomMode; setZoomMode(v); inject(`window.setZoomMode(${v})`); };
 
   async function onMessage(data: string) {
     let m: any; try { m = JSON.parse(data); } catch { return; }
@@ -465,7 +505,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
         await maskeBaslat(ilan.id, secili!, m.data);
         setSecili(null); setSayi(0);
         setGonderiliyor(false);
-        yenile(); // beklenmez: VPS meşgulse durum sorgusu buton'u takmasın
+        await yenile(); // grid "işleniyor"u anında göstersin (realtime de tetikler)
         return;
       } catch (e: any) { Alert.alert('Hata', e.message); }
       setGonderiliyor(false);
@@ -496,12 +536,15 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
         <View style={{ flex: 1 }}>
           {/* Araç çubuğu */}
           <View style={sm.toolbar}>
-            {(['rect', 'brush', 'eraser'] as Tool[]).map((t) => (
+            <TouchableOpacity onPress={secZoom} style={[sm.tbtn, zoomMode && sm.tbtnOn]}>
+              <Text style={[sm.tbtnTxt, zoomMode && sm.tbtnTxtOn]}>🔍</Text>
+            </TouchableOpacity>
+            {!zoomMode && (['rect', 'brush', 'eraser'] as Tool[]).map((t) => (
               <TouchableOpacity key={t} onPress={() => secTool(t)} style={[sm.tbtn, tool === t && sm.tbtnOn]}>
                 <Text style={[sm.tbtnTxt, tool === t && sm.tbtnTxtOn]}>{t === 'rect' ? '▭' : t === 'brush' ? '🖌' : '🧽'}</Text>
               </TouchableOpacity>
             ))}
-            {(tool === 'brush' || tool === 'eraser') && [16, 32, 64].map((n) => (
+            {!zoomMode && (tool === 'brush' || tool === 'eraser') && [16, 32, 64].map((n) => (
               <TouchableOpacity key={n} onPress={() => secBrush(n)} style={[sm.tbtn, brush === n && sm.tbtnOn]}>
                 <Text style={[sm.tbtnTxt, brush === n && sm.tbtnTxtOn]}>{n === 16 ? 'İnce' : n === 32 ? 'Orta' : 'Kalın'}</Text>
               </TouchableOpacity>
@@ -519,9 +562,9 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
               scrollEnabled={false}
             />
           </View>
-          <Text style={sm.hint}>Silmek istediğin alan(lar)ı işaretle. Birden çok şekil ekleyebilirsin.</Text>
+          <Text style={sm.hint}>Silmek istediğin alan(lar)ı işaretle. İki parmakla yakınlaştır; 🔍 ile kaydır.</Text>
           <View style={sm.row}>
-            <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); setZoomMode(false); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
             <TouchableOpacity onPress={gonder} disabled={!sayi || gonderiliyor} style={[sm.btn, (!sayi || gonderiliyor) ? sm.btnOff : sm.btnKirmizi, { flex: 2 }]}>
               {gonderiliyor ? <ActivityIndicator color="#fff" /> : <Text style={sm.btnKirmiziTxt}>Gönder{sayi ? ` (${sayi})` : ''}</Text>}
             </TouchableOpacity>
@@ -563,7 +606,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
               const mesgul = isleniyor || onayBekliyor;
               return (
                 <TouchableOpacity key={k} disabled={mesgul} activeOpacity={0.8}
-                  onPress={() => { restoreScroll.current = true; setSecili(k); setSayi(0); }}
+                  onPress={() => { restoreScroll.current = true; setSecili(k); setSayi(0); setZoomMode(false); }}
                   style={[sm.thumbWrap, isleniyor && sm.thumbIsleniyor, onayBekliyor && sm.thumbHazir]}>
                   <Image source={{ uri: thumbUrl(k) }} style={sm.thumb} />
                   {isleniyor && <View style={sm.thumbBadge}><Text style={sm.thumbBadgeTxt}>⏳ İşleniyor…</Text></View>}
