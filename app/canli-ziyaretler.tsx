@@ -478,7 +478,7 @@ function ZamanTuneli({ oturumlari, timelinePeriod, selectedMusteriId }: {
     <View style={timelineStyles.kart}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
         <Text style={timelineStyles.baslik}>📊 Zaman Çizelgesi</Text>
-        <Text style={{ fontSize: 10, color: Colors.outline }}>🔄 8 sn'de bir güncellenir</Text>
+        <Text style={{ fontSize: 10, color: Colors.outline }}>🔄 2 sn'de bir güncellenir</Text>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
