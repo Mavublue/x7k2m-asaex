@@ -14,8 +14,9 @@ import {
   maskeBaslat, maskeDurum, maskeOnayla, maskeReddet,
   oncesiUrl as mskOncesiUrl, sonrasiUrl as mskSonrasiUrl, type MaskeRow,
 } from '../lib/maskesil';
+import { kirpUygula, kirpOncesiUrl, type Crop } from '../lib/kirp';
 
-type Mode = 'filigran' | 'maske';
+type Mode = 'filigran' | 'maske' | 'kirp';
 
 export default function FotoTemizleModal({ ilan, visible, onClose, onChanged }: {
   ilan: Ilan; visible: boolean; onClose: () => void; onChanged?: () => void;
@@ -42,15 +43,24 @@ export default function FotoTemizleModal({ ilan, visible, onClose, onChanged }: 
             <Text style={[shell.tabTxt, mode === 'maske' && shell.tabTxtOn]}>🩹 Maske</Text>
             {mskCount > 0 && <View style={shell.badge}><Text style={shell.badgeTxt}>{mskCount}</Text></View>}
           </TouchableOpacity>
+          <TouchableOpacity style={[shell.tab, mode === 'kirp' && shell.tabOn]} onPress={() => setMode('kirp')}>
+            <Text style={[shell.tabTxt, mode === 'kirp' && shell.tabTxtOn]}>✂️ Kırp</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Her iki pane de monte kalır (poll+rozet sürsün); pasif olan gizlenir */}
+        {/* Filigran+Maske pane'leri monte kalır (poll+rozet sürsün); pasif olan gizlenir */}
         <View style={{ flex: 1, display: mode === 'filigran' ? 'flex' : 'none' }}>
           <FiligranPane ilan={ilan} visible={visible} onChanged={onChanged} onCount={setFilCount} />
         </View>
         <View style={{ flex: 1, display: mode === 'maske' ? 'flex' : 'none' }}>
           <MaskePane ilan={ilan} visible={visible} onChanged={onChanged} onCount={setMskCount} />
         </View>
+        {/* Kırp: durum/poll yok, sadece aktifken monte */}
+        {mode === 'kirp' && (
+          <View style={{ flex: 1 }}>
+            <KirpPane ilan={ilan} onChanged={onChanged} />
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -641,6 +651,156 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
           </View>
         </View>
       ); })()}
+    </View>
+  );
+}
+
+/* ======================= KIRP ======================= */
+const CROP_HTML = `<!DOCTYPE html><html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{width:100%;height:100%;background:#000;overflow:hidden}
+#wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#c{display:block;max-width:100%;max-height:100%;touch-action:none}
+</style></head><body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<script>
+var img=new Image();
+var canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+var W=0,H=0, rect=null, drag=null, aspect=0;
+function post(o){ if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(o)); }
+img.onload=function(){ W=img.naturalWidth; H=img.naturalHeight; canvas.width=W; canvas.height=H; render(); post({type:'ready'}); };
+img.onerror=function(){ post({type:'imgerror'}); };
+img.src='__IMG__';
+function render(){
+  ctx.clearRect(0,0,W,H);
+  if(img.complete) ctx.drawImage(img,0,0,W,H);
+  if(!rect){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,W,H); return; }
+  var r=rect;
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(0,0,W,r.y);
+  ctx.fillRect(0,r.y+r.h,W,H-(r.y+r.h));
+  ctx.fillRect(0,r.y,r.x,r.h);
+  ctx.fillRect(r.x+r.w,r.y,W-(r.x+r.w),r.h);
+  ctx.strokeStyle='#E53935'; ctx.lineWidth=Math.max(2,W/400); ctx.strokeRect(r.x,r.y,r.w,r.h);
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=Math.max(1,W/800);
+  for(var i=1;i<3;i++){
+    ctx.beginPath(); ctx.moveTo(r.x+r.w*i/3,r.y); ctx.lineTo(r.x+r.w*i/3,r.y+r.h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r.x,r.y+r.h*i/3); ctx.lineTo(r.x+r.w,r.y+r.h*i/3); ctx.stroke();
+  }
+}
+function pos(e){ var b=canvas.getBoundingClientRect(); var t=e.touches&&e.touches[0]?e.touches[0]:e;
+  return { x:(t.clientX-b.left)*(W/b.width), y:(t.clientY-b.top)*(H/b.height) }; }
+function clamp(r){ var x=r.x,y=r.y,w=Math.min(r.w,W),h=Math.min(r.h,H);
+  x=Math.max(0,Math.min(x,W-w)); y=Math.max(0,Math.min(y,H-h)); return {x:x,y:y,w:w,h:h}; }
+function down(e){ e.preventDefault(); var p=pos(e); drag={sx:p.x,sy:p.y}; rect={x:p.x,y:p.y,w:0,h:0}; render(); }
+function move(e){ if(!drag) return; e.preventDefault(); var p=pos(e);
+  var dx=p.x-drag.sx, dy=p.y-drag.sy, w,h;
+  if(aspect){ w=Math.abs(dx); h=w/aspect; } else { w=Math.abs(dx); h=Math.abs(dy); }
+  var x=dx<0?drag.sx-w:drag.sx, y=dy<0?drag.sy-h:drag.sy;
+  rect=clamp({x:x,y:y,w:w,h:h}); render();
+}
+function up(){ if(!drag) return; drag=null;
+  if(rect&&(rect.w<8||rect.h<8)){ rect=null; render(); }
+  post({type:'rect',has:!!rect});
+}
+canvas.addEventListener('touchstart',down,{passive:false});
+canvas.addEventListener('touchmove',move,{passive:false});
+canvas.addEventListener('touchend',up,{passive:false});
+canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+window.setAspect=function(r){ aspect=r||0; rect=null; render(); post({type:'rect',has:false}); };
+window.clearRect2=function(){ rect=null; render(); post({type:'rect',has:false}); };
+window.exportCrop=function(){ if(!rect){ post({type:'empty'}); return; }
+  post({type:'crop',x:rect.x/W,y:rect.y/H,w:rect.w/W,h:rect.h/H}); };
+</script></body></html>`;
+
+const KIRP_ASPECTS: { label: string; r: number }[] = [
+  { label: 'Serbest', r: 0 }, { label: '1:1', r: 1 }, { label: '4:3', r: 4 / 3 },
+  { label: '3:4', r: 3 / 4 }, { label: '16:9', r: 16 / 9 }, { label: '9:16', r: 9 / 16 },
+];
+
+function KirpPane({ ilan, onChanged }: { ilan: Ilan; onChanged?: () => void }) {
+  const fotolar = (ilan.fotograflar ?? []) as string[];
+  const [secili, setSecili] = useState<string | null>(null);
+  const [aspect, setAspect] = useState(0);
+  const [varRect, setVarRect] = useState(false);
+  const [kirpiliyor, setKirpiliyor] = useState(false);
+  const webRef = useRef<WebView>(null);
+  const seciliRef = useRef<string | null>(null);
+  seciliRef.current = secili;
+
+  const inject = (js: string) => webRef.current?.injectJavaScript(js + ';true;');
+  const secAspect = (r: number) => { setAspect(r); setVarRect(false); inject(`window.setAspect(${r})`); };
+
+  async function onMessage(data: string) {
+    let m: any; try { m = JSON.parse(data); } catch { return; }
+    if (m.type === 'rect') setVarRect(!!m.has);
+    else if (m.type === 'empty') { setKirpiliyor(false); Alert.alert('Uyarı', 'Önce tutulacak alanı seç.'); }
+    else if (m.type === 'imgerror') Alert.alert('Hata', 'Fotoğraf yüklenemedi.');
+    else if (m.type === 'crop') {
+      try {
+        const crop: Crop = { x: m.x, y: m.y, w: m.w, h: m.h };
+        await kirpUygula(ilan.id, seciliRef.current!, crop);
+        onChanged?.();
+        setSecili(null); setVarRect(false);
+      } catch (e: any) { Alert.alert('Hata', e.message); }
+      setKirpiliyor(false);
+    }
+  }
+
+  function kirp() {
+    if (!secili || !varRect || kirpiliyor) return;
+    Alert.alert('Kırp', 'Fotoğraf kırpılacak. Orijinal boyut geri alınamaz. Devam?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Kırp', style: 'destructive', onPress: () => { setKirpiliyor(true); inject('window.exportCrop()'); } },
+    ]);
+  }
+
+  if (!secili) {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
+        <Text style={sm.secTitle}>Kırpılacak fotoğrafı seç</Text>
+        {fotolar.length === 0 ? <Text style={sf.bos}>Fotoğraf yok.</Text> : (
+          <View style={sm.grid}>
+            {fotolar.map((k) => (
+              <TouchableOpacity key={k} activeOpacity={0.8} onPress={() => { setSecili(k); setVarRect(false); setAspect(0); }} style={sm.thumbWrap}>
+                <Image source={{ uri: thumbUrl(k) }} style={sm.thumb} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={sm.toolbar}>
+        {KIRP_ASPECTS.map((a) => (
+          <TouchableOpacity key={a.label} onPress={() => secAspect(a.r)} style={[sm.tbtn, aspect === a.r && sm.tbtnOn]}>
+            <Text style={[sm.tbtnTxt, aspect === a.r && sm.tbtnTxtOn]}>{a.label}</Text>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity onPress={() => inject('window.clearRect2()')} disabled={!varRect} style={[sm.tbtn, !varRect && sm.tbtnDis]}><Text style={sm.tbtnTxt}>Temizle</Text></TouchableOpacity>
+      </View>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <WebView
+          ref={webRef}
+          originWhitelist={['*']}
+          source={{ html: CROP_HTML.replace('__IMG__', kirpOncesiUrl(secili)) }}
+          onMessage={(e) => onMessage(e.nativeEvent.data)}
+          style={{ flex: 1, backgroundColor: '#000' }}
+          scrollEnabled={false}
+        />
+      </View>
+      <Text style={sm.hint}>Tutulacak alanı sürükleyerek seç (dışı atılır).</Text>
+      <View style={sm.row}>
+        <TouchableOpacity onPress={() => { setSecili(null); setVarRect(false); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
+        <TouchableOpacity onPress={kirp} disabled={!varRect || kirpiliyor} style={[sm.btn, (!varRect || kirpiliyor) ? sm.btnOff : sm.btnKirmizi, { flex: 2 }]}>
+          {kirpiliyor ? <ActivityIndicator color="#fff" /> : <Text style={sm.btnKirmiziTxt}>Kırp</Text>}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
