@@ -455,9 +455,13 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const [gonderiliyor, setGonderiliyor] = useState(false);
   const [incele, setIncele] = useState(false);
   const [idx, setIdx] = useState(0);
-  const [islem, setIslem] = useState<Set<string>>(new Set());
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const kararlanan = useRef<Set<string>>(new Set());
+  // Onay/ret kuyruğu: kullanıcı hızlı basar, arkada teker teker (sırayla) gönderilir.
+  const kuyruk = useRef<{ id: string; onay: boolean }[]>([]);
+  const kuyrukCalisiyor = useRef(false);
+  const [kuyrukSayi, setKuyrukSayi] = useState(0);
+  const [hataSayi, setHataSayi] = useState(0);
   const webRef = useRef<WebView>(null);
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
@@ -528,16 +532,37 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
     inject('window.exportMask()');
   }
 
-  async function karar(row: MaskeRow, onay: boolean) {
-    if (islem.has(row.id)) return;
-    setIslem((s) => new Set(s).add(row.id));
+  // Arkada çalışan kuyruk işçisi: sıradakileri TEK TEK sunucuya yollar (aynı anda yığılmaz).
+  const kuyrukSur = useCallback(async () => {
+    if (kuyrukCalisiyor.current) return;
+    kuyrukCalisiyor.current = true;
+    try {
+      while (kuyruk.current.length) {
+        const job = kuyruk.current[0];
+        try {
+          if (job.onay) { await maskeOnayla(job.id); onChanged?.(); }
+          else { await maskeReddet(job.id); }
+        } catch {
+          kararlanan.current.delete(job.id);
+          setHataSayi((n) => n + 1);
+        }
+        kuyruk.current.shift();
+        setKuyrukSayi(kuyruk.current.length);
+      }
+    } finally {
+      kuyrukCalisiyor.current = false;
+      await yenile();
+    }
+  }, [onChanged, yenile]);
+
+  // Kullanıcı basar: ekran ANINDA ilerler, istek kuyruğa atılır (beklemez). Çift basış kararlanan ile yutulur.
+  function karar(row: MaskeRow, onay: boolean) {
+    if (kararlanan.current.has(row.id)) return;
     kararlanan.current.add(row.id);
     setRows((prev) => prev.filter((r) => r.id !== row.id));
-    try {
-      if (onay) { await maskeOnayla(row.id); onChanged?.(); }
-      else { await maskeReddet(row.id); }
-    } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
-    setIslem((s) => { const n = new Set(s); n.delete(row.id); return n; });
+    kuyruk.current.push({ id: row.id, onay });
+    setKuyrukSayi(kuyruk.current.length);
+    kuyrukSur();
   }
 
   return (
@@ -588,6 +613,13 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
             <View style={sm.aktifBox}><Text style={sm.aktifTxt}>Dolduruluyor… {aktif.length} işlemde · ~{Math.ceil(aktif.length * 1.5)} dk</Text></View>
           )}
 
+          {kuyrukSayi > 0 && (
+            <View style={sm.kuyrukBox}><Text style={sm.kuyrukTxt}>Gönderiliyor… {kuyrukSayi} sırada (sen devam edebilirsin)</Text></View>
+          )}
+          {hataSayi > 0 && (
+            <View style={sm.hataBox}><Text style={sm.hataBoxTxt}>{hataSayi} tanesi gönderilemedi, tekrar deneyebilirsin.</Text></View>
+          )}
+
           {/* HAZIR onay */}
           {hazir.length > 0 && (() => { const r = hazir[cur]; return (
             <View style={sm.card}>
@@ -600,8 +632,8 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
                 <Text style={sm.buyutHint}>👆 Büyütmek için dokun</Text>
               </TouchableOpacity>
               <View style={sm.row}>
-                <TouchableOpacity onPress={() => karar(r, false)} disabled={islem.has(r.id)} style={[sm.btn, sm.btnRed, { flex: 1 }]}><Text style={sm.btnRedTxt}>✕ Olmamış</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => karar(r, true)} disabled={islem.has(r.id)} style={[sm.btn, sm.btnYesil, { flex: 1 }]}><Text style={sm.btnYesilTxt}>✓ Onayla</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => karar(r, false)} style={[sm.btn, sm.btnRed, { flex: 1 }]}><Text style={sm.btnRedTxt}>✕ Olmamış</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => karar(r, true)} style={[sm.btn, sm.btnYesil, { flex: 1 }]}><Text style={sm.btnYesilTxt}>✓ Onayla</Text></TouchableOpacity>
               </View>
             </View>
           ); })()}
@@ -646,8 +678,8 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
             </View>
           )}
           <View style={[sm.row, { padding: Spacing.lg }]}>
-            <TouchableOpacity onPress={() => karar(r, false)} disabled={islem.has(r.id)} style={[sm.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => karar(r, true)} disabled={islem.has(r.id)} style={[sm.btn, { flex: 1, backgroundColor: '#3aaa6e' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✓ Onayla</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => karar(r, false)} style={[sm.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => karar(r, true)} style={[sm.btn, { flex: 1, backgroundColor: '#3aaa6e' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✓ Olmuş</Text></TouchableOpacity>
           </View>
         </View>
       ); })()}
@@ -894,6 +926,10 @@ const sm = StyleSheet.create({
   btnGriTxt: { color: Colors.onSurface, fontWeight: '700', fontSize: 15 },
   aktifBox: { backgroundColor: 'rgba(234,88,12,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12 },
   aktifTxt: { color: '#ea580c', fontWeight: '700', fontSize: 13 },
+  kuyrukBox: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12 },
+  kuyrukTxt: { color: '#10b981', fontWeight: '700', fontSize: 13 },
+  hataBox: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12 },
+  hataBoxTxt: { color: '#ef4444', fontWeight: '700', fontSize: 13 },
   card: { borderWidth: 1, borderColor: '#2e7d54', borderRadius: Radius.md, padding: 10, marginBottom: 14 },
   ikili: { flexDirection: 'row', gap: 8 },
   cap: { fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant, marginBottom: 3, letterSpacing: 0.5 },
