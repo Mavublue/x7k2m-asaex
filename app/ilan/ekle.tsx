@@ -583,7 +583,7 @@ export default function IlanEkleScreen() {
                   <Text style={[styles.aciklamaTabText, aciklamaTab === 'musteri' && styles.aciklamaTabTextAktif]}>Müşteriye *</Text>
                 </TouchableOpacity>
               </View>
-              {aciklamaTab === 'musteri' && !!baslik.trim() && (
+              {!!baslik.trim() && (
                 <TouchableOpacity style={styles.ayniYapBtn} onPress={() => setMusteriAciklamasi(baslik)}>
                   <Text style={styles.ayniYapBtnText}>Başlıkla Aynı Yap</Text>
                 </TouchableOpacity>
