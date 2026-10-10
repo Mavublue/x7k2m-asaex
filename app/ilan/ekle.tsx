@@ -574,13 +574,20 @@ export default function IlanEkleScreen() {
 
           {/* Açıklama */}
           <FormGroup label="Açıklama">
-            <View style={styles.aciklamaTabRow}>
-              <TouchableOpacity style={[styles.aciklamaTab, aciklamaTab === 'not' && styles.aciklamaTabAktif]} onPress={() => setAciklamaTab('not')}>
-                <Text style={[styles.aciklamaTabText, aciklamaTab === 'not' && styles.aciklamaTabTextAktif]}>Notlarım</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.aciklamaTab, aciklamaTab === 'musteri' && styles.aciklamaTabAktif]} onPress={() => setAciklamaTab('musteri')}>
-                <Text style={[styles.aciklamaTabText, aciklamaTab === 'musteri' && styles.aciklamaTabTextAktif]}>Müşteriye *</Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+              <View style={[styles.aciklamaTabRow, { flex: 1, marginBottom: 0 }]}>
+                <TouchableOpacity style={[styles.aciklamaTab, aciklamaTab === 'not' && styles.aciklamaTabAktif]} onPress={() => setAciklamaTab('not')}>
+                  <Text style={[styles.aciklamaTabText, aciklamaTab === 'not' && styles.aciklamaTabTextAktif]}>Notlarım</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.aciklamaTab, aciklamaTab === 'musteri' && styles.aciklamaTabAktif]} onPress={() => setAciklamaTab('musteri')}>
+                  <Text style={[styles.aciklamaTabText, aciklamaTab === 'musteri' && styles.aciklamaTabTextAktif]}>Müşteriye *</Text>
+                </TouchableOpacity>
+              </View>
+              {aciklamaTab === 'musteri' && !!baslik.trim() && (
+                <TouchableOpacity style={styles.ayniYapBtn} onPress={() => setMusteriAciklamasi(baslik)}>
+                  <Text style={styles.ayniYapBtnText}>Başlıkla Aynı Yap</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {aciklamaTab === 'not' ? (
               <>
@@ -600,11 +607,6 @@ export default function IlanEkleScreen() {
               </>
             ) : (
               <>
-                {!!baslik.trim() && (
-                  <TouchableOpacity style={styles.ayniYapBtn} onPress={() => setMusteriAciklamasi(baslik)}>
-                    <Text style={styles.ayniYapBtnText}>Başlıkla Aynı Yap</Text>
-                  </TouchableOpacity>
-                )}
                 <TextInput
                   style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]}
                   placeholder="Müşteriye gösterilecek açıklama..."
