@@ -299,7 +299,7 @@ export default function IlanDetayScreen() {
     let alive = true;
     const kontrol = async () => {
       try {
-        const [fr, mr] = await Promise.all([filigranDurum(id), maskeDurum(id).catch(() => [])]);
+        const [fr, mr] = await Promise.all([filigranDurum(id).catch(() => []), maskeDurum(id).catch(() => [])]);
         if (!alive) return;
         const hepsi = [...fr, ...mr];
         const aktifMi = hepsi.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir');
@@ -312,8 +312,13 @@ export default function IlanDetayScreen() {
       } catch { /* sessiz */ }
     };
     kontrol();
-    const t = setInterval(kontrol, 4000);
-    return () => { alive = false; clearInterval(t); };
+    // REALTIME: filigran/maske satırı değişince anında kontrol et (çapraz-cihaz: web'den ver, app'te gör).
+    const channel = supabase.channel(`foto-temizle-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilan_filigran', filter: `ilan_id=eq.${id}` }, () => kontrol())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilan_maske_sil', filter: `ilan_id=eq.${id}` }, () => kontrol())
+      .subscribe();
+    const t = setInterval(kontrol, 15000); // güvenlik ağı (realtime varken; eskiden 4sn)
+    return () => { alive = false; clearInterval(t); supabase.removeChannel(channel); };
   }, [id, userEmail, filigranModal]);
 
   function generateSosyalMetin(i: typeof ilan): string {

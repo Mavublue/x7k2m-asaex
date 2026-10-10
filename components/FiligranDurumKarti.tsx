@@ -107,8 +107,14 @@ export default function FiligranDurumKarti() {
       }
       yenile(); maskeYenile(); gizliYenile();
     })();
-    const t = setInterval(() => { yenile(); maskeYenile(); gizliYenile(); }, 5000);
-    return () => { iptal = true; clearInterval(t); };
+    const tumunuYenile = () => { yenile(); maskeYenile(); gizliYenile(); };
+    // REALTIME: filigran/maske satırı değişince anında kartı tazele (poll beklemeden).
+    const ch = supabase.channel('filigran-kart-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilan_filigran' }, tumunuYenile)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ilan_maske_sil' }, tumunuYenile)
+      .subscribe();
+    const t = setInterval(tumunuYenile, 15000); // güvenlik ağı (eskiden 5sn sürekli)
+    return () => { iptal = true; clearInterval(t); supabase.removeChannel(ch); };
   }, [yenile, maskeYenile, gizliYenile]);
 
   // Aktif temizleme/maske işi olan ilanlar zaten alttaki ilerleme kartında görünür → onları

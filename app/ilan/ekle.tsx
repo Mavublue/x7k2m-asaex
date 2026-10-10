@@ -600,9 +600,9 @@ export default function IlanEkleScreen() {
               </>
             ) : (
               <>
-                {!!aciklama.trim() && (
-                  <TouchableOpacity style={styles.ayniYapBtn} onPress={() => setMusteriAciklamasi(aciklama)}>
-                    <Text style={styles.ayniYapBtnText}>İlan Notuyla Aynı Yap</Text>
+                {!!baslik.trim() && (
+                  <TouchableOpacity style={styles.ayniYapBtn} onPress={() => setMusteriAciklamasi(baslik)}>
+                    <Text style={styles.ayniYapBtnText}>Başlıkla Aynı Yap</Text>
                   </TouchableOpacity>
                 )}
                 <TextInput
