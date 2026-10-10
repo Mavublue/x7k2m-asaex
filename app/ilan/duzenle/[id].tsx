@@ -627,7 +627,14 @@ export default function IlanDuzenleScreen() {
                 )}
               </>
             ) : (
-              <TextInput style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+              <>
+                {!!aciklama.trim() && (
+                  <TouchableOpacity style={styles.ayniYapBtn} onPress={() => setMusteriAciklamasi(aciklama)}>
+                    <Text style={styles.ayniYapBtnText}>İlan Notuyla Aynı Yap</Text>
+                  </TouchableOpacity>
+                )}
+                <TextInput style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+              </>
             )}
           </FormGroup>
 
@@ -933,6 +940,8 @@ const styles = StyleSheet.create({
   aciklamaTabRow: { flexDirection: 'row', backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.full, padding: 3, marginBottom: Spacing.xs },
   aciklamaTab: { flex: 1, paddingVertical: 5, borderRadius: Radius.full, alignItems: 'center' },
   aciklamaTabAktif: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  ayniYapBtn: { alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 12, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.outline, marginBottom: Spacing.xs },
+  ayniYapBtnText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
   aciklamaTabText: { fontSize: 12, fontWeight: '500', color: Colors.onSurfaceVariant },
   aciklamaTabTextAktif: { color: Colors.onSurface, fontWeight: '700' },
   inputRow: { flexDirection: 'row', alignItems: 'center' },
