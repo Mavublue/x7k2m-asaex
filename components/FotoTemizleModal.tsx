@@ -84,6 +84,7 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
   const [onaylaniyor, setOnaylaniyor] = useState(false);
   const [onaylaToplam, setOnaylaToplam] = useState(0);
   const [tamamlandi, setTamamlandi] = useState(false);
+  const [yuklendi, setYuklendi] = useState(false);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const kararlanan = useRef<Set<string>>(new Set());
 
@@ -92,6 +93,7 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
       const r = await filigranDurum(ilan.id);
       setRows(r.filter((x) => !kararlanan.current.has(x.id)));
     } catch {}
+    finally { setYuklendi(true); }
   }, [ilan.id]);
 
   useEffect(() => {
@@ -226,12 +228,19 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
           </View>
         )}
 
-        {rows.some((r) => r.durum === 'hata') && (
+        {yuklendi && rows.some((r) => r.durum === 'hata') && (
           <Text style={sf.hataText}>Bazı fotolar temizlenemedi (tekrar seçip deneyebilirsin).</Text>
         )}
 
+        {/* YÜKLENİYOR — ilk durum fetch'i dönene kadar (bitmişler flaş yapmasın) */}
+        {!yuklendi && (
+          <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
+            <ActivityIndicator color={Colors.primary} />
+          </View>
+        )}
+
         {/* SEÇ + BAŞLAT */}
-        <View style={{ gap: Spacing.sm }}>
+        <View style={{ gap: Spacing.sm, display: yuklendi ? 'flex' : 'none' }}>
           <View style={sf.rowBetween}>
             <Text style={sf.sectionTitle}>Temizlenecek Fotoğraflar{secili.size > 0 ? ` (${secili.size})` : ''}</Text>
             {secilebilir.length > 0 && (
@@ -465,6 +474,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const [onaylaniyor, setOnaylaniyor] = useState(false);
   const [onaylaToplam, setOnaylaToplam] = useState(0);
   const [tamamlandi, setTamamlandi] = useState(false);
+  const [yuklendi, setYuklendi] = useState(false);
   const webRef = useRef<WebView>(null);
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
@@ -475,6 +485,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
       const r = await maskeDurum(ilan.id);
       setRows(r.filter((x) => !kararlanan.current.has(x.id)));
     } catch {}
+    finally { setYuklendi(true); }
   }, [ilan.id]);
 
   useEffect(() => {
@@ -678,10 +689,16 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
             </View>
           ); })()}
 
-          {rows.some((r) => r.durum === 'hata') && <Text style={sm.hata}>Bazı işlemler başarısız oldu, tekrar deneyebilirsin.</Text>}
+          {yuklendi && rows.some((r) => r.durum === 'hata') && <Text style={sm.hata}>Bazı işlemler başarısız oldu, tekrar deneyebilirsin.</Text>}
 
-          <Text style={sm.secTitle}>Düzenlenecek fotoğrafı seç</Text>
-          <View style={sm.grid}>
+          {!yuklendi && (
+            <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
+              <ActivityIndicator color={Colors.primary} />
+            </View>
+          )}
+
+          <Text style={[sm.secTitle, { display: yuklendi ? 'flex' : 'none' }]}>Düzenlenecek fotoğrafı seç</Text>
+          <View style={[sm.grid, { display: yuklendi ? 'flex' : 'none' }]}>
             {fotolar.map((k) => {
               const isleniyor = islenenKeys.has(k);
               const onayBekliyor = hazirKeys.has(k);
