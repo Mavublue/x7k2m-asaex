@@ -11,7 +11,7 @@ import {
   thumbUrl, oncesiUrl as filOncesiUrl, sonrasiUrl as filSonrasiUrl, type FiligranRow,
 } from '../lib/filigran';
 import {
-  maskeBaslat, maskeDurum, maskeOnayla, maskeReddet,
+  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet,
   oncesiUrl as mskOncesiUrl, sonrasiUrl as mskSonrasiUrl, type MaskeRow,
 } from '../lib/maskesil';
 import { kirpUygula, kirpOncesiUrl, type Crop } from '../lib/kirp';
@@ -462,6 +462,9 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const kuyrukCalisiyor = useRef(false);
   const [kuyrukSayi, setKuyrukSayi] = useState(0);
   const [hataSayi, setHataSayi] = useState(0);
+  const [onaylaniyor, setOnaylaniyor] = useState(false);
+  const [onaylaToplam, setOnaylaToplam] = useState(0);
+  const [tamamlandi, setTamamlandi] = useState(false);
   const webRef = useRef<WebView>(null);
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
@@ -493,6 +496,16 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   useEffect(() => { onCount(aktif.length + hazir.length); }, [aktif.length, hazir.length, onCount]);
   useEffect(() => { if (hazir.length === 0) setIncele(false); }, [hazir.length]);
   useEffect(() => { if (idx > hazir.length - 1) setIdx(Math.max(0, hazir.length - 1)); }, [hazir.length, idx]);
+  // Toplu onay bitti (realtime/poll ile hazir tükendi) → tamamlandı göster
+  useEffect(() => {
+    if (onaylaniyor && hazir.length === 0) {
+      setOnaylaniyor(false);
+      setTamamlandi(true);
+      onChanged?.();
+      const t = setTimeout(() => setTamamlandi(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [onaylaniyor, hazir.length, onChanged]);
   // Onay karuselinde komşuları (öncesi _lg + sonrası temiz) önden yükle → hızlı giderken takılmasın
   useEffect(() => {
     if (!hazir.length) return;
@@ -565,10 +578,15 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
     kuyrukSur();
   }
 
-  // Hepsini onayla: kalan tüm hazır'ı kuyruğa onay olarak at (filigran gibi).
-  function hepsiniOnayla() {
+  // Hepsini onayla: sunucu arka planda tek tek onaylar (filigran gibi) — ekrandan çıksan da sürer.
+  async function hepsiniOnayla() {
+    if (!hazir.length || onaylaniyor) return;
+    setOnaylaToplam(hazir.length);
+    setOnaylaniyor(true);
+    setTamamlandi(false);
     setIncele(false);
-    hazir.forEach((r) => karar(r, true));
+    try { await maskeOnaylaHepsi(ilan.id); }
+    catch (e: any) { setOnaylaniyor(false); Alert.alert('Hata', e.message); }
   }
 
   return (
@@ -626,8 +644,21 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
             <View style={sm.hataBox}><Text style={sm.hataBoxTxt}>{hataSayi} tanesi gönderilemedi, tekrar deneyebilirsin.</Text></View>
           )}
 
+          {/* TOPLU ONAY İLERLEME (sunucu arka planda; ekrandan çıksan da sürer) */}
+          {onaylaniyor && (
+            <View style={[sf.progressBox, { backgroundColor: 'rgba(34,197,94,0.12)', borderColor: '#22c55e' }]}>
+              <Text style={[sf.progressText, { color: '#22c55e' }]}>Onaylanıyor… {onaylaToplam - hazir.length}/{onaylaToplam} bitti</Text>
+              <View style={sf.barBg}><View style={[sf.barFill, { width: `${onaylaToplam ? ((onaylaToplam - hazir.length) / onaylaToplam) * 100 : 0}%`, backgroundColor: '#22c55e' }]} /></View>
+            </View>
+          )}
+          {tamamlandi && (
+            <View style={[sf.progressBox, { backgroundColor: 'rgba(34,197,94,0.12)', borderColor: '#86efac' }]}>
+              <Text style={[sf.progressText, { color: '#22c55e' }]}>✓ Tümü onaylandı — fotoğraflar güncellendi</Text>
+            </View>
+          )}
+
           {/* HAZIR onay */}
-          {hazir.length > 0 && (() => { const r = hazir[cur]; return (
+          {hazir.length > 0 && !onaylaniyor && (() => { const r = hazir[cur]; return (
             <View style={sm.card}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={sm.secTitle}>İncele — {hazir.length} kaldı</Text>
