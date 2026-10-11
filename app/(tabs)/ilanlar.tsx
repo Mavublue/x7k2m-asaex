@@ -524,7 +524,7 @@ export default function IlanlarScreen() {
     if (!ids.length) return;
     setTopluIslem(true);
     await supabase.from('ilanlar').update({ durum: yeni }).in('id', ids);
-    setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, durum: yeni } : i));
+    setIlanlar(prev => prev.map(i => seciliIds.has(i.id) ? { ...i, durum: yeni, musteri_gizle: yeni === 'İptal' ? true : i.musteri_gizle } : i));
     setTopluIslem(false);
     setDurumModal(false);
     secimKapat();
