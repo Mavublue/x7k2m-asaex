@@ -565,6 +565,12 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
     kuyrukSur();
   }
 
+  // Hepsini onayla: kalan tüm hazır'ı kuyruğa onay olarak at (filigran gibi).
+  function hepsiniOnayla() {
+    setIncele(false);
+    hazir.forEach((r) => karar(r, true));
+  }
+
   return (
     <View style={{ flex: 1 }}>
       {secili ? (
@@ -623,7 +629,10 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
           {/* HAZIR onay */}
           {hazir.length > 0 && (() => { const r = hazir[cur]; return (
             <View style={sm.card}>
-              <Text style={sm.secTitle}>İncele — {hazir.length} kaldı</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={sm.secTitle}>İncele — {hazir.length} kaldı</Text>
+                {hazir.length > 1 && <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>}
+              </View>
               <TouchableOpacity onPress={() => setIncele(true)} activeOpacity={0.85}>
                 <View style={sm.ikili}>
                   <View style={{ flex: 1 }}><Text style={sm.cap}>ÖNCESİ</Text><Image source={{ uri: mskOncesiUrl(r.foto_key) }} style={sm.img} /></View>
