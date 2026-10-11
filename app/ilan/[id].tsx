@@ -247,6 +247,7 @@ export default function IlanDetayScreen() {
   const [filigranModal, setFiligranModal] = useState(false);
   const [filigranAktif, setFiligranAktif] = useState(false); // bu ilanda filigran işi sürüyor mu → Düzenle kilidi
   const [onayBekleyen, setOnayBekleyen] = useState(0); // temizlenip onay bekleyen (hazır) foto sayısı → uyarı
+  const [islemSayisi, setIslemSayisi] = useState(0); // süren filigran/maske işi (bekliyor+isleniyor+hazir) → rozet
   const oncekiFiligran = useRef(false); // filigran işi aktif→bitti geçişini yakala (tazeleme için)
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -295,15 +296,17 @@ export default function IlanDetayScreen() {
   // Filigran işi sürerken (bekliyor/işleniyor/hazır) Düzenle'yi kilitle — düzenleme kaydı
   // arka planda süren onayların üstüne yazıp fotoları bozabiliyor. DB'ye bakar → her cihazda geçerli.
   useEffect(() => {
-    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); setOnayBekleyen(0); return; }
+    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); setOnayBekleyen(0); setIslemSayisi(0); return; }
     let alive = true;
     const kontrol = async () => {
       try {
         const [fr, mr] = await Promise.all([filigranDurum(id).catch(() => []), maskeDurum(id).catch(() => [])]);
         if (!alive) return;
         const hepsi = [...fr, ...mr];
-        const aktifMi = hepsi.some((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir');
+        const islem = hepsi.filter((x) => x.durum === 'bekliyor' || x.durum === 'isleniyor' || x.durum === 'hazir');
+        const aktifMi = islem.length > 0;
         setFiligranAktif(aktifMi);
+        setIslemSayisi(islem.length);
         // Temizlenip onay bekleyen (hazır) foto sayısı → ilan detayda uyarı göster
         setOnayBekleyen(hepsi.filter((x) => x.durum === 'hazir').length);
         // İş aktif→bitti geçince (modal kapalı olsa bile) ilanı tazele → yeni temiz key'ler gelsin
@@ -671,6 +674,11 @@ export default function IlanDetayScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuModal(true)}>
           <Text style={styles.menuBtnText}>⋯</Text>
+          {islemSayisi > 0 && (
+            <View style={styles.menuRozet}>
+              <Text style={styles.menuRozetText}>{islemSayisi}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -1050,7 +1058,7 @@ export default function IlanDetayScreen() {
 
             {watermarkYetkili(userEmail) && fotograflar.length > 0 && (
               <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuModal(false); setFiligranModal(true); }}>
-                <Text style={styles.menuItemText}>🧹  Fotoğraf Temizle</Text>
+                <Text style={styles.menuItemText}>🧹  Fotoğraf Temizle{islemSayisi > 0 ? `  (${islemSayisi})` : ''}</Text>
               </TouchableOpacity>
             )}
             <View style={styles.menuSep} />
@@ -1430,6 +1438,8 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '600', color: Colors.onSurface },
   menuBtn: { width: 40, height: 40, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center' },
   menuBtnText: { fontSize: 20, color: Colors.onSurface, letterSpacing: 1 },
+  menuRozet: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 999, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.background },
+  menuRozetText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   menuPanel: { position: 'absolute', top: 60, right: Spacing.xl, backgroundColor: Colors.surface, borderRadius: Radius.xl, minWidth: 240, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 12 },
   menuItem: { paddingHorizontal: Spacing.xl, paddingVertical: 16 },
   menuItemText: { fontSize: 15, color: Colors.onSurface, fontWeight: '500' },
