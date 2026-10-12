@@ -454,7 +454,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   ilan: Ilan; visible: boolean; onChanged?: () => void; onCount: (n: number) => void;
 }) {
   const gizliSet = new Set((ilan.gizli_fotograflar ?? []) as string[]);
-  const fotolar = ((ilan.fotograflar ?? []) as string[]).filter((k) => !gizliSet.has(k));
+  const fotolar = (ilan.fotograflar ?? []) as string[];
   const [rows, setRows] = useState<MaskeRow[]>([]);
   const [secili, setSecili] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>('rect');
@@ -703,11 +703,13 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
               const isleniyor = islenenKeys.has(k);
               const onayBekliyor = hazirKeys.has(k);
               const mesgul = isleniyor || onayBekliyor;
+              const gizli = gizliSet.has(k);
               return (
                 <TouchableOpacity key={k} disabled={mesgul} activeOpacity={0.8}
                   onPress={() => { restoreScroll.current = true; setSecili(k); setSayi(0); setZoomMode(false); }}
-                  style={[sm.thumbWrap, isleniyor && sm.thumbIsleniyor, onayBekliyor && sm.thumbHazir]}>
+                  style={[sm.thumbWrap, isleniyor && sm.thumbIsleniyor, onayBekliyor && sm.thumbHazir, !mesgul && gizli && sm.thumbGizli]}>
                   <Image source={{ uri: thumbUrl(k) }} style={sm.thumb} />
+                  {gizli && !mesgul && <View style={sm.gizliBadge}><Text style={sm.gizliBadgeTxt}>🙈 Gizli</Text></View>}
                   {isleniyor && <View style={sm.thumbBadge}><Text style={sm.thumbBadgeTxt}>⏳ İşleniyor…</Text></View>}
                   {onayBekliyor && <View style={[sm.thumbBadge, sm.thumbBadgeOnay]}><Text style={sm.thumbBadgeTxt}>✓ Onay bekliyor</Text></View>}
                 </TouchableOpacity>
@@ -1005,6 +1007,9 @@ const sm = StyleSheet.create({
   thumbBadge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   thumbBadgeOnay: { backgroundColor: 'rgba(58,170,110,0.55)' },
   thumbBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  thumbGizli: { borderWidth: 2, borderColor: '#a855f7' },
+  gizliBadge: { position: 'absolute', top: 6, left: 6, backgroundColor: 'rgba(168,85,247,0.92)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  gizliBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 11 },
   navRow: { flexDirection: 'row', gap: 10, paddingHorizontal: Spacing.lg, paddingTop: 6 },
   navBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
   navOff: { opacity: 0.3 },
