@@ -11,7 +11,7 @@ import {
   thumbUrl, oncesiUrl as filOncesiUrl, sonrasiUrl as filSonrasiUrl, type FiligranRow,
 } from '../lib/filigran';
 import {
-  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet,
+  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet, maskeIptal,
   oncesiUrl as mskOncesiUrl, sonrasiUrl as mskSonrasiUrl, type MaskeRow,
 } from '../lib/maskesil';
 import { kirpUygula, kirpOncesiUrl, type Crop } from '../lib/kirp';
@@ -462,6 +462,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const [zoomMode, setZoomMode] = useState(false);
   const [sayi, setSayi] = useState(0);
   const [gonderiliyor, setGonderiliyor] = useState(false);
+  const [iptalEdiliyor, setIptalEdiliyor] = useState(false);
   const [incele, setIncele] = useState(false);
   const [idx, setIdx] = useState(0);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -556,6 +557,19 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
     inject('window.exportMask()');
   }
 
+  function iptalEt() {
+    if (iptalEdiliyor) return;
+    Alert.alert('İptal', 'Bu ilandaki sıradaki ve işlenmekte olan maske işleri iptal edilsin mi?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'İptal Et', style: 'destructive', onPress: async () => {
+        setIptalEdiliyor(true);
+        try { await maskeIptal(ilan.id); await yenile(); }
+        catch (e: any) { Alert.alert('Hata', e.message); }
+        setIptalEdiliyor(false);
+      } },
+    ]);
+  }
+
   // Arkada çalışan kuyruk işçisi: sıradakileri TEK TEK sunucuya yollar (aynı anda yığılmaz).
   const kuyrukSur = useCallback(async () => {
     if (kuyrukCalisiyor.current) return;
@@ -645,7 +659,12 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
           onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
           onContentSizeChange={() => { if (restoreScroll.current) { restoreScroll.current = false; scrollRef.current?.scrollTo({ y: scrollY.current, animated: false }); } }}>
           {aktif.length > 0 && (
-            <View style={sm.aktifBox}><Text style={sm.aktifTxt}>Dolduruluyor… {aktif.length} işlemde · ~{Math.ceil(aktif.length * 1.5)} dk</Text></View>
+            <View style={sm.aktifBox}>
+              <Text style={[sm.aktifTxt, { flex: 1 }]}>Dolduruluyor… {aktif.length} işlemde · ~{Math.ceil(aktif.length * 1.5)} dk</Text>
+              <TouchableOpacity onPress={iptalEt} disabled={iptalEdiliyor} style={sm.iptalBtn}>
+                <Text style={sm.iptalBtnTxt}>{iptalEdiliyor ? 'İptal…' : 'İptal'}</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {kuyrukSayi > 0 && (
@@ -983,8 +1002,10 @@ const sm = StyleSheet.create({
   btnOff: { backgroundColor: Colors.surfaceContainerHighest },
   btnGri: { backgroundColor: Colors.surfaceContainerHigh },
   btnGriTxt: { color: Colors.onSurface, fontWeight: '700', fontSize: 15 },
-  aktifBox: { backgroundColor: 'rgba(234,88,12,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12 },
+  aktifBox: { backgroundColor: 'rgba(234,88,12,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   aktifTxt: { color: '#ea580c', fontWeight: '700', fontSize: 13 },
+  iptalBtn: { backgroundColor: 'rgba(234,88,12,0.2)', borderRadius: Radius.sm, paddingVertical: 6, paddingHorizontal: 12 },
+  iptalBtnTxt: { color: '#ea580c', fontWeight: '800', fontSize: 13 },
   kuyrukBox: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12 },
   kuyrukTxt: { color: '#10b981', fontWeight: '700', fontSize: 13 },
   hataBox: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.sm, padding: 12, marginBottom: 12 },
