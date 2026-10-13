@@ -61,7 +61,29 @@ function buildMapShell() {
 var map=L.map('map',{zoomControl:false,maxZoom:18}).setView([39.925,32.836],6);
 var osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OSM'});var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'});esri.addTo(map);L.control.layers({'Uydu':esri,'Sokak':osm},null,{position:'topright'}).addTo(map);
 map.on('click',function(){window.ReactNativeWebView.postMessage(JSON.stringify({close:true}));});
-var cluster=L.markerClusterGroup({maxClusterRadius:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false});
+var cluster=L.markerClusterGroup({maxClusterRadius:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false,spiderfyDistanceMultiplier:1.25});
+// Default spiderfy konumlarını al, değen (çakışan) pill'leri birbirinden it.
+var _oc=L.MarkerCluster.prototype._generatePointsCircle,_os=L.MarkerCluster.prototype._generatePointsSpiral;
+function declutter(pts){
+  var HW=30,HH=14; // pill ≈55×24'ün yarısı + ufak boşluk
+  for(var pass=0;pass<60;pass++){
+    var moved=false;
+    for(var i=0;i<pts.length;i++)for(var j=i+1;j<pts.length;j++){
+      var a=pts[i],b=pts[j];
+      var dx=b.x-a.x,dy=b.y-a.y;
+      var ox=HW*2-Math.abs(dx),oy=HH*2-Math.abs(dy);
+      if(ox>0&&oy>0){
+        moved=true;
+        if(ox<=oy){var s=((dx<0)?-1:1)*ox/2;if(dx===0)s=(i%2?1:-1)*ox/2;a.x-=s;b.x+=s;}
+        else{var s2=((dy<0)?-1:1)*oy/2;if(dy===0)s2=(i%2?1:-1)*oy/2;a.y-=s2;b.y+=s2;}
+      }
+    }
+    if(!moved)break;
+  }
+  return pts;
+}
+L.MarkerCluster.prototype._generatePointsCircle=function(count,c){return declutter(_oc.call(this,count,c));};
+L.MarkerCluster.prototype._generatePointsSpiral=function(count,c){return declutter(_os.call(this,count,c));};
 map.addLayer(cluster);
 var hasView=false;
 window.__render=function(ms){
