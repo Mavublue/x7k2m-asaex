@@ -184,6 +184,7 @@ export default function IlanlarScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const mapRef = useRef<WebView>(null);
+  const lastMarkersRef = useRef<string>('');
   const [filtrePaneli, setFiltrePaneli] = useState(false);
   const [filtre, setFiltre] = useState<FiltreState>(BOS_FILTRE);
   const [gecici, setGecici] = useState<FiltreState>(BOS_FILTRE);
@@ -370,13 +371,17 @@ export default function IlanlarScreen() {
   useEffect(() => { setMapHtml(buildMapShell()); }, []);
 
   // Harita görünümünden çıkınca WebView unmount olur; tekrar açılınca yeniden hazır olsun.
-  useEffect(() => { if (gorunum !== 'harita') setMapReady(false); }, [gorunum]);
+  useEffect(() => { if (gorunum !== 'harita') { setMapReady(false); lastMarkersRef.current = ''; } }, [gorunum]);
 
   // Filtre değişince sadece pinleri WebView'e enjekte et.
+  // Not: içerik aynıysa tekrar enjekte etme — yoksa kart açılınca (re-render) clearLayers spider'ı kapatır.
   const mapMarkers = useMemo(() => buildMarkers(filtered), [filtered]);
   useEffect(() => {
     if (!mapReady) return;
-    const js = `(function(){var ms=${JSON.stringify(mapMarkers)};if(window.__render){window.__render(ms);}else{window.__pending=ms;}})();true;`;
+    const json = JSON.stringify(mapMarkers);
+    if (json === lastMarkersRef.current) return;
+    lastMarkersRef.current = json;
+    const js = `(function(){var ms=${json};if(window.__render){window.__render(ms);}else{window.__pending=ms;}})();true;`;
     mapRef.current?.injectJavaScript(js);
   }, [mapMarkers, mapReady]);
 
