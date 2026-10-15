@@ -7,11 +7,11 @@ import { Colors, Radius, Spacing } from '../constants/theme';
 import { supabase } from '../lib/supabase';
 import type { Ilan } from '../types';
 import {
-  filigranBaslat, filigranDurum, filigranOnayla, filigranOnaylaHepsi, filigranReddet,
-  thumbUrl, oncesiUrl as filOncesiUrl, sonrasiUrl as filSonrasiUrl, type FiligranRow,
+  filigranBaslat, filigranDurum, filigranOnayla, filigranOnaylaHepsi, filigranReddet, filigranReddetHepsi,
+  thumbUrl, oncesiUrl as filOncesiUrl, sonrasiUrl as filSonrasiUrl, type FiligranRow, type FiligranKaynak,
 } from '../lib/filigran';
 import {
-  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet, maskeIptal,
+  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet, maskeReddetHepsi, maskeIptal,
   oncesiUrl as mskOncesiUrl, sonrasiUrl as mskSonrasiUrl, type MaskeRow,
 } from '../lib/maskesil';
 import { kirpUygula, kirpOncesiUrl, type Crop } from '../lib/kirp';
@@ -73,8 +73,10 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
   const fotolar = (ilan.fotograflar ?? []) as string[];
   const [rows, setRows] = useState<FiligranRow[]>([]);
   const [secili, setSecili] = useState<Set<string>>(new Set());
+  const [kaynak, setKaynak] = useState<FiligranKaynak>('sahibinden');
   const [ofisVar, setOfisVar] = useState(false);
   const [ofisAdi, setOfisAdi] = useState('');
+  const [logoYok, setLogoYok] = useState(false);  // hepsiemlak: foto logosuz -> sadece ID
   const [baslatiliyor, setBaslatiliyor] = useState(false);
   const [islem, setIslem] = useState<Set<string>>(new Set());
   const [incele, setIncele] = useState(false);
@@ -131,7 +133,7 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
   async function baslat() {
     if (!secili.size || baslatiliyor) return;
     setBaslatiliyor(true);
-    try { await filigranBaslat(ilan.id, [...secili], ofisVar ? ofisAdi.trim() : ''); setSecili(new Set()); await yenile(); }
+    try { await filigranBaslat(ilan.id, [...secili], kaynak === 'sahibinden' && ofisVar ? ofisAdi.trim() : '', kaynak, !(kaynak === 'hepsiemlak' && logoYok)); setSecili(new Set()); await yenile(); }
     catch (e: any) { Alert.alert('Hata', e.message); }
     setBaslatiliyor(false);
   }
@@ -153,6 +155,20 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
     setIncele(false);
     try { await filigranOnaylaHepsi(ilan.id); }
     catch (e: any) { setOnaylaniyor(false); Alert.alert('Hata', e.message); }
+  }
+  function hepsiniReddet() {
+    if (!hazir.length || onaylaniyor) return;
+    Alert.alert('Hiçbirini Onaylama', `${hazir.length} temizlenmiş fotoğraf reddedilsin mi? (orijinaller kalır)`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Reddet', style: 'destructive', onPress: async () => {
+        setIncele(false);
+        const idler = hazir.map((r) => r.id);
+        idler.forEach((id) => kararlanan.current.add(id));
+        setRows((prev) => prev.filter((r) => !kararlanan.current.has(r.id)));
+        try { await filigranReddetHepsi(ilan.id); }
+        catch (e: any) { idler.forEach((id) => kararlanan.current.delete(id)); Alert.alert('Hata', e.message); await yenile(); }
+      } },
+    ]);
   }
 
   useEffect(() => {
@@ -204,7 +220,12 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
           <View style={{ gap: Spacing.md }}>
             <View style={sf.rowBetween}>
               <Text style={sf.sectionTitle}>İncele — {hazir.length} kaldı</Text>
-              {hazir.length > 1 && <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>}
+              {hazir.length > 1 && (
+                <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                  <TouchableOpacity style={sf.reddetHepsi} onPress={hepsiniReddet}><Text style={sf.reddetHepsiText}>✕ Hiçbirini Onaylama</Text></TouchableOpacity>
+                  <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>
+                </View>
+              )}
             </View>
             {(() => { const r = hazir[cur]; return (
               <TouchableOpacity activeOpacity={0.9} style={sf.card} onPress={() => setIncele(true)}>
@@ -264,7 +285,29 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
               })}
             </View>
           )}
+          {/* Kaynak */}
+          <View style={sf.ofisBox}>
+            <Text style={sf.ofisLabel}>Filigran kaynağı</Text>
+            <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm }}>
+              {(['sahibinden', 'hepsiemlak'] as FiligranKaynak[]).map((k) => (
+                <TouchableOpacity key={k} onPress={() => setKaynak(k)} style={[sf.kaynakBtn, kaynak === k && sf.kaynakBtnAktif]}>
+                  <Text style={[sf.kaynakBtnText, kaynak === k && sf.kaynakBtnTextAktif]}>{k === 'sahibinden' ? 'sahibinden.com' : 'hepsiemlak.com'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          {/* Logo yok (hepsiemlak) */}
+          {kaynak === 'hepsiemlak' && (
+          <View style={sf.ofisBox}>
+            <View style={sf.rowBetween}>
+              <Text style={sf.ofisLabel}>Fotoğrafta logo yok (sadece ilan no)</Text>
+              <Switch value={logoYok} onValueChange={setLogoYok} />
+            </View>
+            <Text style={sf.ofisHint}>Açarsanız sol-alttaki logo alanına dokunulmaz, yalnızca sağ-alt ilan numarası silinir.</Text>
+          </View>
+          )}
           {/* Ofis adı */}
+          {kaynak === 'sahibinden' && (
           <View style={sf.ofisBox}>
             <View style={sf.rowBetween}>
               <Text style={sf.ofisLabel}>Fotoğrafta ofis/mağaza adı var</Text>
@@ -279,6 +322,7 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
               </>
             )}
           </View>
+          )}
           <TouchableOpacity style={[sf.temizleBtn, (!secili.size || baslatiliyor) && sf.temizleBtnOff]} disabled={!secili.size || baslatiliyor} onPress={baslat}>
             {baslatiliyor ? <ActivityIndicator color="#fff" /> : <Text style={sf.temizleText}>Temizle{secili.size ? ` (${secili.size})` : ''}</Text>}
           </TouchableOpacity>
@@ -613,6 +657,20 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
     try { await maskeOnaylaHepsi(ilan.id); }
     catch (e: any) { setOnaylaniyor(false); Alert.alert('Hata', e.message); }
   }
+  function hepsiniReddet() {
+    if (!hazir.length || onaylaniyor) return;
+    Alert.alert('Hiçbirini Onaylama', `${hazir.length} doldurulmuş fotoğraf reddedilsin mi? (orijinaller kalır)`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Reddet', style: 'destructive', onPress: async () => {
+        setIncele(false);
+        const idler = hazir.map((r) => r.id);
+        idler.forEach((id) => kararlanan.current.add(id));
+        setRows((prev) => prev.filter((r) => !kararlanan.current.has(r.id)));
+        try { await maskeReddetHepsi(ilan.id); }
+        catch (e: any) { idler.forEach((id) => kararlanan.current.delete(id)); Alert.alert('Hata', e.message); await yenile(); }
+      } },
+    ]);
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -692,7 +750,12 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
             <View style={sm.card}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={sm.secTitle}>İncele — {hazir.length} kaldı</Text>
-                {hazir.length > 1 && <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>}
+                {hazir.length > 1 && (
+                  <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                    <TouchableOpacity style={sf.reddetHepsi} onPress={hepsiniReddet}><Text style={sf.reddetHepsiText}>✕ Hiçbirini Onaylama</Text></TouchableOpacity>
+                    <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>
+                  </View>
+                )}
               </View>
               <TouchableOpacity onPress={() => setIncele(true)} activeOpacity={0.85}>
                 <View style={sm.ikili}>
@@ -966,6 +1029,8 @@ const sf = StyleSheet.create({
   fsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   onayHepsi: { backgroundColor: '#3aaa6e', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
   onayHepsiText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  reddetHepsi: { backgroundColor: 'rgba(229,57,53,0.14)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: '#fca5a5' },
+  reddetHepsiText: { color: '#E53935', fontWeight: '700', fontSize: 12 },
   hataText: { fontSize: 12, color: Colors.error },
   bos: { fontSize: 13, color: Colors.onSurfaceVariant },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
@@ -979,6 +1044,10 @@ const sf = StyleSheet.create({
   temizBannerText: { color: '#fff', fontWeight: '700', fontSize: 10 },
   ofisBox: { marginTop: Spacing.sm, backgroundColor: Colors.surfaceContainer, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.outlineVariant, gap: Spacing.sm },
   ofisLabel: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, flex: 1 },
+  kaynakBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.outline, alignItems: 'center' },
+  kaynakBtnAktif: { borderWidth: 2, borderColor: Colors.primary, backgroundColor: Colors.primaryContainer },
+  kaynakBtnText: { fontSize: 13, fontWeight: '700', color: Colors.onSurfaceVariant },
+  kaynakBtnTextAktif: { color: Colors.primary },
   ofisInput: { borderWidth: 1, borderColor: Colors.outline, borderRadius: Radius.sm, paddingHorizontal: 11, paddingVertical: 9, fontSize: 14, color: Colors.onSurface },
   ofisHint: { fontSize: 11, color: Colors.onSurfaceVariant },
   temizleBtn: { marginTop: Spacing.sm, backgroundColor: Colors.primary, paddingVertical: 13, borderRadius: Radius.md, alignItems: 'center' },

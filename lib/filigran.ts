@@ -6,6 +6,7 @@ const ALLOWED = (process.env.EXPO_PUBLIC_WATERMARK_ALLOWED_EMAILS || 'yasin.35.9
   .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
 
 export type FiligranDurum = 'bekliyor' | 'isleniyor' | 'hazir' | 'onaylandi' | 'reddedildi' | 'hata';
+export type FiligranKaynak = 'sahibinden' | 'hepsiemlak';
 export interface FiligranRow {
   id: string;
   foto_key: string;
@@ -29,11 +30,11 @@ async function token(): Promise<string> {
   return session.access_token;
 }
 
-export async function filigranBaslat(ilanId: string, fotoKeys: string[], officeAdi?: string): Promise<number> {
+export async function filigranBaslat(ilanId: string, fotoKeys: string[], officeAdi?: string, kaynak: FiligranKaynak = 'sahibinden', logo = true): Promise<number> {
   const res = await fetch(`${MEDIA_SERVICE}/filigran/baslat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
-    body: JSON.stringify({ ilanId, fotoKeys, officeAdi: officeAdi || '' }),
+    body: JSON.stringify({ ilanId, fotoKeys, officeAdi: officeAdi || '', kaynak, logo }),
   });
   if (!res.ok && res.status !== 202) throw new Error('Başlatılamadı');
   const j = await res.json().catch(() => ({}));
@@ -76,4 +77,15 @@ export async function filigranReddet(id: string): Promise<void> {
     body: JSON.stringify({ id }),
   });
   if (!res.ok) throw new Error('Reddedilemedi');
+}
+
+export async function filigranReddetHepsi(ilanId: string): Promise<number> {
+  const res = await fetch(`${MEDIA_SERVICE}/filigran/reddet-hepsi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
+    body: JSON.stringify({ ilanId }),
+  });
+  if (!res.ok) throw new Error('Reddedilemedi');
+  const j = await res.json().catch(() => ({}));
+  return j.adet ?? 0;
 }
