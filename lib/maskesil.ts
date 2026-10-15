@@ -89,3 +89,14 @@ export async function maskeReddet(id: string): Promise<void> {
   });
   if (!res.ok) throw new Error('Reddedilemedi');
 }
+
+export async function maskeReddetHepsi(ilanId: string): Promise<number> {
+  const res = await fetch(`${MEDIA_SERVICE}/maske/reddet-hepsi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
+    body: JSON.stringify({ ilanId }),
+  });
+  if (!res.ok) throw new Error('Reddedilemedi');
+  const j = await res.json().catch(() => ({}));
+  return j.adet ?? 0;
+}
