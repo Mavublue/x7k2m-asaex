@@ -81,6 +81,17 @@ export async function maskeIptal(ilanId: string): Promise<number> {
   return j.silinen ?? 0;
 }
 
+export async function maskeIptalTek(id: string): Promise<number> {
+  const res = await fetch(`${MEDIA_SERVICE}/maske/iptal-tek`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) throw new Error('İptal edilemedi');
+  const j = await res.json().catch(() => ({}));
+  return j.silinen ?? 0;
+}
+
 export async function maskeReddet(id: string): Promise<void> {
   const res = await fetch(`${MEDIA_SERVICE}/maske/reddet`, {
     method: 'POST',

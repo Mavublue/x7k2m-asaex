@@ -11,7 +11,7 @@ import {
   thumbUrl, oncesiUrl as filOncesiUrl, sonrasiUrl as filSonrasiUrl, type FiligranRow, type FiligranKaynak,
 } from '../lib/filigran';
 import {
-  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet, maskeReddetHepsi, maskeIptal,
+  maskeBaslat, maskeDurum, maskeOnayla, maskeOnaylaHepsi, maskeReddet, maskeReddetHepsi, maskeIptal, maskeIptalTek,
   oncesiUrl as mskOncesiUrl, sonrasiUrl as mskSonrasiUrl, type MaskeRow,
 } from '../lib/maskesil';
 import { kirpUygula, kirpOncesiUrl, type Crop } from '../lib/kirp';
@@ -24,6 +24,7 @@ export default function FotoTemizleModal({ ilan, visible, onClose, onChanged }: 
   const [mode, setMode] = useState<Mode>('filigran');
   const [filCount, setFilCount] = useState(0); // filigran bekleyen/onay sayısı (rozet)
   const [mskCount, setMskCount] = useState(0); // maske bekleyen/onay sayısı (rozet)
+  const [cizimKey, setCizimKey] = useState<string | null>(null); // "Onayla + Maske Düzelt" → maske sekmesinde bu foto çizime açılsın
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
@@ -50,10 +51,12 @@ export default function FotoTemizleModal({ ilan, visible, onClose, onChanged }: 
 
         {/* Filigran+Maske pane'leri monte kalır (poll+rozet sürsün); pasif olan gizlenir */}
         <View style={{ flex: 1, display: mode === 'filigran' ? 'flex' : 'none' }}>
-          <FiligranPane ilan={ilan} visible={visible} onChanged={onChanged} onCount={setFilCount} />
+          <FiligranPane ilan={ilan} visible={visible} onChanged={onChanged} onCount={setFilCount}
+            onMaskeDuzelt={(k) => { setCizimKey(k); setMode('maske'); }} />
         </View>
         <View style={{ flex: 1, display: mode === 'maske' ? 'flex' : 'none' }}>
-          <MaskePane ilan={ilan} visible={visible} onChanged={onChanged} onCount={setMskCount} />
+          <MaskePane ilan={ilan} visible={visible} onChanged={onChanged} onCount={setMskCount}
+            cizimBaslatKey={cizimKey} onCizimBaslatildi={() => setCizimKey(null)} />
         </View>
         {/* Kırp: durum/poll yok, sadece aktifken monte */}
         {mode === 'kirp' && (
@@ -67,8 +70,8 @@ export default function FotoTemizleModal({ ilan, visible, onClose, onChanged }: 
 }
 
 /* ======================= FİLİGRAN ======================= */
-function FiligranPane({ ilan, visible, onChanged, onCount }: {
-  ilan: Ilan; visible: boolean; onChanged?: () => void; onCount: (n: number) => void;
+function FiligranPane({ ilan, visible, onChanged, onCount, onMaskeDuzelt }: {
+  ilan: Ilan; visible: boolean; onChanged?: () => void; onCount: (n: number) => void; onMaskeDuzelt: (fotoKey: string) => void;
 }) {
   const fotolar = (ilan.fotograflar ?? []) as string[];
   const [rows, setRows] = useState<FiligranRow[]>([]);
@@ -144,6 +147,20 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
     setRows((prev) => prev.filter((r) => r.id !== row.id));
     try {
       if (onay) { await filigranOnayla(row.id); onChanged?.(); } else { await filigranReddet(row.id); }
+    } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
+    setIslem((s) => { const n = new Set(s); n.delete(row.id); return n; });
+  }
+  // Onayla + Maske ile düzelt: filigranı onayla, dönen yeni key'i maske sekmesine çizime aç.
+  async function onaylaVeDuzelt(row: FiligranRow) {
+    if (islem.has(row.id)) return;
+    setIslem((s) => new Set(s).add(row.id));
+    kararlanan.current.add(row.id);
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setIncele(false);
+    try {
+      const yeniKey = await filigranOnayla(row.id);
+      onChanged?.();
+      if (yeniKey) onMaskeDuzelt(yeniKey);
     } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
     setIslem((s) => { const n = new Set(s); n.delete(row.id); return n; });
   }
@@ -375,6 +392,9 @@ function FiligranPane({ ilan, visible, onChanged, onCount }: {
                 <Text style={sf.fsBtnText}>✓ Olmuş</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={sf.fsBtnDuzelt} disabled={islem.has(r.id)} onPress={() => onaylaVeDuzelt(r)}>
+              <Text style={sf.fsBtnText}>✓ Onayla + 🩹 Maske ile Düzelt</Text>
+            </TouchableOpacity>
           </View>
         </Modal>
       ); })()}
@@ -494,8 +514,8 @@ window.exportMask=function(){
 
 type Tool = 'rect' | 'brush' | 'eraser';
 
-function MaskePane({ ilan, visible, onChanged, onCount }: {
-  ilan: Ilan; visible: boolean; onChanged?: () => void; onCount: (n: number) => void;
+function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimBaslatildi }: {
+  ilan: Ilan; visible: boolean; onChanged?: () => void; onCount: (n: number) => void; cizimBaslatKey?: string | null; onCizimBaslatildi?: () => void;
 }) {
   const gizliSet = new Set((ilan.gizli_fotograflar ?? []) as string[]);
   const fotolar = (ilan.fotograflar ?? []) as string[];
@@ -507,6 +527,7 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
   const [sayi, setSayi] = useState(0);
   const [gonderiliyor, setGonderiliyor] = useState(false);
   const [iptalEdiliyor, setIptalEdiliyor] = useState(false);
+  const [iptalTekId, setIptalTekId] = useState<string | null>(null);
   const [incele, setIncele] = useState(false);
   const [idx, setIdx] = useState(0);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -543,11 +564,34 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
     return () => { if (poll.current) clearInterval(poll.current); supabase.removeChannel(ch); };
   }, [visible, yenile, ilan.id]);
 
+  // Filigran "Onayla + Maske Düzelt"ten gelen key: o temiz fotoyu çizime aç (swap sonrası _lg hazır)
+  useEffect(() => {
+    if (!cizimBaslatKey) return;
+    setSecili(cizimBaslatKey); setSayi(0); setZoomMode(false);
+    onCizimBaslatildi?.();
+  }, [cizimBaslatKey, onCizimBaslatildi]);
+
   const aktif = rows.filter((r) => r.durum === 'bekliyor' || r.durum === 'isleniyor');
   const hazir = rows.filter((r) => r.durum === 'hazir');
   const islenenKeys = new Set(aktif.map((r) => r.foto_key));
+  const islenenMap = new Map(aktif.map((r) => [r.foto_key, r.id] as const));
   const hazirKeys = new Set(hazir.map((r) => r.foto_key));
   const cur = Math.min(idx, Math.max(0, hazir.length - 1));
+
+  function iptalTek(id: string) {
+    if (iptalTekId) return;
+    Alert.alert('İptal', 'Bu fotoğrafın temizleme işi iptal edilsin mi?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'İptal Et', style: 'destructive', onPress: async () => {
+        setIptalTekId(id);
+        kararlanan.current.add(id);
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        try { await maskeIptalTek(id); }
+        catch (e: any) { kararlanan.current.delete(id); Alert.alert('Hata', e.message); await yenile(); }
+        setIptalTekId(null);
+      } },
+    ]);
+  }
 
   useEffect(() => { onCount(aktif.length + hazir.length); }, [aktif.length, hazir.length, onCount]);
   useEffect(() => { if (hazir.length === 0) setIncele(false); }, [hazir.length]);
@@ -793,6 +837,12 @@ function MaskePane({ ilan, visible, onChanged, onCount }: {
                   <Image source={{ uri: thumbUrl(k) }} style={sm.thumb} />
                   {gizli && !mesgul && <View style={sm.gizliBadge}><Text style={sm.gizliBadgeTxt}>🙈 Gizli</Text></View>}
                   {isleniyor && <View style={sm.thumbBadge}><Text style={sm.thumbBadgeTxt}>⏳ İşleniyor…</Text></View>}
+                  {isleniyor && islenenMap.get(k) && (
+                    <TouchableOpacity onPress={() => iptalTek(islenenMap.get(k)!)} disabled={iptalTekId === islenenMap.get(k)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={sm.thumbIptal}>
+                      <Text style={sm.thumbIptalTxt}>×</Text>
+                    </TouchableOpacity>
+                  )}
                   {onayBekliyor && <View style={[sm.thumbBadge, sm.thumbBadgeOnay]}><Text style={sm.thumbBadgeTxt}>✓ Onay bekliyor</Text></View>}
                 </TouchableOpacity>
               );
@@ -1022,11 +1072,12 @@ const sf = StyleSheet.create({
   navBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
   navOff: { opacity: 0.3 },
   navTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  fsBtnRow: { flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 28 },
+  fsBtnRow: { flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 10 },
   fsBtn: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   fsRed: { backgroundColor: 'rgba(229,57,53,0.3)' },
   fsGreen: { backgroundColor: '#3aaa6e' },
   fsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  fsBtnDuzelt: { marginHorizontal: 16, marginBottom: 28, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   onayHepsi: { backgroundColor: '#3aaa6e', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
   onayHepsiText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   reddetHepsi: { backgroundColor: 'rgba(229,57,53,0.14)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: '#fca5a5' },
@@ -1097,6 +1148,8 @@ const sm = StyleSheet.create({
   thumbBadge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   thumbBadgeOnay: { backgroundColor: 'rgba(58,170,110,0.55)' },
   thumbBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  thumbIptal: { position: 'absolute', top: 4, right: 4, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(229,57,53,0.95)', alignItems: 'center', justifyContent: 'center' },
+  thumbIptalTxt: { color: '#fff', fontWeight: '800', fontSize: 17, lineHeight: 19 },
   thumbGizli: { borderWidth: 2, borderColor: '#a855f7' },
   gizliBadge: { position: 'absolute', top: 6, left: 6, backgroundColor: 'rgba(168,85,247,0.92)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
   gizliBadgeTxt: { color: '#fff', fontWeight: '800', fontSize: 11 },
