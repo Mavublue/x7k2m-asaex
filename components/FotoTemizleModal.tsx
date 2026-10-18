@@ -756,6 +756,17 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
               style={{ flex: 1, backgroundColor: '#000' }}
               scrollEnabled={false}
             />
+            {/* Bu foto işleniyor/onay bekliyor: durumu + ✕ iptal göster */}
+            {(islenenKeys.has(secili) || hazirKeys.has(secili)) && (
+              <View style={sm.editorOverlay}>
+                <Text style={sm.editorOverlayTxt}>{islenenKeys.has(secili) ? '⏳ İşleniyor…' : '✓ Onay bekliyor'}</Text>
+                {islenenKeys.has(secili) && islenenMap.get(secili) && (
+                  <TouchableOpacity onPress={() => iptalTek(islenenMap.get(secili)!)} disabled={iptalTekId === islenenMap.get(secili)} style={sm.editorIptal}>
+                    <Text style={sm.editorIptalTxt}>✕ İptal</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
           <Text style={sm.hint}>Silmek istediğin alan(lar)ı işaretle. İki parmakla yakınlaştır; 🔍 ile kaydır.</Text>
           {fotolar.length > 1 && (
@@ -1174,6 +1185,10 @@ const sm = StyleSheet.create({
   navOff: { opacity: 0.3 },
   navTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
   navSayac: { paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center' },
+  editorOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.62)', alignItems: 'center', justifyContent: 'center', gap: 14 },
+  editorOverlayTxt: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  editorIptal: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(229,57,53,0.92)' },
+  editorIptalTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
   thumb: { width: '100%', height: '100%', backgroundColor: Colors.surfaceContainer },
   fs: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0b0b0b' },
   fsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md },
