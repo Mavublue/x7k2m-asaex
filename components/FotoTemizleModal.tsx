@@ -630,7 +630,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
     else if (m.type === 'mask') {
       try {
         await maskeBaslat(ilan.id, secili!, m.data);
-        setSecili(null); setSayi(0);
+        setSayi(0); inject('window.clearAll()'); // geri atma: aynı fotoda kal, çizimi temizle (ok ile sıradakine geçilir)
         setGonderiliyor(false);
         await yenile(); // grid "işleniyor"u anında göstersin (realtime de tetikler)
         return;
@@ -644,6 +644,15 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
     setGonderiliyor(true);
     inject('window.exportMask()');
   }
+
+  // Editörde fotolar arası ‹ › geçiş
+  const secIndex = secili ? fotolar.indexOf(secili) : -1;
+  const gotoFoto = (d: number) => {
+    if (secIndex < 0) return;
+    const ni = secIndex + d;
+    if (ni < 0 || ni >= fotolar.length) return;
+    setSecili(fotolar[ni]); setSayi(0); setZoomMode(false);
+  };
 
   function iptalEt() {
     if (iptalEdiliyor) return;
@@ -749,6 +758,13 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
             />
           </View>
           <Text style={sm.hint}>Silmek istediğin alan(lar)ı işaretle. İki parmakla yakınlaştır; 🔍 ile kaydır.</Text>
+          {fotolar.length > 1 && (
+            <View style={sm.navRow}>
+              <TouchableOpacity onPress={() => gotoFoto(-1)} disabled={secIndex <= 0} style={[sm.navBtn, secIndex <= 0 && sm.navOff]}><Text style={sm.navTxt}>‹ Önceki</Text></TouchableOpacity>
+              <View style={sm.navSayac}><Text style={sm.navTxt}>{secIndex + 1}/{fotolar.length}</Text></View>
+              <TouchableOpacity onPress={() => gotoFoto(1)} disabled={secIndex >= fotolar.length - 1} style={[sm.navBtn, secIndex >= fotolar.length - 1 && sm.navOff]}><Text style={sm.navTxt}>Sonraki ›</Text></TouchableOpacity>
+            </View>
+          )}
           <View style={sm.row}>
             <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); setZoomMode(false); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
             <TouchableOpacity onPress={gonder} disabled={!sayi || gonderiliyor} style={[sm.btn, (!sayi || gonderiliyor) ? sm.btnOff : sm.btnKirmizi, { flex: 2 }]}>
@@ -1157,6 +1173,7 @@ const sm = StyleSheet.create({
   navBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.md, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
   navOff: { opacity: 0.3 },
   navTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  navSayac: { paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center' },
   thumb: { width: '100%', height: '100%', backgroundColor: Colors.surfaceContainer },
   fs: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0b0b0b' },
   fsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.md },
