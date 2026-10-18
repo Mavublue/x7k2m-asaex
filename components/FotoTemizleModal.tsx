@@ -639,9 +639,15 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
       try {
         await maskeBaslat(ilan.id, hedef as string, m.data);
         setGonderiliyor(false);
-        if (direkt) { setSecili(null); setTamEkran(false); setCizimImg(null); hedefKeyRef.current = null; } // editörü kapat
-        else { setSayi(0); inject('window.clearAll()'); } // geri atma: aynı fotoda kal, çizimi temizle
-        await yenile(); // grid "işleniyor"u anında göstersin (realtime de tetikler)
+        setSayi(0);
+        if (direkt) {
+          // aynı fotoda kal: normal editöre geç (üstünde "İşleniyor" + ‹ › ile komşuya geçiş)
+          setCizimImg(null);
+          hedefKeyRef.current = null;
+          setSecili(hedef as string); // gerçek key → fotolar içinde → nav + işleniyor overlay
+          // tamEkran korunur
+        } else inject('window.clearAll()'); // geri atma: aynı fotoda kal, çizimi temizle
+        await yenile(); // grid/overlay "işleniyor"u anında göstersin (realtime de tetikler)
         return;
       } catch (e: any) { Alert.alert('Hata', e.message); }
       setGonderiliyor(false);
