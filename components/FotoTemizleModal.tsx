@@ -705,6 +705,22 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
     kuyrukSur();
   }
 
+  // Onayla + tekrar düzelt: maskeyi onayla (temiz canlıya geçer), dönen yeni key'i editöre çizime aç.
+  const [duzeltId, setDuzeltId] = useState<string | null>(null);
+  async function onaylaVeDuzelt(row: MaskeRow) {
+    if (kararlanan.current.has(row.id) || duzeltId) return;
+    setDuzeltId(row.id);
+    kararlanan.current.add(row.id);
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setIncele(false);
+    try {
+      const yeniKey = await maskeOnayla(row.id);
+      onChanged?.();
+      if (yeniKey) { setSecili(yeniKey); setSayi(0); setZoomMode(false); }
+    } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
+    setDuzeltId(null);
+  }
+
   // Hepsini onayla: sunucu arka planda tek tek onaylar (filigran gibi) — ekrandan çıksan da sürer.
   async function hepsiniOnayla() {
     if (!hazir.length || onaylaniyor) return;
@@ -844,6 +860,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
                 <TouchableOpacity onPress={() => karar(r, false)} style={[sm.btn, sm.btnRed, { flex: 1 }]}><Text style={sm.btnRedTxt}>✕ Olmamış</Text></TouchableOpacity>
                 <TouchableOpacity onPress={() => karar(r, true)} style={[sm.btn, sm.btnYesil, { flex: 1 }]}><Text style={sm.btnYesilTxt}>✓ Onayla</Text></TouchableOpacity>
               </View>
+              <TouchableOpacity onPress={() => onaylaVeDuzelt(r)} disabled={!!duzeltId} style={sm.btnDuzelt}><Text style={sm.btnDuzeltTxt}>✓ Onayla + 🩹 Tekrar Düzelt</Text></TouchableOpacity>
             </View>
           ); })()}
 
@@ -900,9 +917,12 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
               <TouchableOpacity onPress={() => setIdx((i) => Math.min(hazir.length - 1, i + 1))} disabled={cur >= hazir.length - 1} style={[sm.navBtn, cur >= hazir.length - 1 && sm.navOff]}><Text style={sm.navTxt}>Sonraki ›</Text></TouchableOpacity>
             </View>
           )}
-          <View style={[sm.row, { padding: Spacing.lg }]}>
-            <TouchableOpacity onPress={() => karar(r, false)} style={[sm.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
+          <View style={{ padding: Spacing.lg }}>
+            <View style={sm.row}>
+              <TouchableOpacity onPress={() => karar(r, false)} style={[sm.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => karar(r, true)} style={[sm.btn, { flex: 1, backgroundColor: '#3aaa6e' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✓ Olmuş</Text></TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => onaylaVeDuzelt(r)} disabled={!!duzeltId} style={[sm.btnDuzelt, { marginTop: Spacing.sm }]}><Text style={sm.btnDuzeltTxt}>✓ Onayla + 🩹 Tekrar Düzelt</Text></TouchableOpacity>
           </View>
         </View>
       ); })()}
@@ -1176,6 +1196,8 @@ const sm = StyleSheet.create({
   btnRedTxt: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
   btnYesil: { backgroundColor: '#3aaa6e' },
   btnYesilTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  btnDuzelt: { marginTop: Spacing.sm, paddingVertical: 12, borderRadius: 8, alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.12)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.4)' },
+  btnDuzeltTxt: { color: '#818cf8', fontWeight: '700', fontSize: 14 },
   hata: { fontSize: 12, color: Colors.error, marginBottom: 10 },
   secTitle: { fontSize: 14, fontWeight: '700', color: Colors.onSurface, marginBottom: 10, marginTop: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

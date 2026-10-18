@@ -50,13 +50,15 @@ export async function maskeDurum(ilanId: string): Promise<MaskeRow[]> {
   return j.rows ?? [];
 }
 
-export async function maskeOnayla(id: string): Promise<void> {
+export async function maskeOnayla(id: string): Promise<string> {
   const res = await fetch(`${MEDIA_SERVICE}/maske/onayla`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
     body: JSON.stringify({ id }),
   });
   if (!res.ok) throw new Error('Onaylanamadı');
+  const j = await res.json().catch(() => ({}));
+  return j.yeniKey as string; // swap sonrası yeni foto key (tekrar düzelt için)
 }
 
 export async function maskeOnaylaHepsi(ilanId: string): Promise<number> {
