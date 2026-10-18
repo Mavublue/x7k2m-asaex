@@ -633,10 +633,14 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
     else if (m.type === 'empty') { setGonderiliyor(false); Alert.alert('Uyarı', 'Önce silinecek alan işaretle.'); }
     else if (m.type === 'imgerror') { Alert.alert('Hata', 'Fotoğraf yüklenemedi.'); }
     else if (m.type === 'mask') {
+      const direkt = cizimImg != null;              // "Onayla + Düzelt" akışı
+      const hedef = direkt ? hedefKeyRef.current : secili;
+      if (direkt && !hedef) { setGonderiliyor(false); Alert.alert('Bekle', 'Onay hazırlanıyor, birkaç saniye sonra tekrar Gönder.'); return; }
       try {
-        await maskeBaslat(ilan.id, secili!, m.data);
-        setSayi(0); inject('window.clearAll()'); // geri atma: aynı fotoda kal, çizimi temizle (ok ile sıradakine geçilir)
+        await maskeBaslat(ilan.id, hedef as string, m.data);
         setGonderiliyor(false);
+        if (direkt) { setSecili(null); setTamEkran(false); setCizimImg(null); hedefKeyRef.current = null; } // editörü kapat
+        else { setSayi(0); inject('window.clearAll()'); } // geri atma: aynı fotoda kal, çizimi temizle
         await yenile(); // grid "işleniyor"u anında göstersin (realtime de tetikler)
         return;
       } catch (e: any) { Alert.alert('Hata', e.message); }
@@ -708,16 +712,43 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
   // Onayla + tekrar düzelt: maskeyi onayla (temiz canlıya geçer), dönen yeni key'i editöre çizime aç.
   const [duzeltId, setDuzeltId] = useState<string | null>(null);
   const [tamEkran, setTamEkran] = useState(false); // tam ekran incele'den gelince editör üstte açılır
+  // Direkt düzelt: editörde ekrandaki temiz önizlemeyi (zaten yüklü) göster → reload YOK; swap arkada döner,
+  // hedef key (yeniKey) ref'e yazılır. Stabil placeholder key ile WebView yeniden yüklenmez.
+  const DUZELT = '__duzelt__';
+  const [cizimImg, setCizimImg] = useState<string | null>(null);
+  const hedefKeyRef = useRef<string | null>(null);
   async function onaylaVeDuzelt(row: MaskeRow, buyuk = false) {
     if (kararlanan.current.has(row.id) || duzeltId) return;
     setDuzeltId(row.id);
     kararlanan.current.add(row.id);
     setRows((prev) => prev.filter((r) => r.id !== row.id));
-    if (!buyuk) setIncele(false); // büyük: tam ekran incele arkada kalsın, editör üstte açılsın
+    if (buyuk) {
+      // ANINDA editör: ekrandaki temiz önizlemeyi göster (reload yok), swap arkada döner.
+      setIncele(false);
+      hedefKeyRef.current = null;
+      setCizimImg(row.temiz_key ? mskSonrasiUrl(row.temiz_key) : mskOncesiUrl(row.foto_key));
+      setSayi(0); setZoomMode(false);
+      setSecili(DUZELT);     // stabil placeholder → WebView reload yok
+      setTamEkran(true);
+      try {
+        const yeniKey = await maskeOnayla(row.id);
+        onChanged?.();
+        hedefKeyRef.current = yeniKey || null;
+      } catch (e: any) {
+        kararlanan.current.delete(row.id);
+        Alert.alert('Hata', e.message);
+        setSecili(null); setTamEkran(false); setCizimImg(null);
+        await yenile();
+      }
+      setDuzeltId(null);
+      return;
+    }
+    // Küçük kart: eski davranış
+    setIncele(false);
     try {
       const yeniKey = await maskeOnayla(row.id);
       onChanged?.();
-      if (yeniKey) { setSecili(yeniKey); setSayi(0); setZoomMode(false); if (buyuk) setTamEkran(true); }
+      if (yeniKey) { setSecili(yeniKey); setSayi(0); setZoomMode(false); }
     } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
     setDuzeltId(null);
   }
@@ -773,7 +804,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
             <WebView
               ref={webRef}
               originWhitelist={['*']}
-              source={{ html: DRAW_HTML.replace('__IMG__', mskOncesiUrl(secili)) }}
+              source={{ html: DRAW_HTML.replace('__IMG__', cizimImg ?? mskOncesiUrl(secili)) }}
               onMessage={(e) => onMessage(e.nativeEvent.data)}
               style={{ flex: 1, backgroundColor: '#000' }}
               scrollEnabled={false}
@@ -791,7 +822,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
             )}
           </View>
           <Text style={sm.hint}>Silmek istediğin alan(lar)ı işaretle. İki parmakla yakınlaştır; 🔍 ile kaydır.</Text>
-          {fotolar.length > 1 && (
+          {!cizimImg && fotolar.length > 1 && (
             <View style={sm.navRow}>
               <TouchableOpacity onPress={() => gotoFoto(-1)} disabled={secIndex <= 0} style={[sm.navBtn, secIndex <= 0 && sm.navOff]}><Text style={sm.navTxt}>‹ Önceki</Text></TouchableOpacity>
               <View style={sm.navSayac}><Text style={sm.navTxt}>{secIndex + 1}/{fotolar.length}</Text></View>
@@ -799,7 +830,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
             </View>
           )}
           <View style={sm.row}>
-            <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); setZoomMode(false); setTamEkran(false); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); setZoomMode(false); setTamEkran(false); setCizimImg(null); hedefKeyRef.current = null; }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
             <TouchableOpacity onPress={gonder} disabled={!sayi || gonderiliyor} style={[sm.btn, (!sayi || gonderiliyor) ? sm.btnOff : sm.btnKirmizi, { flex: 2 }]}>
               {gonderiliyor ? <ActivityIndicator color="#fff" /> : <Text style={sm.btnKirmiziTxt}>Gönder{sayi ? ` (${sayi})` : ''}</Text>}
             </TouchableOpacity>
