@@ -616,6 +616,11 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
       if (r.temiz_key) Image.prefetch(mskSonrasiUrl(r.temiz_key));
     });
   }, [cur, hazir]);
+  // Editör büyük orijinalleri (_lg) önden yükle → fotoğrafa tıklayınca WebView anında açılsın
+  useEffect(() => {
+    if (!visible) return;
+    fotolar.forEach((k) => Image.prefetch(mskOncesiUrl(k)));
+  }, [visible, ilan.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inject = (js: string) => webRef.current?.injectJavaScript(js + ';true;');
   const secTool = (t: Tool) => { setTool(t); inject(`window.setTool(${JSON.stringify(t)})`); };
@@ -979,6 +984,11 @@ function KirpPane({ ilan, onChanged }: { ilan: Ilan; onChanged?: () => void }) {
   const webRef = useRef<WebView>(null);
   const seciliRef = useRef<string | null>(null);
   seciliRef.current = secili;
+
+  // Editör büyük orijinalleri (_lg) önden yükle → fotoğrafa tıklayınca WebView anında açılsın
+  useEffect(() => {
+    fotolar.forEach((k) => Image.prefetch(kirpOncesiUrl(k)));
+  }, [ilan.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inject = (js: string) => webRef.current?.injectJavaScript(js + ';true;');
   const secAspect = (r: number) => { setAspect(r); setVarRect(false); inject(`window.setAspect(${r})`); };
