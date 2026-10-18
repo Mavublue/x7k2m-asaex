@@ -707,16 +707,17 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
 
   // Onayla + tekrar düzelt: maskeyi onayla (temiz canlıya geçer), dönen yeni key'i editöre çizime aç.
   const [duzeltId, setDuzeltId] = useState<string | null>(null);
-  async function onaylaVeDuzelt(row: MaskeRow) {
+  const [tamEkran, setTamEkran] = useState(false); // tam ekran incele'den gelince editör üstte açılır
+  async function onaylaVeDuzelt(row: MaskeRow, buyuk = false) {
     if (kararlanan.current.has(row.id) || duzeltId) return;
     setDuzeltId(row.id);
     kararlanan.current.add(row.id);
     setRows((prev) => prev.filter((r) => r.id !== row.id));
-    setIncele(false);
+    if (!buyuk) setIncele(false); // büyük: tam ekran incele arkada kalsın, editör üstte açılsın
     try {
       const yeniKey = await maskeOnayla(row.id);
       onChanged?.();
-      if (yeniKey) { setSecili(yeniKey); setSayi(0); setZoomMode(false); }
+      if (yeniKey) { setSecili(yeniKey); setSayi(0); setZoomMode(false); if (buyuk) setTamEkran(true); }
     } catch (e: any) { kararlanan.current.delete(row.id); Alert.alert('Hata', e.message); await yenile(); }
     setDuzeltId(null);
   }
@@ -749,7 +750,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
   return (
     <View style={{ flex: 1 }}>
       {secili ? (
-        <View style={{ flex: 1 }}>
+        <View style={tamEkran ? [StyleSheet.absoluteFillObject, { zIndex: 50, backgroundColor: '#000' }] : { flex: 1 }}>
           {/* Araç çubuğu */}
           <View style={sm.toolbar}>
             <TouchableOpacity onPress={secZoom} style={[sm.tbtn, zoomMode && sm.tbtnOn]}>
@@ -798,7 +799,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
             </View>
           )}
           <View style={sm.row}>
-            <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); setZoomMode(false); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSecili(null); setSayi(0); setZoomMode(false); setTamEkran(false); }} style={[sm.btn, sm.btnGri, { flex: 1 }]}><Text style={sm.btnGriTxt}>← Vazgeç</Text></TouchableOpacity>
             <TouchableOpacity onPress={gonder} disabled={!sayi || gonderiliyor} style={[sm.btn, (!sayi || gonderiliyor) ? sm.btnOff : sm.btnKirmizi, { flex: 2 }]}>
               {gonderiliyor ? <ActivityIndicator color="#fff" /> : <Text style={sm.btnKirmiziTxt}>Gönder{sayi ? ` (${sayi})` : ''}</Text>}
             </TouchableOpacity>
@@ -922,7 +923,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
               <TouchableOpacity onPress={() => karar(r, false)} style={[sm.btn, { flex: 1, backgroundColor: 'rgba(229,57,53,0.28)' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✕ Olmamış</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => karar(r, true)} style={[sm.btn, { flex: 1, backgroundColor: '#3aaa6e' }]}><Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>✓ Olmuş</Text></TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => onaylaVeDuzelt(r)} disabled={!!duzeltId} style={[sm.btnDuzelt, { marginTop: Spacing.sm }]}><Text style={sm.btnDuzeltTxt}>✓ Onayla + 🩹 Tekrar Düzelt</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => onaylaVeDuzelt(r, true)} disabled={!!duzeltId} style={[sm.btnDuzelt, { marginTop: Spacing.sm }]}><Text style={sm.btnDuzeltTxt}>✓ Onayla + 🩹 Tekrar Düzelt</Text></TouchableOpacity>
           </View>
         </View>
       ); })()}
