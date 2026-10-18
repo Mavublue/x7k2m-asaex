@@ -641,13 +641,10 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
         setGonderiliyor(false);
         setSayi(0);
         if (direkt) {
-          // aynı fotoda kal: normal editöre geç (üstünde "İşleniyor" + ‹ › ile komşuya geçiş)
-          setCizimImg(null);
-          hedefKeyRef.current = null;
-          setSecili(hedef as string); // gerçek key → fotolar içinde → nav + işleniyor overlay
-          // tamEkran korunur
+          // editör KAPANSIN → arkadaki tam ekran incelemeye dön, sağa sola devam et
+          setCizimImg(null); hedefKeyRef.current = null; setSecili(null); setTamEkran(false);
         } else inject('window.clearAll()'); // geri atma: aynı fotoda kal, çizimi temizle
-        await yenile(); // grid/overlay "işleniyor"u anında göstersin (realtime de tetikler)
+        await yenile(); // gönderdiğin foto arkada "işleniyor"a geçsin (realtime de tetikler)
         return;
       } catch (e: any) { Alert.alert('Hata', e.message); }
       setGonderiliyor(false);
@@ -729,8 +726,8 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
     kararlanan.current.add(row.id);
     setRows((prev) => prev.filter((r) => r.id !== row.id));
     if (buyuk) {
-      // ANINDA editör: ekrandaki temiz önizlemeyi göster (reload yok), swap arkada döner.
-      setIncele(false);
+      // ANINDA editör: tam ekran incele ARKADA kalsın (kapatma), editör üstte açılsın.
+      // Görüntü = ekrandaki temiz önizleme (reload yok), swap arkada döner.
       hedefKeyRef.current = null;
       setCizimImg(row.temiz_key ? mskSonrasiUrl(row.temiz_key) : mskOncesiUrl(row.foto_key));
       setSayi(0); setZoomMode(false);
