@@ -25,6 +25,7 @@ import R2Image from '../../components/R2Image';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
 import FotoTemizleModal from '../../components/FotoTemizleModal';
+import MaskeCizModal from '../../components/MaskeCizModal';
 import { watermarkYetkili, filigranDurum } from '../../lib/filigran';
 import { maskeDurum } from '../../lib/maskesil';
 import PersistentTabBar from '../../components/PersistentTabBar';
@@ -105,10 +106,11 @@ function ZoomableImage({ uri, onZoomChange }: { uri: string; onZoomChange: (z: b
   );
 }
 
-function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
+function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMaske }: {
   fotos: string[]; initialIdx: number; onClose: () => void;
   listRef: React.RefObject<FlatList<string> | null>;
   thumbRef: React.RefObject<ScrollView | null>;
+  onMaske?: (fotoKey: string) => void;
 }) {
   const [idx, setIdx] = useState(initialIdx);
   const [zoomed, setZoomed] = useState(false);
@@ -153,6 +155,13 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef }: {
           <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={onClose}>
             <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}>✕</Text>
           </TouchableOpacity>
+          {onMaske && (
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 50, left: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+              onPress={() => onMaske(fotos[idx])}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>🩹 Maske</Text>
+            </TouchableOpacity>
+          )}
           <View style={{ position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center', zIndex: 5 }}>
             <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
           </View>
@@ -232,6 +241,7 @@ export default function IlanDetayScreen() {
   const flatListRef = useRef<any>(null);
   const thumbScrollRef = useRef<ScrollView>(null);
   const [fullscreenIdx, setFullscreenIdx] = useState<number | null>(null);
+  const [maskeCizKey, setMaskeCizKey] = useState<string | null>(null);
   const fullscreenListRef = useRef<FlatList<string>>(null);
   const fullscreenThumbRef = useRef<ScrollView>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
@@ -1408,8 +1418,17 @@ export default function IlanDetayScreen() {
           onClose={() => setFullscreenIdx(null)}
           listRef={fullscreenListRef}
           thumbRef={fullscreenThumbRef}
+          onMaske={watermarkYetkili(userEmail) ? (key) => setMaskeCizKey(key) : undefined}
         />
       </Modal>
+
+      <MaskeCizModal
+        visible={maskeCizKey !== null}
+        ilanId={id as string}
+        fotoKey={maskeCizKey ?? ''}
+        onClose={() => setMaskeCizKey(null)}
+        onGonderildi={fetchIlan}
+      />
 
       <PersistentTabBar />
     </SafeAreaView>
