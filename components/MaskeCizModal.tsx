@@ -3,14 +3,17 @@ import { View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ActivityIndicat
 import { WebView } from 'react-native-webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import { maskeBaslat, oncesiUrl } from '../lib/maskesil';
-import { DRAW_HTML } from './FotoTemizleModal';
+import { DRAW_HTML } from './drawHtml';
 
 type Tool = 'rect' | 'brush' | 'eraser';
 
-// Galeri fullscreen'de tek foto için hızlı "Maske ile Sil" çizim ekranı.
+// Tek foto için hızlı "Maske ile Sil" çizim ekranı.
 // Onay akışı YOK — çiz + Gönder → arka planda MAT. Onay normal Fotoğraf Temizle'den.
-export default function MaskeCizModal({ visible, ilanId, fotoKey, onClose, onGonderildi }: {
-  visible: boolean; ilanId: string; fotoKey: string; onClose: () => void; onGonderildi?: () => void;
+// imgUrl: gösterilecek görsel override (varsayılan fotoKey'in _lg'si). Filigran "Düzelt"te ekrandaki
+//   temiz önizleme geçilir → reload yok.
+// hedefKeyRef: maskeBaslat hedefi (swap sonrası yeniKey; parent doldurur). Yoksa fotoKey kullanılır.
+export default function MaskeCizModal({ visible, ilanId, fotoKey, imgUrl, hedefKeyRef, onClose, onGonderildi }: {
+  visible: boolean; ilanId: string; fotoKey: string; imgUrl?: string; hedefKeyRef?: React.MutableRefObject<string | null>; onClose: () => void; onGonderildi?: () => void;
 }) {
   const webRef = useRef<WebView>(null);
   const [tool, setTool] = useState<Tool>('rect');
@@ -30,11 +33,13 @@ export default function MaskeCizModal({ visible, ilanId, fotoKey, onClose, onGon
     else if (m.type === 'empty') { setGonderiliyor(false); Alert.alert('Uyarı', 'Önce silinecek alan işaretle.'); }
     else if (m.type === 'imgerror') { Alert.alert('Hata', 'Fotoğraf yüklenemedi.'); }
     else if (m.type === 'mask') {
+      const hedef = hedefKeyRef ? hedefKeyRef.current : fotoKey;
+      if (!hedef) { setGonderiliyor(false); Alert.alert('Bekle', 'Onay hazırlanıyor, birkaç saniye sonra tekrar Gönder.'); return; }
       try {
-        await maskeBaslat(ilanId, fotoKey, m.data);
+        await maskeBaslat(ilanId, hedef, m.data);
         setGonderiliyor(false);
         onGonderildi?.();
-        kapat(); // galeri açık kalır, foto arka planda işlenir
+        kapat(); // çağıran ekrana (galeri / filigran incele) döner, foto arka planda işlenir
         return;
       } catch (e: any) { Alert.alert('Hata', e.message); }
       setGonderiliyor(false);
@@ -71,11 +76,11 @@ export default function MaskeCizModal({ visible, ilanId, fotoKey, onClose, onGon
           <TouchableOpacity onPress={() => inject('window.clearAll()')} disabled={!sayi} style={[st.tbtn, !sayi && st.tbtnDis]}><Text style={st.tbtnTxt}>Temizle</Text></TouchableOpacity>
         </View>
         <View style={{ flex: 1, backgroundColor: '#000' }}>
-          {fotoKey ? (
+          {(fotoKey || imgUrl) ? (
             <WebView
               ref={webRef}
               originWhitelist={['*']}
-              source={{ html: DRAW_HTML.replace('__IMG__', oncesiUrl(fotoKey)) }}
+              source={{ html: DRAW_HTML.replace('__IMG__', imgUrl ?? oncesiUrl(fotoKey)) }}
               onMessage={(e) => onMessage(e.nativeEvent.data)}
               style={{ flex: 1, backgroundColor: '#000' }}
               scrollEnabled={false}
