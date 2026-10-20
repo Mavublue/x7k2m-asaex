@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, memo } from 'react';
+import { useEffect, useState, useCallback, memo, useRef, useDeferredValue } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -56,8 +56,13 @@ function etiketSayi(e: string | null): number {
 export default function MusterilerScreen() {
   const [musteriler, setMusteriler] = useState<MusteriListe[]>([]);
   const [filtered, setFiltered] = useState<MusteriListe[]>([]);
-  const [search, setSearch] = useState('');
-  const [etiketSearch, setEtiketSearch] = useState('');
+  // Input'lar uncontrolled: controlled + ağır re-render iOS'ta hızlı yazarken imleci kaydırıyordu
+  const [searchRaw, setSearch] = useState('');
+  const [etiketRaw, setEtiketSearch] = useState('');
+  const search = useDeferredValue(searchRaw);
+  const etiketSearch = useDeferredValue(etiketRaw);
+  const searchRef = useRef<TextInput>(null);
+  const etiketRef = useRef<TextInput>(null);
   const [activeDurum, setActiveDurum] = useState('Tümü');
   const [activeTip, setActiveTip] = useState('Tümü');
   const [activeKategori, setActiveKategori] = useState('Tümü');
@@ -190,11 +195,12 @@ export default function MusterilerScreen() {
             style={[styles.search, styles.searchPadRight]}
             placeholder="Müşteri ara..."
             placeholderTextColor={Colors.outlineVariant}
-            value={search}
+            ref={searchRef}
+            defaultValue=""
             onChangeText={setSearch}
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')} style={styles.clearBtn} hitSlop={8}>
+          {searchRaw.length > 0 && (
+            <TouchableOpacity onPress={() => { searchRef.current?.clear(); setSearch(''); }} style={styles.clearBtn} hitSlop={8}>
               <Text style={styles.clearBtnText}>×</Text>
             </TouchableOpacity>
           )}
@@ -205,13 +211,14 @@ export default function MusterilerScreen() {
             style={styles.etiketSearch}
             placeholder="etiket"
             placeholderTextColor={Colors.outlineVariant}
-            value={etiketSearch}
-            onChangeText={v => setEtiketSearch(v.replace('#', ''))}
+            ref={etiketRef}
+            defaultValue=""
+            onChangeText={setEtiketSearch}
             autoCapitalize="none"
             returnKeyType="search"
           />
-          {etiketSearch.length > 0 && (
-            <TouchableOpacity onPress={() => setEtiketSearch('')} hitSlop={8}>
+          {etiketRaw.length > 0 && (
+            <TouchableOpacity onPress={() => { etiketRef.current?.clear(); setEtiketSearch(''); }} hitSlop={8}>
               <Text style={styles.clearBtnText}>×</Text>
             </TouchableOpacity>
           )}
