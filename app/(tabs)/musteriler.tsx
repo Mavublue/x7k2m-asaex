@@ -114,6 +114,8 @@ export default function MusterilerScreen() {
       (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(searchQ) || k.telefon?.includes(searchQ))
     );
     result = [...result].sort((a, b) => {
+      const ai = a.durum === 'İptal', bi = b.durum === 'İptal';
+      if (ai !== bi) return ai ? 1 : -1;
       if (searchQ) {
         const an = isNameMatch(a), bn = isNameMatch(b);
         if (an !== bn) return an ? -1 : 1;
