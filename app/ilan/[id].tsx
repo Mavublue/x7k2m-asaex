@@ -430,7 +430,15 @@ export default function IlanDetayScreen() {
     );
   }
 
-  async function fotografIndir(key: string, index: number) {
+  function fotografIndirSor(key: string, index: number) {
+    Alert.alert(`Fotoğraf ${index + 1}`, 'Nasıl indirilsin?', [
+      { text: 'Filigransız', onPress: () => fotografIndir(key, index, false) },
+      { text: 'Filigranlı', onPress: () => fotografIndir(key, index, true) },
+      { text: 'İptal', style: 'cancel' },
+    ]);
+  }
+
+  async function fotografIndir(key: string, index: number, wm = false) {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('İzin Gerekli', 'Fotoğraf kaydetmek için galeri iznine ihtiyaç var.');
@@ -438,11 +446,12 @@ export default function IlanDetayScreen() {
     }
     try {
       const dotIdx = key.lastIndexOf('.');
-      const lgKey = key.slice(0, dotIdx) + '_lg.jpg';
+      const lgKey = key.slice(0, dotIdx) + (wm ? '_lg_wm.jpg' : '_lg.jpg');
       const url = `${R2_BASE}/${lgKey}`;
       setDownloadProgress({ current: 1, total: 1 });
-      const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${index + 1}.jpg`;
+      const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${index + 1}${wm ? '_wm' : ''}.jpg`;
       const result = await FileSystem.downloadAsync(url, localUri);
+      if (wm && (result.status === 404 || result.status === 403)) throw new Error('Bu fotoğrafın filigranlı sürümü yok.');
       if (result.status !== 200) throw new Error(`HTTP ${result.status}`);
       await MediaLibrary.saveToLibraryAsync(result.uri);
       setDownloadProgress(null);
@@ -453,7 +462,7 @@ export default function IlanDetayScreen() {
     }
   }
 
-  async function tumFotograflariIndir() {
+  async function tumFotograflariIndir(wm = false) {
     // Emlakçı hepsini indirir: görünür + sağ kutu (fotograflar'da olmayan gizli)
     const gorunurler = ilan?.fotograflar ?? [];
     const fotograflar = [...gorunurler, ...((ilan?.gizli_fotograflar ?? []).filter((f: string) => !gorunurler.includes(f)))];
@@ -465,6 +474,7 @@ export default function IlanDetayScreen() {
       return;
     }
     let basarili = 0;
+    let eksik = 0;
     let ilkHata = '';
     startDownload();
     setDownloadProgress({ current: 0, total: fotograflar.length });
@@ -472,10 +482,11 @@ export default function IlanDetayScreen() {
       if (isDownloadCancelled()) break;
       try {
         const dotIdx = fotograflar[i].lastIndexOf('.');
-        const lgKey = fotograflar[i].slice(0, dotIdx) + '_lg.jpg';
+        const lgKey = fotograflar[i].slice(0, dotIdx) + (wm ? '_lg_wm.jpg' : '_lg.jpg');
         const url = `${R2_BASE}/${lgKey}`;
-        const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${i + 1}.jpg`;
+        const localUri = (FileSystem.documentDirectory ?? FileSystem.cacheDirectory) + `ilan_${id}_${i + 1}${wm ? '_wm' : ''}.jpg`;
         const result = await FileSystem.downloadAsync(url, localUri);
+        if (wm && (result.status === 404 || result.status === 403)) { eksik++; setDownloadProgress({ current: i + 1, total: fotograflar.length }); continue; }
         if (result.status !== 200) throw new Error(`HTTP ${result.status}`);
         await MediaLibrary.saveToLibraryAsync(result.uri);
         basarili++;
@@ -485,7 +496,7 @@ export default function IlanDetayScreen() {
       setDownloadProgress({ current: i + 1, total: fotograflar.length });
     }
     setDownloadProgress(null);
-    Alert.alert('Tamamlandı', `${basarili}/${fotograflar.length} fotoğraf kaydedildi.${ilkHata ? `\n\nHata: ${ilkHata}` : ''}`);
+    Alert.alert('Tamamlandı', `${basarili}/${fotograflar.length} fotoğraf kaydedildi.${eksik ? `\n\n${eksik} fotoğrafın filigranlı sürümü yok.` : ''}${ilkHata ? `\n\nHata: ${ilkHata}` : ''}`);
   }
 
   function eslesenMi(m: any): boolean {
@@ -748,7 +759,7 @@ export default function IlanDetayScreen() {
                       <TouchableOpacity key={i} onPress={() => {
                           setAktifFoto(i);
                           flatListRef.current?.scrollToIndex({ index: i, animated: true });
-                        }} onLongPress={() => fotografIndir(f, i)}>
+                        }} onLongPress={() => fotografIndirSor(f, i)}>
                         <View>
                           <R2Image source={f} style={[styles.thumb, aktifFoto === i && styles.thumbAktif]} resizeMode="cover" size="sm" />
                           {gizli && (
@@ -1048,8 +1059,12 @@ export default function IlanDetayScreen() {
             <View style={styles.menuSep} />
             {fotograflar.length > 0 && (
               <>
-                <TouchableOpacity style={styles.menuItem} onPress={tumFotograflariIndir}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => tumFotograflariIndir(false)}>
                   <Text style={styles.menuItemText}>⬇️  Fotoğrafları İndir ({fotograflar.length})</Text>
+                </TouchableOpacity>
+                <View style={styles.menuSep} />
+                <TouchableOpacity style={styles.menuItem} onPress={() => tumFotograflariIndir(true)}>
+                  <Text style={styles.menuItemText}>💧  Filigranlı İndir ({fotograflar.length})</Text>
                 </TouchableOpacity>
                 <View style={styles.menuSep} />
               </>
