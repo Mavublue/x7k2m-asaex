@@ -662,8 +662,10 @@ export default function IlanDetayScreen() {
     : fotograflar;
   // Filigran onaylı (_c<ts> key) görünür fotoların EN AZ BİRİ onaylı AMA ilan müşteriye gizli → uyarı
   // (every DEĞİL: her ilanda watermark'sız 1-2 foto oluyor, .every ile koşul hiç sağlanmıyordu.)
-  const filigranVarOnayli = gorunurFotograflar.some((k: string) => /_c\d{10,}/.test(k));
-  const filigranUyari = filigranVarOnayli && !!(ilan as any).musteri_gizle;
+  // Bir kere: en yeni temiz foto, ilanın son müşteriye açılışından (musteri_acildi_at) sonraysa.
+  const sonTemizTs = Math.max(0, ...gorunurFotograflar.map((k: string) => Number(k.match(/_c(\d{10,})/)?.[1] ?? 0)));
+  const acildiAt = (ilan as any).musteri_acildi_at;
+  const filigranUyari = !!(ilan as any).musteri_gizle && sonTemizTs > (acildiAt ? Date.parse(acildiAt) : 0);
 
   const detaylar = [
     { label: 'Portföy No', deger: ilan.portfoy_no },

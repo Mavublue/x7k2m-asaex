@@ -84,11 +84,14 @@ export default function FiligranDurumKarti() {
   const gizliYenile = useCallback(async () => {
     const { data, error } = await supabase
       .from('ilanlar')
-      .select('id, baslik, fotograflar')
+      .select('id, baslik, fotograflar, musteri_acildi_at')
       .eq('musteri_gizle', true);
     if (error) return;
-    const liste = ((data ?? []) as { id: string; baslik: string | null; fotograflar: string[] | null }[])
-      .filter((i) => (i.fotograflar ?? []).some((k) => /_c\d{10,}/.test(k)))
+    // Bir kere: en yeni temiz foto son müşteriye açılıştan sonraysa (aç-kapa yapınca tekrar çıkmaz)
+    const liste = ((data ?? []) as { id: string; baslik: string | null; fotograflar: string[] | null; musteri_acildi_at: string | null }[])
+      .filter((i) =>
+        Math.max(0, ...(i.fotograflar ?? []).map((k) => Number(k.match(/_c(\d{10,})/)?.[1] ?? 0)))
+          > (i.musteri_acildi_at ? Date.parse(i.musteri_acildi_at) : 0))
       .map((i) => ({ id: i.id, baslik: i.baslik ?? 'İlan' }));
     son.current.gizliTemiz = liste; setGizliTemiz(liste); cacheYaz();
   }, [cacheYaz]);
