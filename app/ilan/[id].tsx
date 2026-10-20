@@ -343,9 +343,25 @@ export default function IlanDetayScreen() {
     if (!ilan) return;
     setMenuModal(false);
     setCogaltiyor(true);
+    try {
+      await cogaltIslem();
+    } catch (e: any) {
+      console.error('Çoğaltma hatası:', e);
+      Alert.alert('Hata', 'Çoğaltma başarısız: ' + (e?.message ?? e));
+    } finally {
+      setCogaltiyor(false);
+    }
+  }
+
+  async function cogaltIslem() {
+    if (!ilan) return;
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setCogaltiyor(false); return; }
-    const newId = crypto.randomUUID();
+    if (!session) return;
+    // Hermes'te crypto.randomUUID yok; getRandomValues polyfill'i (_layout) ile v4 UUID
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    const newId = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
     const { baslik, tip, kategori, fiyat, konum, ilce, mahalle, metrekare, brut_metrekare,
       oda_sayisi, banyo_sayisi, bina_yasi, kat_sayisi, bulundugu_kat, aciklama,
       musteri_aciklamasi, musteri_gizle, fotograflar, gizli_fotograflar,
@@ -371,7 +387,6 @@ export default function IlanDetayScreen() {
       } catch (e) {
         console.error('R2 kopyalama hatası:', e);
         Alert.alert('Hata', 'Fotoğraflar kopyalanamadı, çoğaltma iptal edildi. Tekrar deneyin.');
-        setCogaltiyor(false);
         return;
       }
     }
@@ -382,12 +397,11 @@ export default function IlanDetayScreen() {
       musteri_aciklamasi, musteri_gizle, fotograflar: yeniFotograflar, gizli_fotograflar: yeniGizliFotograflar,
       lat, lng, musteri_lat, musteri_lng, durum,
     });
-    if (error) { Alert.alert('Hata', error.message); setCogaltiyor(false); return; }
+    if (error) { Alert.alert('Hata', error.message); return; }
     const { data: ozellikler } = await supabase.from('ilan_ozellikler').select('ozellik_id').eq('ilan_id', id);
     if (ozellikler?.length) {
       await supabase.from('ilan_ozellikler').insert(ozellikler.map(o => ({ ilan_id: newId, ozellik_id: o.ozellik_id })));
     }
-    setCogaltiyor(false);
     router.push(`/ilan/duzenle/${newId}` as any);
   }
 
