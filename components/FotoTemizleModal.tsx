@@ -255,12 +255,12 @@ function FiligranPane({ ilan, visible, onChanged, onCount, onDuzeltAc }: {
         {/* İNCELE */}
         {hazir.length > 0 && !onaylaniyor && (
           <View style={{ gap: Spacing.md }}>
-            <View style={sf.rowBetween}>
+            <View style={{ gap: Spacing.sm }}>
               <Text style={sf.sectionTitle}>İncele — {hazir.length} kaldı</Text>
               {hazir.length > 1 && (
                 <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                  <TouchableOpacity style={sf.reddetHepsi} onPress={hepsiniReddet}><Text style={sf.reddetHepsiText}>✕ Hiçbirini Onaylama</Text></TouchableOpacity>
-                  <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>
+                  <TouchableOpacity style={[sf.reddetHepsi, sf.hepsiBtn]} onPress={hepsiniReddet}><Text style={sf.reddetHepsiText}>✕ Hiçbirini Onaylama</Text></TouchableOpacity>
+                  <TouchableOpacity style={[sf.onayHepsi, sf.hepsiBtn]} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>
                 </View>
               )}
             </View>
@@ -793,12 +793,12 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
           {/* HAZIR onay */}
           {hazir.length > 0 && !onaylaniyor && (() => { const r = hazir[cur]; return (
             <View style={sm.card}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ gap: Spacing.sm }}>
                 <Text style={sm.secTitle}>İncele — {hazir.length} kaldı</Text>
                 {hazir.length > 1 && (
                   <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                    <TouchableOpacity style={sf.reddetHepsi} onPress={hepsiniReddet}><Text style={sf.reddetHepsiText}>✕ Hiçbirini Onaylama</Text></TouchableOpacity>
-                    <TouchableOpacity style={sf.onayHepsi} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>
+                    <TouchableOpacity style={[sf.reddetHepsi, sf.hepsiBtn]} onPress={hepsiniReddet}><Text style={sf.reddetHepsiText}>✕ Hiçbirini Onaylama</Text></TouchableOpacity>
+                    <TouchableOpacity style={[sf.onayHepsi, sf.hepsiBtn]} onPress={hepsiniOnayla}><Text style={sf.onayHepsiText}>✓ Hepsini Onayla</Text></TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -1102,6 +1102,7 @@ const sf = StyleSheet.create({
   fsBtnDuzelt: { marginHorizontal: 16, marginBottom: 28, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   onayHepsi: { backgroundColor: '#3aaa6e', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
   onayHepsiText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  hepsiBtn: { flex: 1, alignItems: 'center', paddingVertical: 10 },
   reddetHepsi: { backgroundColor: 'rgba(229,57,53,0.14)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: '#fca5a5' },
   reddetHepsiText: { color: '#E53935', fontWeight: '700', fontSize: 12 },
   hataText: { fontSize: 12, color: Colors.error },
