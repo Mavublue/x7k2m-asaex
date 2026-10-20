@@ -441,6 +441,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
   const [iptalTekId, setIptalTekId] = useState<string | null>(null);
   const [incele, setIncele] = useState(false);
   const [idx, setIdx] = useState(0);
+  const [yatay, setYatay] = useState(true);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const kararlanan = useRef<Set<string>>(new Set());
   // Onay/ret kuyruğu: kullanıcı hızlı basar, arkada teker teker (sırayla) gönderilir.
@@ -488,6 +489,12 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
   const islenenMap = new Map(aktif.map((r) => [r.foto_key, r.id] as const));
   const hazirKeys = new Set(hazir.map((r) => r.foto_key));
   const cur = Math.min(idx, Math.max(0, hazir.length - 1));
+  useEffect(() => {
+    const r = hazir[cur];
+    if (!r) return;
+    const u = r.temiz_key ? mskSonrasiUrl(r.temiz_key) : mskOncesiUrl(r.foto_key);
+    Image.getSize(u, (w, h) => setYatay(w >= h), () => setYatay(true));
+  }, [hazir, cur]);
 
   function iptalTek(id: string) {
     if (iptalTekId) return;
@@ -853,9 +860,21 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
             <Text style={sm.fsTitle}>İncele — {cur + 1}/{hazir.length}</Text>
             <TouchableOpacity onPress={() => setIncele(false)}><Text style={sm.close}>×</Text></TouchableOpacity>
           </View>
-          <View style={sm.fsBody}>
-            <View style={{ flex: 1 }}><Text style={sm.fsCap}>ÖNCESİ</Text><Image source={{ uri: mskOncesiUrl(r.foto_key) }} style={sm.fsImg} resizeMode="contain" /></View>
-            <View style={{ flex: 1 }}><Text style={[sm.fsCap, { color: '#6ee7a8' }]}>SONRASI</Text>{r.temiz_key ? <Image source={{ uri: mskSonrasiUrl(r.temiz_key) }} style={sm.fsImg} resizeMode="contain" /> : null}</View>
+          <View style={[sm.fsBody, { flexDirection: yatay ? 'column' : 'row' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={sm.fsCap}>ÖNCESİ</Text>
+              <ScrollView style={sf.fsZoom} contentContainerStyle={sf.fsZoomC} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
+                <Image source={{ uri: mskOncesiUrl(r.foto_key) }} style={sm.fsImg} resizeMode="contain" />
+              </ScrollView>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[sm.fsCap, { color: '#6ee7a8' }]}>SONRASI</Text>
+              {r.temiz_key ? (
+                <ScrollView style={sf.fsZoom} contentContainerStyle={sf.fsZoomC} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
+                  <Image source={{ uri: mskSonrasiUrl(r.temiz_key) }} style={sm.fsImg} resizeMode="contain" />
+                </ScrollView>
+              ) : null}
+            </View>
           </View>
           {hazir.length > 1 && (
             <View style={sm.navRow}>
