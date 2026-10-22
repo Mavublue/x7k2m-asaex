@@ -1118,9 +1118,20 @@ export default function DashboardScreen() {
                     </View>
                     <View style={{ gap: 6, alignItems: 'flex-end' }}>
                       {musteriDetay.telefon ? (
-                        <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 15 }}>📞</Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          {(() => {
+                            const wa = String(musteriDetay.telefon).replace(/\D/g, '').replace(/^0/, '');
+                            if (!wa) return null;
+                            return (
+                              <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`whatsapp://send?phone=${wa}`).catch(() => Linking.openURL(`https://wa.me/${wa}`)); }} style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ fontSize: 15 }}>💬</Text>
+                              </TouchableOpacity>
+                            );
+                          })()}
+                          <TouchableOpacity onPress={() => { const { Linking } = require('react-native'); Linking.openURL(`tel:${musteriDetay.telefon}`); }} style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 15 }}>📞</Text>
+                          </TouchableOpacity>
+                        </View>
                       ) : null}
                       <TouchableOpacity onPress={() => {
                         setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false);
