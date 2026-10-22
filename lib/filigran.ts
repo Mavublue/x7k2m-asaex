@@ -91,3 +91,14 @@ export async function filigranReddetHepsi(ilanId: string): Promise<number> {
   const j = await res.json().catch(() => ({}));
   return j.adet ?? 0;
 }
+
+// "Bunu hemen yap": ilanın bekleyen filigran+maske işlerini kuyrukta öne al (ilk basılan en önde);
+// o an çalışan öncelik dışı iş kesilip sırasına geri döner.
+export async function hemenYap(ilanId: string): Promise<void> {
+  const res = await fetch(`${MEDIA_SERVICE}/oncelik`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token()}` },
+    body: JSON.stringify({ ilanId }),
+  });
+  if (!res.ok) throw new Error('Öne alınamadı');
+}

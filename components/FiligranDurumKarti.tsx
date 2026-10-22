@@ -1,24 +1,28 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { cacheGet, cacheSet } from '../lib/cache';
+import { hemenYap } from '../lib/filigran';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
-type Row = { ilan_id: string; durum: string; ilanlar: { baslik: string } | null };
-type Grup = { ilan_id: string; baslik: string; islem: number; kuyruk: number; hazir: number };
+type Row = { ilan_id: string; durum: string; oncelik: string | null; ilanlar: { baslik: string } | null };
+// oncelik: "Bunu hemen yap" basılma zamanı (bekleyen/işlenen satırlarda), yoksa null
+type Grup = { ilan_id: string; baslik: string; islem: number; kuyruk: number; hazir: number; oncelik?: string | null };
 type GizliIlan = { id: string; baslik: string };
 
 function grupla(rows: Row[]): Grup[] {
   const m = new Map<string, Grup>();
   for (const r of rows) {
-    const g = m.get(r.ilan_id) ?? { ilan_id: r.ilan_id, baslik: r.ilanlar?.baslik ?? 'İlan', islem: 0, kuyruk: 0, hazir: 0 };
+    const g = m.get(r.ilan_id) ?? { ilan_id: r.ilan_id, baslik: r.ilanlar?.baslik ?? 'İlan', islem: 0, kuyruk: 0, hazir: 0, oncelik: null };
     if (r.durum === 'isleniyor') g.islem++;
     else if (r.durum === 'bekliyor') g.kuyruk++;
     else if (r.durum === 'hazir') g.hazir++;
+    if (r.oncelik && (r.durum === 'bekliyor' || r.durum === 'isleniyor') && (!g.oncelik || r.oncelik < g.oncelik)) g.oncelik = r.oncelik;
     m.set(r.ilan_id, g);
   }
-  return [...m.values()];
+  // Öne alınanlar en üstte (ilk basılan önce) — kuyruk sırasıyla aynı
+  return [...m.values()].sort((a, b) => (a.oncelik ? 0 : 1) - (b.oncelik ? 0 : 1) || (a.oncelik ?? '').localeCompare(b.oncelik ?? ''));
 }
 
 function GrupKart({ g, fiil, islemLabel, dkPerFoto, onPress }: { g: Grup; fiil: string; islemLabel: string; dkPerFoto: number; onPress: () => void }) {
@@ -33,16 +37,43 @@ function GrupKart({ g, fiil, islemLabel, dkPerFoto, onPress }: { g: Grup; fiil: 
   if (g.kuyruk > 0) parcalar.push(`${g.kuyruk} sırada`);
   if (g.hazir > 0) parcalar.push(`✓ ${g.hazir} inceleme hazır`);
   const durumSatiri = parcalar.join(' · ') + (!bittiMi && kalanDk > 0 ? ` · ~${kalanDk} dk kaldı` : '');
+  const [menuAcik, setMenuAcik] = useState(false);
+  const [gonderiliyor, setGonderiliyor] = useState(false);
+  const oncelikli = !!g.oncelik && !bittiMi;
+  const hemenYapabilir = g.kuyruk > 0 && !g.oncelik; // sırada bekleyen var ve henüz öne alınmamış
+  const hemen = async () => {
+    setMenuAcik(false);
+    setGonderiliyor(true);
+    try { await hemenYap(g.ilan_id); } catch (e) { Alert.alert('Hata', (e as Error).message); } finally { setGonderiliyor(false); }
+  };
   return (
-    <TouchableOpacity onPress={onPress} style={[s.row, g.hazir > 0 && s.rowGreen]}>
+    <TouchableOpacity onPress={onPress} style={[s.row, g.hazir > 0 && s.rowGreen, oncelikli && s.rowOncelik]}>
       <View style={s.rowHead}>
         <Text numberOfLines={1} style={s.rowTitle}>{g.baslik}</Text>
         <Text style={[s.frac, { color: bittiMi ? '#22c55e' : Colors.secondary }]}>{biten}/{toplam} {fiil}</Text>
+        {(hemenYapabilir || gonderiliyor) && (
+          <TouchableOpacity onPress={() => setMenuAcik(true)} disabled={gonderiliyor} hitSlop={10} style={s.menuBtn}>
+            <Text style={s.menuBtnText}>{gonderiliyor ? '…' : '⋮'}</Text>
+          </TouchableOpacity>
+        )}
       </View>
+      <Modal visible={menuAcik} transparent animationType="fade" onRequestClose={() => setMenuAcik(false)}>
+        <Pressable style={s.menuOverlay} onPress={() => setMenuAcik(false)}>
+          <View style={s.menuBox}>
+            <Text numberOfLines={1} style={s.menuBaslik}>{g.baslik}</Text>
+            <TouchableOpacity onPress={hemen} style={s.menuItem}>
+              <Text style={s.menuItemText}>⚡ Bunu hemen yap</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
       <View style={s.barBg}>
         <View style={[s.barFill, { width: `${yuzde}%`, backgroundColor: bittiMi ? '#22c55e' : Colors.secondary }]} />
       </View>
-      <Text numberOfLines={1} style={s.durum}>{durumSatiri}</Text>
+      <Text numberOfLines={1} style={s.durum}>
+        {oncelikli && <Text style={s.oncelikText}>⚡ Öncelikli · </Text>}
+        {durumSatiri}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -63,7 +94,7 @@ export default function FiligranDurumKarti() {
   const yenile = useCallback(async () => {
     const { data, error } = await supabase
       .from('ilan_filigran')
-      .select('ilan_id, durum, ilanlar(baslik)')
+      .select('ilan_id, durum, oncelik, ilanlar(baslik)')
       .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
     if (error) return; // geçici hata: eski listeyi koru, boşaltma
     const g = grupla((data ?? []) as unknown as Row[]);
@@ -73,7 +104,7 @@ export default function FiligranDurumKarti() {
   const maskeYenile = useCallback(async () => {
     const { data, error } = await supabase
       .from('ilan_maske_sil')
-      .select('ilan_id, durum, ilanlar(baslik)')
+      .select('ilan_id, durum, oncelik, ilanlar(baslik)')
       .in('durum', ['bekliyor', 'isleniyor', 'hazir']);
     if (error) return;
     const g = grupla((data ?? []) as unknown as Row[]);
@@ -184,10 +215,19 @@ const s = StyleSheet.create({
   subtitle: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
   row: { borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surfaceContainerHigh, borderRadius: Radius.sm, padding: 10 },
   rowGreen: { borderColor: '#2e7d54', backgroundColor: 'rgba(58,170,110,0.12)' },
+  rowOncelik: { borderColor: '#ea580c' },
+  oncelikText: { color: '#fb923c', fontWeight: '800' },
   rowHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
   rowTitle: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.onSurface },
   frac: { fontSize: 12, fontWeight: '800' },
   barBg: { height: 7, backgroundColor: Colors.outline, borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
   barFill: { height: '100%', borderRadius: 4 },
   durum: { fontSize: 11.5, fontWeight: '600', color: Colors.onSurfaceVariant },
+  menuBtn: { paddingHorizontal: 4, alignSelf: 'center' },
+  menuBtnText: { fontSize: 18, fontWeight: '700', color: Colors.onSurfaceVariant, lineHeight: 20 },
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: Spacing.xl },
+  menuBox: { backgroundColor: Colors.surfaceContainer, borderRadius: Radius.md, paddingVertical: 8 },
+  menuBaslik: { fontSize: 13, fontWeight: '700', color: Colors.onSurfaceVariant, paddingHorizontal: 16, paddingVertical: 8 },
+  menuItem: { paddingHorizontal: 16, paddingVertical: 14 },
+  menuItemText: { fontSize: 15, fontWeight: '600', color: Colors.onSurface },
 });
