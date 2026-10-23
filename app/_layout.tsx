@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { registerPushToken } from '../lib/pushNotifications';
 import { Session } from '@supabase/supabase-js';
 import { useDownloadProgress, cancelDownload } from '../lib/downloadProgress';
+import { cacheClear } from '../lib/cache';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -17,19 +18,19 @@ export default function RootLayout() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const { error } = await supabase.auth.getUser();
-        if (error) {
-          await supabase.auth.signOut();
-          setSession(null);
-        } else {
-          setSession(session);
-        }
-      } else {
-        setSession(null);
-      }
+    // Kayıtlı oturumla hemen aç; sunucu doğrulaması arka planda.
+    // Veri güvenliği zaten sunucuda (RLS + JWT). Sadece gerçek yetki hatasında çıkış yap, ağ hatasında değil.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setLoading(false);
+      if (!session) return;
+      supabase.auth.getUser().then(async ({ error }) => {
+        const status = (error as any)?.status;
+        if (error && (status === 401 || status === 403)) {
+          await cacheClear('panel_'); await cacheClear('ilan_'); await cacheClear('app_');
+          await supabase.auth.signOut();
+        }
+      }).catch(() => {});
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

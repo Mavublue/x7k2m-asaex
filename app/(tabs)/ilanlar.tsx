@@ -272,7 +272,8 @@ export default function IlanlarScreen() {
     supabase.from('ozellikler').select('*').order('ad').then(({ data }) => {
       if (data) setTumOzellikler(data);
     });
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user;
       if (user) {
         supabase.from('profiller').select('slug').eq('id', user.id).single().then(({ data }) => {
           if (data?.slug) setProfilSlug(data.slug);

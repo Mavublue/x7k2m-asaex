@@ -66,7 +66,7 @@ export default function DashboardScreen() {
   const [genelMusteriId, setGenelMusteriId] = useState<string | null>(null);
   const [genelMusteriArama, setGenelMusteriArama] = useState('');
   const [musteriListesi, setMusteriListesi] = useState<{id:string;ad:string;soyad:string|null;etiketler:string|null}[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [gorevYuklendi, setGorevYuklendi] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [bildirimModal, setBildirimModal] = useState(false);
   const [bildirimler, setBildirimler] = useState<{id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any;musteriId?:string;tags?:{label:string;kind:'tip'|'konum'|'butce'|'oda'}[]}[]>([]);
@@ -114,10 +114,9 @@ export default function DashboardScreen() {
         setIlanSayisi(c.ilanSayisi ?? 0);
         setMusteriSayisi(c.musteriSayisi ?? 0);
         setTakipMusteriler(c.takipMusteriler ?? []);
-        setLoading(false);
       }
       const g = await cacheGet<any>(GOREV_CACHE);
-      if (g) { setGorevDashboard(g.gorevDashboard ?? []); setGecmisCount(g.gecmisCount ?? 0); }
+      if (g) { setGorevDashboard(g.gorevDashboard ?? []); setGecmisCount(g.gecmisCount ?? 0); setGorevYuklendi(true); }
     })();
     fetchBildirimler(true);
     fetchData();
@@ -464,7 +463,8 @@ export default function DashboardScreen() {
 
   async function fetchData() {
     let adStr = '';
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (user) {
       const { data: profil } = await supabase.from('profiller').select('ad, soyad').eq('id', user.id).single();
       adStr = profil?.ad ? [profil.ad, profil.soyad].filter(Boolean).join(' ') : (user.email?.split('@')[0] ?? '');
@@ -502,8 +502,6 @@ export default function DashboardScreen() {
     const { data: mListe } = await supabase.from('musteriler').select('id, ad, soyad, etiketler').order('ad');
     if (mListe) setMusteriListesi(mListe);
 
-    setLoading(false);
-
     cacheSet(DASH_CACHE, {
       userName: adStr,
       ilanSayisi: ilanRes.count ?? 0,
@@ -539,6 +537,7 @@ export default function DashboardScreen() {
 
     const { data } = await q;
     setGorevDashboard(data ?? []);
+    setGorevYuklendi(true);
 
     const { count } = await supabase.from('musteri_gorevler')
       .select('id', { count: 'exact', head: true })
@@ -574,7 +573,8 @@ export default function DashboardScreen() {
 
   async function genelGorevEkle() {
     if (!genelBaslik.trim()) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return;
     const dt = new Date(genelTarihDate);
     if (genelSaatDate) { dt.setHours(genelSaatDate.getHours(), genelSaatDate.getMinutes(), 0, 0); }
@@ -589,15 +589,6 @@ export default function DashboardScreen() {
     { label: 'Müşteri', icon: '👤', route: '/(tabs)/musteriler', color: Colors.secondaryContainer },
   ];
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -671,7 +662,9 @@ export default function DashboardScreen() {
               ))}
             </View>
           </View>
-          {gorevDashboard.length === 0 ? (
+          {!gorevYuklendi ? (
+            <View style={{ padding: 16, alignItems: 'center' }}><ActivityIndicator color={Colors.primary} /></View>
+          ) : gorevDashboard.length === 0 ? (
             <View style={{ padding: 16, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : 'rgba(34,197,94,0.12)', borderRadius: 10, alignItems: 'center' }}>
               <Text style={{ fontSize: 13, color: gorevFiltre === 'gecmis' ? '#ef4444' : '#16a34a', fontWeight: '500' }}>
                 {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : 'Aktif görev yok 🎉'}

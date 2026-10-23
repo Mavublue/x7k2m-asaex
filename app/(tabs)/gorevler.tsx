@@ -7,6 +7,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
 type GorevFiltre = 'gecmis' | 'bugun' | 'yarin' | '7gun' | 'tumu' | 'yapilan';
@@ -46,10 +47,14 @@ export default function GorevlerScreen() {
   }, [gorevFiltre]));
 
   async function init() {
-    const { data: mListe } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').order('ad');
-    if (mListe) setMusteriListesi(mListe);
-    await fetchGorevler('bugun');
-    setLoading(false);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const c = await cacheGet<any>(`app_gorevler_${session.user.id}`);
+      if (c) { setGorevler(c.gorevler ?? []); setGecmisGorevler(c.gecmisGorevler ?? []); setGecmisCount(c.gecmisCount ?? 0); setLoading(false); }
+    }
+    // Müşteri listesi sadece ekleme modalı için; görevleri bekletmesin.
+    supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').order('ad')
+      .then(({ data: mListe }) => { if (mListe) setMusteriListesi(mListe); });
   }
 
   async function fetchGorevler(filtre: GorevFiltre) {
@@ -88,6 +93,12 @@ export default function GorevlerScreen() {
       .order('hedef_tarih', { ascending: false });
     setGecmisCount(count ?? 0);
     setGecmisGorevler(filtre === 'bugun' ? (gecmisData ?? []) : []);
+    setLoading(false);
+
+    if (filtre === 'bugun') {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) cacheSet(`app_gorevler_${session.user.id}`, { gorevler: data ?? [], gecmisGorevler: gecmisData ?? [], gecmisCount: count ?? 0 });
+    }
   }
 
   async function gorevTamamla(id: string) {
@@ -123,7 +134,8 @@ export default function GorevlerScreen() {
 
   async function gorevEkle() {
     if (!ekleBaslik.trim()) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return;
     const dt = new Date(ekleTarihDate);
     if (ekleSaatDate) { dt.setHours(ekleSaatDate.getHours(), ekleSaatDate.getMinutes(), 0, 0); }
@@ -186,13 +198,6 @@ export default function GorevlerScreen() {
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -257,7 +262,9 @@ export default function GorevlerScreen() {
         contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingBottom: 32, gap: 8 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
         ListEmptyComponent={
-          gorevFiltre === 'bugun' && gecmisGorevler.length > 0 ? null : (
+          loading ? (
+            <View style={{ padding: 20, alignItems: 'center' }}><ActivityIndicator size="large" color={Colors.primary} /></View>
+          ) : gorevFiltre === 'bugun' && gecmisGorevler.length > 0 ? null : (
             <View style={{ padding: 20, backgroundColor: gorevFiltre === 'gecmis' ? 'rgba(239,68,68,0.10)' : gorevFiltre === 'yapilan' ? Colors.surfaceContainerHigh : 'rgba(34,197,94,0.12)', borderRadius: 12, alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: gorevFiltre === 'gecmis' ? '#ef4444' : gorevFiltre === 'yapilan' ? Colors.onSurfaceVariant : '#16a34a', fontWeight: '500' }}>
                 {gorevFiltre === 'gecmis' ? 'Gecikmiş görev yok 🎉' : gorevFiltre === 'bugun' ? 'Bugün için görev yok 🎉' : gorevFiltre === 'yarin' ? 'Yarın için görev yok 🎉' : gorevFiltre === '7gun' ? '7 günlük görev yok 🎉' : gorevFiltre === 'yapilan' ? 'Henüz tamamlanmış görev yok' : 'Aktif görev yok 🎉'}

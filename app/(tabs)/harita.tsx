@@ -10,6 +10,7 @@ const POPUP_W = 290;
 import { router, useFocusEffect } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
+import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Ilan } from '../../types';
 
@@ -122,22 +123,37 @@ export default function HaritaScreen() {
   const [html, setHtml] = useState('');
   const webRef = useRef<WebView>(null);
 
+  const lastDataRef = useRef('');
+
+  const uygulaVeri = useCallback((hepsini: Ilan[]) => {
+    const json = JSON.stringify(hepsini);
+    if (json === lastDataRef.current) return; // değişmediyse harita yeniden yüklenmez
+    lastDataRef.current = json;
+    const koordinatlilar = hepsini.filter(i => i.lat && i.lng);
+    setTumIlanlar(hepsini);
+    setIlanlar(koordinatlilar);
+    setHtml(buildHtml(koordinatlilar));
+  }, []);
+
   const fetchIlanlar = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const cacheKey = `app_harita_${session.user.id}`;
+    if (!lastDataRef.current) {
+      const cached = await cacheGet<Ilan[]>(cacheKey);
+      if (cached) { uygulaVeri(cached); setLoading(false); }
+    }
     // Harita için sadece pin+popup alanları; ağır kolonlar (aciklama vs.) çekilmez.
     const { data } = await supabase.from('ilanlar')
       .select('id, lat, lng, fiyat, baslik, tip, kategori, ilce, mahalle, konum, musteri_gizle, fotograflar')
       .order('olusturma_tarihi', { ascending: false });
     if (data) {
-      const hepsini = data as Ilan[];
-      const koordinatlilar = hepsini.filter(i => i.lat && i.lng);
-      setTumIlanlar(hepsini);
-      setIlanlar(koordinatlilar);
-      setHtml(buildHtml(koordinatlilar));
+      uygulaVeri(data as Ilan[]);
+      cacheSet(cacheKey, data);
     }
     setLoading(false);
-  }, []);
+  }, [uygulaVeri]);
 
-  useEffect(() => { fetchIlanlar(); }, []);
   useFocusEffect(useCallback(() => { fetchIlanlar(); }, [fetchIlanlar]));
 
   function handleMessage(event: any) {
