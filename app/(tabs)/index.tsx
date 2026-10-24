@@ -129,15 +129,26 @@ export default function DashboardScreen() {
       .subscribe();
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let iptal = false;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Arka planda token yenilenmez; süresi dolunca Realtime private kanalı kapatır ve kendiliğinden açılmaz.
+    // Ön plana gelince (getSession token'ı tazeler) kanal katılı değilse yeni token ile baştan açılır.
+    async function kanalAc() {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session || iptal) return;
+      if (channel?.state === 'joined' || channel?.state === 'joining') return;
+      if (channel) { const eski = channel; channel = null; await supabase.removeChannel(eski); }
+      if (iptal) return;
+      await supabase.realtime.setAuth();
+      if (iptal) return;
       channel = supabase.channel(`bildirim:${session.user.id}`, { config: { private: true } })
         .on('broadcast', { event: 'degisim' }, ({ payload }) => bildirimDegisim(payload))
         .subscribe();
-    });
+    }
+    kanalAc();
 
     const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') fetchBildirimler();
+      if (state !== 'active') return;
+      fetchBildirimler();
+      kanalAc();
     });
 
     return () => {
