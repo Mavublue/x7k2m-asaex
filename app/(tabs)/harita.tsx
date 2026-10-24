@@ -10,7 +10,7 @@ const POPUP_W = 290;
 import { router, useFocusEffect } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
-import { cacheGet, cacheSet } from '../../lib/cache';
+import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Ilan } from '../../types';
 
@@ -136,13 +136,14 @@ export default function HaritaScreen() {
   }, []);
 
   const fetchIlanlar = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const cacheKey = `app_harita_${session.user.id}`;
     if (!lastDataRef.current) {
-      const cached = await cacheGet<Ilan[]>(cacheKey);
+      const cached = await cacheGetFast<Ilan[]>('app_harita_');
       if (cached) { uygulaVeri(cached); setLoading(false); }
     }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    cacheRememberUid(session.user.id);
+    const cacheKey = `app_harita_${session.user.id}`;
     // Harita için sadece pin+popup alanları; ağır kolonlar (aciklama vs.) çekilmez.
     const { data } = await supabase.from('ilanlar')
       .select('id, lat, lng, fiyat, baslik, tip, kategori, ilce, mahalle, konum, musteri_gizle, fotograflar')

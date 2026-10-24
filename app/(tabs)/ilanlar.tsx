@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
 import { deleteIlanPhotos } from '../../lib/r2';
-import { cacheGet, cacheSet } from '../../lib/cache';
+import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
@@ -294,11 +294,12 @@ export default function IlanlarScreen() {
   }
 
   async function fetchIlanlar() {
+    const cached = await cacheGetFast<Ilan[]>('panel_ilanlar_');
+    if (cached) { setIlanlar(cached); setLoading(false); }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
+    cacheRememberUid(session.user.id);
     const cacheKey = `panel_ilanlar_${session.user.id}`;
-    const cached = await cacheGet<Ilan[]>(cacheKey);
-    if (cached) { setIlanlar(cached); setLoading(false); }
     // Liste için sadece kart+filtre+harita alanları; aciklama/sosyal_medya_metni/gizli_fotograflar
     // gibi ağır kolonlar çekilmez (detay açılınca ayrıca çekiliyor). ~515 ilanda büyük fark.
     const { data } = await supabase.from('ilanlar')

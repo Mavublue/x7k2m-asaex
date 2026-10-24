@@ -25,3 +25,18 @@ export async function cacheClear(prefix: string) {
     if (target.length) await AsyncStorage.multiRemove(target);
   } catch {}
 }
+
+// Son oturum açan kullanıcı; soğuk açılışta getSession() token yenilemeyi ağdan beklerken
+// cache'i oturumu beklemeden okuyabilmek için. app_ öneki: logout'ta cacheClear('app_') siler.
+const UID_KEY = 'app_last_uid';
+
+export async function cacheGetFast<T>(prefix: string): Promise<T | null> {
+  try {
+    const uid = await AsyncStorage.getItem(UID_KEY);
+    return uid ? await cacheGet<T>(`${prefix}${uid}`) : null;
+  } catch { return null; }
+}
+
+export function cacheRememberUid(uid: string) {
+  AsyncStorage.setItem(UID_KEY, uid).catch(() => {});
+}

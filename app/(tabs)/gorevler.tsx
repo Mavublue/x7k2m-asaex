@@ -7,7 +7,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { cacheGet, cacheSet } from '../../lib/cache';
+import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
 type GorevFiltre = 'gecmis' | 'bugun' | 'yarin' | '7gun' | 'tumu' | 'yapilan';
@@ -47,11 +47,8 @@ export default function GorevlerScreen() {
   }, [gorevFiltre]));
 
   async function init() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const c = await cacheGet<any>(`app_gorevler_${session.user.id}`);
-      if (c) { setGorevler(c.gorevler ?? []); setGecmisGorevler(c.gecmisGorevler ?? []); setGecmisCount(c.gecmisCount ?? 0); setLoading(false); }
-    }
+    const c = await cacheGetFast<any>('app_gorevler_');
+    if (c) { setGorevler(c.gorevler ?? []); setGecmisGorevler(c.gecmisGorevler ?? []); setGecmisCount(c.gecmisCount ?? 0); setLoading(false); }
     // Müşteri listesi sadece ekleme modalı için; görevleri bekletmesin.
     supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').order('ad')
       .then(({ data: mListe }) => { if (mListe) setMusteriListesi(mListe); });
@@ -97,7 +94,7 @@ export default function GorevlerScreen() {
 
     if (filtre === 'bugun') {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) cacheSet(`app_gorevler_${session.user.id}`, { gorevler: data ?? [], gecmisGorevler: gecmisData ?? [], gecmisCount: count ?? 0 });
+      if (session) { cacheRememberUid(session.user.id); cacheSet(`app_gorevler_${session.user.id}`, { gorevler: data ?? [], gecmisGorevler: gecmisData ?? [], gecmisCount: count ?? 0 }); }
     }
   }
 

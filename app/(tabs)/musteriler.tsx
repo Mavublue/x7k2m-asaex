@@ -7,7 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { cacheGet, cacheSet } from '../../lib/cache';
+import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri } from '../../types';
 
@@ -159,12 +159,13 @@ export default function MusterilerScreen() {
   }
 
   async function fetchMusteriler() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const cacheKey = `panel_musteriler_${session.user.id}`;
-    const cached = await cacheGet<MusteriListe[]>(cacheKey);
+    const cached = await cacheGetFast<MusteriListe[]>('panel_musteriler_');
     if (cached) { setMusteriler(cached); setFiltered(cached); setLoading(false); }
     else setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    cacheRememberUid(session.user.id);
+    const cacheKey = `panel_musteriler_${session.user.id}`;
     const { data } = await supabase
       .from('musteriler')
       .select('*, musteri_iletisim(ad, telefon, tip), musteri_notlar(icerik, tarih), musteri_istekler(tip, satilik_kiralik, butce_min, butce_max, tercih_konum)')
