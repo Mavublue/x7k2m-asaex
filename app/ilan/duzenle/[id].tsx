@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PersistentTabBar from '../../../components/PersistentTabBar';
+import SabitKaydetButon from '../../../components/SabitKaydetButon';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Modal, FlatList, SectionList,
@@ -113,6 +114,7 @@ export default function IlanDuzenleScreen() {
   const fotoYukleniyor = pending.length > 0;
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [headerAlt, setHeaderAlt] = useState(56);
   const [ilModal, setIlModal] = useState(false);
   const [ilceModal, setIlceModal] = useState(false);
   const [mahalleModal, setMahalleModal] = useState(false);
@@ -439,14 +441,12 @@ export default function IlanDuzenleScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={styles.header} onLayout={e => setHeaderAlt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.kapat}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>İlanı Düzenle</Text>
-        <TouchableOpacity style={styles.headerKaydet} onPress={handleKaydet} disabled={loading}>
-          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.headerKaydetText}>💾 Güncelle</Text>}
-        </TouchableOpacity>
+        <View style={{ width: 20 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -847,6 +847,7 @@ export default function IlanDuzenleScreen() {
           </View>
         </View>
       </Modal>
+      <SabitKaydetButon top={headerAlt} onPress={handleKaydet} saving={loading} />
       <PersistentTabBar />
     </SafeAreaView>
   );
@@ -1001,8 +1002,6 @@ const styles = StyleSheet.create({
   mapPickerText: { flex: 1, fontSize: 13, color: Colors.onSurface },
   kaydetBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingVertical: 11, alignItems: 'center', marginTop: Spacing.sm },
   kaydetText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  headerKaydet: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 7 },
-  headerKaydetText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: Colors.surfaceContainerLowest, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.sm },
   modalTitle: { fontSize: 17, fontWeight: '700', color: Colors.onSurface, marginBottom: 4 },

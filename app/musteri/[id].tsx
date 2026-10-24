@@ -14,6 +14,7 @@ import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye'
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
 import TelefonInput from '../../components/TelefonInput';
 import PersistentTabBar from '../../components/PersistentTabBar';
+import SabitKaydetButon from '../../components/SabitKaydetButon';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ILLER = TURKIYE;
@@ -171,6 +172,7 @@ export default function MusteriDetayScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [duzenle, setDuzenle] = useState(false);
+  const [headerAlt, setHeaderAlt] = useState(56);
 
   // Editable fields
   const [ad, setAd] = useState('');
@@ -1016,16 +1018,14 @@ export default function MusteriDetayScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={styles.header} onLayout={e => setHeaderAlt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.geri}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{ad} {soyad}</Text>
         <View style={styles.headerActions}>
           {duzenle ? (
-            <TouchableOpacity style={styles.kaydetBtn} onPress={handleKaydet} disabled={saving}>
-              {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.kaydetText}>Kaydet</Text>}
-            </TouchableOpacity>
+            <View style={{ width: 22 }} />
           ) : (
             <>
               {bildirimler.length > 0 && (
@@ -2266,6 +2266,7 @@ export default function MusteriDetayScreen() {
         </View>
       </Modal>
 
+      {duzenle && <SabitKaydetButon top={headerAlt} onPress={handleKaydet} saving={saving} />}
       <PersistentTabBar />
     </SafeAreaView>
   );
@@ -3251,8 +3252,6 @@ const styles = StyleSheet.create({
   geri: { fontSize: 22, color: Colors.onSurface },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '600', color: Colors.onSurface },
   headerActions: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
-  kaydetBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 8 },
-  kaydetText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   duzenleBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 6 },
   duzenleBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
   silBtn: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: Radius.full, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },

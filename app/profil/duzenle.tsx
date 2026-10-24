@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PersistentTabBar from '../../components/PersistentTabBar';
+import SabitKaydetButon from '../../components/SabitKaydetButon';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
@@ -24,6 +25,7 @@ export default function ProfilDuzenleScreen() {
   const [watermarkText, setWatermarkText] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [headerAlt, setHeaderAlt] = useState(56);
   const [veriYuklendi, setVeriYuklendi] = useState(false);
   const [ilModal, setIlModal] = useState(false);
   const [ilSearch, setIlSearch] = useState('');
@@ -84,14 +86,12 @@ export default function ProfilDuzenleScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <View style={styles.header} onLayout={e => setHeaderAlt(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.geri}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profil Bilgileri</Text>
-        <TouchableOpacity style={styles.kaydetBtn} onPress={handleKaydet} disabled={loading}>
-          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.kaydetText}>Kaydet</Text>}
-        </TouchableOpacity>
+        <View style={{ width: 22 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -183,6 +183,7 @@ export default function ProfilDuzenleScreen() {
           </View>
         </View>
       </Modal>
+      <SabitKaydetButon top={headerAlt} onPress={handleKaydet} saving={loading} />
       <PersistentTabBar />
     </SafeAreaView>
   );
@@ -219,8 +220,6 @@ const styles = StyleSheet.create({
   },
   geri: { fontSize: 22, color: Colors.onSurface },
   headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
-  kaydetBtn: { backgroundColor: Colors.primary, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 8 },
-  kaydetText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   avatarBox: { alignItems: 'center', paddingVertical: Spacing.xl },
   avatar: { width: 80, height: 80, borderRadius: Radius.full, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.sm },
