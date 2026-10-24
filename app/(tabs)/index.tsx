@@ -500,12 +500,16 @@ export default function DashboardScreen() {
   async function tumunuOkunduYap() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    if (!bildirimler.some(b => !b.okundu)) return;
+    // tip filtresi seçiliyse sadece o tip okundu olur
+    const tip = aktifFiltre;
+    if (!bildirimler.some(b => !b.okundu && (!tip || b.tip === tip))) return;
     const onceki = bildirimler;
-    setBildirimler(prev => prev.map(x => ({ ...x, okundu: true })));
+    setBildirimler(prev => prev.map(x => (!tip || x.tip === tip) ? { ...x, okundu: true } : x));
     // id listesi yerine filtre: yüzlerce id URL'i aşıyor, update sessizce 0 satır yapıyordu
-    const { error } = await supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() })
+    let q = supabase.from('bildirimler').update({ okundu_at: new Date().toISOString() })
       .eq('user_id', session.user.id).is('okundu_at', null).is('silindi_at', null);
+    if (tip) q = q.eq('tip', tip);
+    const { error } = await q;
     if (error) setBildirimler(onceki);
   }
 
