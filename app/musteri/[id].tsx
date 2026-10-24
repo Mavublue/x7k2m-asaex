@@ -856,11 +856,16 @@ export default function MusteriDetayScreen() {
   }
 
   async function tumBildirimleriOkundu() {
-    const ids = bildirimler.filter(b => !b.okundu_at).map(b => b.id);
-    if (!ids.length) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    if (!bildirimler.some(b => !b.okundu_at)) return;
+    const onceki = bildirimler;
     const now = new Date().toISOString();
     setBildirimler(prev => prev.map(x => ({ ...x, okundu_at: x.okundu_at ?? now })));
-    await supabase.from('bildirimler').update({ okundu_at: now }).in('id', ids);
+    // id listesi yerine filtre: yüzlerce id URL'i aşıyor, update sessizce 0 satır yapıyordu
+    const { error } = await supabase.from('bildirimler').update({ okundu_at: now })
+      .eq('user_id', session.user.id).eq('musteri_id', id).is('okundu_at', null).is('silindi_at', null);
+    if (error) setBildirimler(onceki);
   }
 
   async function handleNotKaydet() {
