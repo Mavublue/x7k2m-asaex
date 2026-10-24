@@ -22,7 +22,7 @@ import { TURKIYE, IL_LISTESI } from '../../constants/turkiye';
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
 
-const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal'];
+const durumlar = ['Tümü', 'Aktif', 'Beklemede', 'İptal', 'Tamamlandı'];
 const musteriTipleri = ['Tümü', 'Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
 const kategoriler = ['Tümü', 'Daire', 'Villa', 'Dubleks', 'Tripleks', 'Müstakil Ev', 'Arsa', 'İşyeri'];
 const satilikKiralik = ['Tümü', 'Satılık', 'Kiralık'];
@@ -119,7 +119,7 @@ export default function MusterilerScreen() {
       (m.musteri_iletisim ?? []).some(k => k.ad?.toLowerCase().includes(searchQ) || k.telefon?.includes(searchQ))
     );
     result = [...result].sort((a, b) => {
-      const ai = a.durum === 'İptal', bi = b.durum === 'İptal';
+      const ai = a.durum === 'İptal' || a.durum === 'Tamamlandı', bi = b.durum === 'İptal' || b.durum === 'Tamamlandı';
       if (ai !== bi) return ai ? 1 : -1;
       if (searchQ) {
         const an = isNameMatch(a), bn = isNameMatch(b);
@@ -332,6 +332,7 @@ const MusteriKart = memo(function MusteriKart({ musteri, search }: { musteri: Mu
     Aktif: { bg: 'rgba(34,197,94,0.18)', text: '#166534' },
     Beklemede: { bg: 'rgba(234,179,8,0.15)', text: '#fcd34d' },
     İptal: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5' },
+    Tamamlandı: { bg: 'rgba(59,130,246,0.18)', text: '#93c5fd' },
   }[musteri.durum] ?? { bg: Colors.surfaceContainerLow, text: Colors.onSurfaceVariant };
 
   const avatarColors = [

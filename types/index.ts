@@ -40,7 +40,7 @@ export interface Musteri {
   etiketler: string | null;
   bina_yasi: string | null;
   avatar_url: string | null;
-  durum: 'Aktif' | 'Beklemede' | 'İptal';
+  durum: 'Aktif' | 'Beklemede' | 'İptal' | 'Tamamlandı';
   olusturma_tarihi: string;
   guncelleme_tarihi: string;
 }

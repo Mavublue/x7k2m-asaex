@@ -907,6 +907,11 @@ export default function DashboardScreen() {
               <Text style={styles.bdModalBaslik} numberOfLines={1}>
                 {musteriDetay ? [musteriDetay.ad, musteriDetay.soyad].filter(Boolean).join(' ') : detayBildirim ? detayBildirim.baslik : 'Bildirimler'}
               </Text>
+              {detayBildirim?.musteriId && bildirimler.some(b => b.musteriId === detayBildirim.musteriId && !b.okundu) ? (
+                <TouchableOpacity onPress={() => musteriTumunuOkundu(detayBildirim.musteriId!)} style={{ paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, borderRadius: 6, backgroundColor: 'rgba(76,175,80,0.18)' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#81C784' }}>✓ Tümü Okundu</Text>
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }}>
                 <Text style={styles.bdKapat}>✕</Text>
               </TouchableOpacity>
@@ -1174,8 +1179,8 @@ export default function DashboardScreen() {
                       </View>
                       <View>
                         <Text style={styles.bdInputLabel}>Durum</Text>
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                          {['Aktif', 'Beklemede', 'İptal'].map(d => (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          {['Aktif', 'Beklemede', 'İptal', 'Tamamlandı'].map(d => (
                             <TouchableOpacity key={d} onPress={() => setDzDurum(d)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: dzDurum === d ? Colors.primary : Colors.surfaceContainerHigh }}>
                               <Text style={{ fontSize: 12, fontWeight: '600', color: dzDurum === d ? '#fff' : Colors.onSurfaceVariant }}>{d}</Text>
                             </TouchableOpacity>

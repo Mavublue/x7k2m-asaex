@@ -1038,10 +1038,10 @@ export default function IlanDetayScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     {item.etiketler ? <View style={styles.etiketBadge}><Text style={styles.etiketBadgeText}>#{item.etiketler}</Text></View> : null}
                     <View style={[styles.durumBadge, {
-                      backgroundColor: item.durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : item.durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)'
+                      backgroundColor: item.durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : item.durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : item.durum === 'Tamamlandı' ? 'rgba(59,130,246,0.18)' : 'rgba(239,68,68,0.15)'
                     }]}>
                       <Text style={[styles.durumBadgeText, {
-                        color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : '#fca5a5'
+                        color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : item.durum === 'Tamamlandı' ? '#93c5fd' : '#fca5a5'
                       }]}>{item.durum}</Text>
                     </View>
                   </View>
@@ -1335,10 +1335,10 @@ export default function IlanDetayScreen() {
                     )}
                   </View>
                   <View style={[styles.durumBadge, {
-                    backgroundColor: item.durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : item.durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)'
+                    backgroundColor: item.durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : item.durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : item.durum === 'Tamamlandı' ? 'rgba(59,130,246,0.18)' : 'rgba(239,68,68,0.15)'
                   }]}>
                     <Text style={[styles.durumBadgeText, {
-                      color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : '#fca5a5'
+                      color: item.durum === 'Aktif' ? '#166534' : item.durum === 'Beklemede' ? '#854d0e' : item.durum === 'Tamamlandı' ? '#93c5fd' : '#fca5a5'
                     }]}>{item.durum}</Text>
                   </View>
                 </TouchableOpacity>

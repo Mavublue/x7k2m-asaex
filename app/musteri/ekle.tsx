@@ -22,7 +22,7 @@ const BINA_YASLARI = ['0', '1', '2', '3', '4', '5', '6-10', '11-15', '16-20', '2
 const KAT_SAYILARI = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '20+'];
 const BULUNDUGU_KATLAR = ['Giriş Altı Kot', 'Bodrum Kat', 'Zemin Kat', 'Bahçe Katı', 'Giriş Katı', 'Yüksek Giriş', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20+', 'Çatı Katı', 'Müstakil', 'Villa Tipi'];
 const TIP_LISTESI = ['Eş', 'Oğul', 'Kız', 'Anne', 'Baba', 'Kardeş', 'Diğer'];
-const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', 'İptal'];
+const durumlar: ('Aktif' | 'Beklemede' | 'İptal' | 'Tamamlandı')[] = ['Aktif', 'Beklemede', 'İptal', 'Tamamlandı'];
 const musteriTipleri = ['Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
 
 type EkKisi = { ad: string; kod: string; numara: string; tip: string };
@@ -147,7 +147,7 @@ export default function MusteriEkleScreen() {
   const [notTarih, setNotTarih] = useState<Date>(new Date());
   const [notEditIdx, setNotEditIdx] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
-  const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
+  const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal' | 'Tamamlandı'>('Aktif');
   const [musteriTipi, setMusteriTipi] = useState('Bireysel');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
@@ -686,7 +686,7 @@ export default function MusteriEkleScreen() {
             <View style={styles.durumRow}>
               {durumlar.map(d => (
                 <TouchableOpacity key={d} style={[styles.durumBtn, durum === d && styles.durumBtnAktif]} onPress={() => setDurum(d)}>
-                  <Text style={[styles.durumBtnText, durum === d && styles.durumBtnTextAktif]}>{d}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.durumBtnText, durum === d && styles.durumBtnTextAktif]}>{d}</Text>
                 </TouchableOpacity>
               ))}
             </View>

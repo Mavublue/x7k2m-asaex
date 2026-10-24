@@ -19,7 +19,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
 
-const durumlar: ('Aktif' | 'Beklemede' | 'İptal')[] = ['Aktif', 'Beklemede', 'İptal'];
+const durumlar: ('Aktif' | 'Beklemede' | 'İptal' | 'Tamamlandı')[] = ['Aktif', 'Beklemede', 'İptal', 'Tamamlandı'];
 const musteriTipleri = ['Bireysel', 'Müteahhit', 'Al-Satçı', 'Diğer'];
 const EMLAK_TIPLERI = ['Daire', 'Villa', 'Dubleks', 'Tripleks', 'Arsa', 'İşyeri', 'Müstakil Ev', 'Rezidans'];
 const ODALAR = ['Stüdyo', '1+0', '1+1', '2+1', '3+1', '3+2', '4+1', '5+'];
@@ -211,7 +211,7 @@ export default function MusteriDetayScreen() {
   const [showGorevPicker, setShowGorevPicker] = useState(false);
   const [showGorevSaatPicker, setShowGorevSaatPicker] = useState(false);
   const [etiket, setEtiket] = useState('');
-  const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal'>('Aktif');
+  const [durum, setDurum] = useState<'Aktif' | 'Beklemede' | 'İptal' | 'Tamamlandı'>('Aktif');
   const [musteriTipi, setMusteriTipi] = useState('Bireysel');
   const [ekKisiler, setEkKisiler] = useState<EkKisi[]>([]);
   const [tipModal, setTipModal] = useState<number | null>(null);
@@ -1084,10 +1084,10 @@ export default function MusteriDetayScreen() {
 
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <View style={[styles.durumBadge, {
-                backgroundColor: durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)'
+                backgroundColor: durum === 'Aktif' ? 'rgba(34,197,94,0.18)' : durum === 'Beklemede' ? 'rgba(234,179,8,0.15)' : durum === 'Tamamlandı' ? 'rgba(59,130,246,0.18)' : 'rgba(239,68,68,0.15)'
               }]}>
                 <Text style={[styles.durumBadgeText, {
-                  color: durum === 'Aktif' ? '#166534' : durum === 'Beklemede' ? '#854d0e' : '#fca5a5'
+                  color: durum === 'Aktif' ? '#166534' : durum === 'Beklemede' ? '#854d0e' : durum === 'Tamamlandı' ? '#93c5fd' : '#fca5a5'
                 }]}>{durum}</Text>
               </View>
               {etiket ? <View style={styles.etiketBadge}><Text style={styles.etiketBadgeText}>#{etiket}</Text></View> : null}
@@ -1451,7 +1451,7 @@ export default function MusteriDetayScreen() {
                       style={[styles.durumBtn, durum === d && styles.durumBtnAktif]}
                       onPress={() => setDurum(d)}
                     >
-                      <Text style={[styles.durumBtnText, durum === d && styles.durumBtnTextAktif]}>{d}</Text>
+                      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.durumBtnText, durum === d && styles.durumBtnTextAktif]}>{d}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
