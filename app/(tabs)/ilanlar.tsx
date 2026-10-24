@@ -30,12 +30,12 @@ function fmtPin(fiyat: number) {
   return String(fiyat);
 }
 
-type MapMarker = { id: string; lat: number; lng: number; fiyat: string; tip: string };
+type MapMarker = { id: string; lat: number; lng: number; fiyat: string; tip: string; acik: boolean };
 
 function buildMarkers(ilanlar: Ilan[]): MapMarker[] {
   return ilanlar.filter(i => i.lat && i.lng).map(i => ({
     id: i.id, lat: i.lat as number, lng: i.lng as number,
-    fiyat: fmtPin(i.fiyat), tip: i.tip,
+    fiyat: fmtPin(i.fiyat), tip: i.tip, acik: !i.musteri_gizle,
   }));
 }
 
@@ -52,7 +52,7 @@ function buildMapShell() {
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <style>*{margin:0;padding:0;box-sizing:border-box}body,#map{width:100vw;height:100vh;overflow:hidden}
 .pm{background:#6750A4;color:#fff;border-radius:20px;padding:4px 9px;font-weight:700;font-size:11px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid #fff;cursor:pointer}
-.pm.k{background:#4e5ba6}.leaflet-control-attribution{font-size:8px}
+.pm.k{background:#4e5ba6}.pm.acik{border-color:#16a34a;border-width:3px;box-shadow:0 0 0 2px rgba(22,163,74,.35),0 2px 8px rgba(0,0,0,.3)}.leaflet-control-attribution{font-size:8px}
 .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background-color:rgba(103,80,164,.25)}
 .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background-color:rgba(103,80,164,.85);color:#fff;font-weight:700}</style>
 </head>
@@ -90,7 +90,7 @@ window.__render=function(ms){
   cluster.clearLayers();
   var bs=[];
   ms.forEach(function(m){
-    var icon=L.divIcon({html:'<div class="pm'+(m.tip==='Kiralık'?' k':'')+'">₺'+m.fiyat+'</div>',className:'',iconSize:null,iconAnchor:[28,14]});
+    var icon=L.divIcon({html:'<div class="pm'+(m.tip==='Kiralık'?' k':'')+(m.acik?' acik':'')+'">₺'+m.fiyat+'</div>',className:'',iconSize:null,iconAnchor:[28,14]});
     var mk=L.marker([m.lat,m.lng],{icon:icon});
     mk.on('click',function(e){var pt=map.latLngToContainerPoint(e.latlng);window.ReactNativeWebView.postMessage(JSON.stringify({id:m.id,px:pt.x,py:pt.y}));});
     cluster.addLayer(mk);

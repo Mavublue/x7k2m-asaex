@@ -28,6 +28,7 @@ function buildHtml(ilanlar: Ilan[]) {
         : String(i.fiyat),
       baslik: i.baslik.replace(/'/g, "\\'"),
       tip: i.tip,
+      acik: !i.musteri_gizle,
     }));
 
   const markersJson = JSON.stringify(markers);
@@ -63,6 +64,7 @@ function buildHtml(ilanlar: Ilan[]) {
       cursor: pointer;
     }
     .pm.kiralik { background: #4e5ba6; }
+    .pm.acik { border-color: #16a34a; border-width: 3px; box-shadow: 0 0 0 2px rgba(22,163,74,0.35), 0 3px 10px rgba(0,0,0,0.35); }
     .leaflet-control-attribution { font-size: 9px; }
     .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
       background-color: rgba(103,80,164,0.25);
@@ -88,7 +90,7 @@ function buildHtml(ilanlar: Ilan[]) {
     var bounds = [];
 
     markers.forEach(function(m) {
-      var cls = m.tip === 'Kiralık' ? 'pm kiralik' : 'pm';
+      var cls = (m.tip === 'Kiralık' ? 'pm kiralik' : 'pm') + (m.acik ? ' acik' : '');
       var icon = L.divIcon({
         html: '<div class="' + cls + '">₺' + m.fiyat + '</div>',
         className: '',
