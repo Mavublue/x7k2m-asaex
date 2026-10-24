@@ -39,6 +39,8 @@ function goreciZaman(iso: string): string {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const BILDIRIM_SELECT = 'id, tip, ilan_id, musteri_id, gorev_id, asistan_oneri_id, veri, okundu_at, silindi_at, created_at, ilan:ilanlar(id, baslik, fotograflar, fiyat), musteri:musteriler(id, ad, soyad, etiketler, telefon, durum, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda)), gorev:musteri_gorevler(id, baslik, hedef_tarih)';
+
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
   const [ilanSayisi, setIlanSayisi] = useState(0);
@@ -122,16 +124,26 @@ export default function DashboardScreen() {
     fetchData();
     fetchGorevDashboard('bugun');
 
-    const channel = supabase.channel('bildirim-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler' }, () => fetchBildirimler())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => fetchGorevDashboard(gorevFiltre))
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let iptal = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session || iptal) return;
+      channel = supabase.channel('bildirim-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler', filter: `user_id=eq.${session.user.id}` }, bildirimRealtime)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => fetchGorevDashboard(gorevFiltre))
+        .subscribe();
+    });
 
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') fetchBildirimler();
     });
 
-    return () => { supabase.removeChannel(channel); appStateSub.remove(); };
+    return () => {
+      iptal = true;
+      if (channel) supabase.removeChannel(channel);
+      if (rtKuyruk.current.timer) clearTimeout(rtKuyruk.current.timer);
+      appStateSub.remove();
+    };
   }, []);
 
   useFocusEffect(useCallback(() => {
@@ -276,6 +288,56 @@ export default function DashboardScreen() {
     return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri, musteriId: b.musteri_id ?? undefined };
   }
 
+  // Realtime: değişen satırı yerinde güncelle; toplu değişiklik (yüzlerce olay) tek seferde uygulanır, liste baştan çekilmez
+  const bildirimlerRef = useRef(bildirimler);
+  bildirimlerRef.current = bildirimler;
+  const rtKuyruk = useRef<{ guncel: Map<string, any>; yeni: Set<string>; timer: any }>({ guncel: new Map(), yeni: new Set(), timer: null });
+
+  function bildirimRealtime(p: any) {
+    const q = rtKuyruk.current;
+    if (p.eventType === 'DELETE') { if (p.old?.id) q.guncel.set(p.old.id, null); }
+    else if (p.new?.id) {
+      if (p.eventType === 'INSERT') q.yeni.add(p.new.id);
+      else q.guncel.set(p.new.id, p.new);
+    }
+    if (q.timer) clearTimeout(q.timer);
+    q.timer = setTimeout(rtUygula, 500);
+  }
+
+  async function rtUygula() {
+    const q = rtKuyruk.current;
+    const guncel = q.guncel;
+    const yeniIds = [...q.yeni];
+    q.guncel = new Map(); q.yeni = new Set(); q.timer = null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    // yeni satır ilan/müşteri join'i ister; çok fazlaysa (URL sınırı) listeyi baştan çek
+    if (yeniIds.length > 50) { fetchBildirimler(); return; }
+    let eklenen: typeof bildirimler[number][] = [];
+    if (yeniIds.length) {
+      const { data } = await supabase.from('bildirimler').select(BILDIRIM_SELECT)
+        .in('id', yeniIds).eq('user_id', session.user.id).is('silindi_at', null);
+      eklenen = (data ?? []).map(mapBildirim);
+    }
+    const prev = bildirimlerRef.current;
+    const mevcut = new Set(prev.map(b => b.id));
+    // listede olmayan satır görünür hale geldiyse (ör. geri alınan silme) join'li veri yok, baştan çek
+    const eksik = [...guncel.values()].some(r => r && !r.silindi_at && !mevcut.has(r.id));
+    const next = [
+      ...eklenen.filter(b => !mevcut.has(b.id)),
+      ...prev.flatMap(b => {
+        if (!guncel.has(b.id)) return [b];
+        const r = guncel.get(b.id);
+        if (!r || r.silindi_at) return [];
+        return [{ ...b, okundu: !!r.okundu_at }];
+      }),
+    ];
+    bildirimlerRef.current = next;
+    setBildirimler(next);
+    cacheSet(`app_bildirimler_${session.user.id}`, next);
+    if (eksik) fetchBildirimler();
+  }
+
   async function fetchBildirimler(seedFromCache = false) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -286,7 +348,7 @@ export default function DashboardScreen() {
     }
     const { data } = await supabase
       .from('bildirimler')
-      .select('id, tip, ilan_id, musteri_id, gorev_id, asistan_oneri_id, veri, okundu_at, silindi_at, created_at, ilan:ilanlar(id, baslik, fotograflar, fiyat), musteri:musteriler(id, ad, soyad, etiketler, telefon, durum, musteri_tipi, musteri_istekler(tip, butce_min, butce_max, tercih_konum, min_oda)), gorev:musteri_gorevler(id, baslik, hedef_tarih)')
+      .select(BILDIRIM_SELECT)
       .eq('user_id', session.user.id)
       .is('silindi_at', null)
       .order('created_at', { ascending: false });
