@@ -1117,8 +1117,15 @@ export default function IlanDetayScreen() {
                 { text: 'İptal', style: 'cancel' },
                 { text: 'Sil', style: 'destructive', onPress: async () => {
                   await deleteIlanPhotos(id as string);
-                  await supabase.from('ilanlar').delete().eq('id', id);
-                  router.replace('/(tabs)/ilanlar');
+                  const { error } = await supabase.from('ilanlar').delete().eq('id', id);
+                  if (error) { Alert.alert('Hata', error.message); return; }
+                  // replace iOS'ta root stack'i boşaltıp uygulamadan atıyordu
+                  if (router.canDismiss()) {
+                    router.dismissAll();
+                    requestAnimationFrame(() => router.navigate('/(tabs)/ilanlar' as any));
+                  } else {
+                    router.navigate('/(tabs)/ilanlar' as any);
+                  }
                 }},
               ]);
             }}>

@@ -995,8 +995,15 @@ export default function MusteriDetayScreen() {
     Alert.alert('Müşteriyi Sil', 'Bu müşteriyi silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       { text: 'Sil', style: 'destructive', onPress: async () => {
-        await supabase.from('musteriler').delete().eq('id', id);
-        router.replace('/(tabs)/musteriler');
+        const { error } = await supabase.from('musteriler').delete().eq('id', id);
+        if (error) { Alert.alert('Hata', error.message); return; }
+        // replace iOS'ta root stack'i boşaltıp uygulamadan atıyordu (bildirimden açılınca)
+        if (router.canDismiss()) {
+          router.dismissAll();
+          requestAnimationFrame(() => router.navigate('/(tabs)/musteriler' as any));
+        } else {
+          router.navigate('/(tabs)/musteriler' as any);
+        }
       }},
     ]);
   }
