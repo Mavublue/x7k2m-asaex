@@ -124,13 +124,15 @@ export default function DashboardScreen() {
     fetchData();
     fetchGorevDashboard('bugun');
 
+    const gorevChannel = supabase.channel('gorev-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => fetchGorevDashboard(gorevFiltre))
+      .subscribe();
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let iptal = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session || iptal) return;
-      channel = supabase.channel('bildirim-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler', filter: `user_id=eq.${session.user.id}` }, bildirimRealtime)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'musteri_gorevler' }, () => fetchGorevDashboard(gorevFiltre))
+      channel = supabase.channel(`bildirim:${session.user.id}`, { config: { private: true } })
+        .on('broadcast', { event: 'degisim' }, ({ payload }) => bildirimDegisim(payload))
         .subscribe();
     });
 
@@ -141,7 +143,7 @@ export default function DashboardScreen() {
     return () => {
       iptal = true;
       if (channel) supabase.removeChannel(channel);
-      if (rtKuyruk.current.timer) clearTimeout(rtKuyruk.current.timer);
+      supabase.removeChannel(gorevChannel);
       appStateSub.remove();
     };
   }, []);
@@ -288,29 +290,14 @@ export default function DashboardScreen() {
     return { id: b.id, tip: b.tip, baslik, alt, hedefId, tarih: b.created_at, foto, okundu: !!b.okundu_at, veri, musteriId: b.musteri_id ?? undefined };
   }
 
-  // Realtime: değişen satırı yerinde güncelle; toplu değişiklik (yüzlerce olay) tek seferde uygulanır, liste baştan çekilmez
+  // Realtime: DB tetiği (migration_bildirim_broadcast.sql) değişen id'leri tek mesajda yollar; liste baştan çekilmez
   const bildirimlerRef = useRef(bildirimler);
   bildirimlerRef.current = bildirimler;
-  const rtKuyruk = useRef<{ guncel: Map<string, any>; yeni: Set<string>; timer: any }>({ guncel: new Map(), yeni: new Set(), timer: null });
 
-  function bildirimRealtime(p: any) {
-    const q = rtKuyruk.current;
-    if (p.eventType === 'DELETE') { if (p.old?.id) q.guncel.set(p.old.id, null); }
-    else if (p.new?.id) {
-      if (p.eventType === 'INSERT') q.yeni.add(p.new.id);
-      else q.guncel.set(p.new.id, p.new);
-    }
-    if (q.timer) clearTimeout(q.timer);
-    q.timer = setTimeout(rtUygula, 500);
-  }
-
-  async function rtUygula() {
-    const q = rtKuyruk.current;
-    const guncel = q.guncel;
-    const yeniIds = [...q.yeni];
-    q.guncel = new Map(); q.yeni = new Set(); q.timer = null;
+  async function bildirimDegisim(p: { okundu?: string[]; okunmadi?: string[]; silindi?: string[]; yeni?: string[] }) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
+    const yeniIds = p.yeni ?? [];
     // yeni satır ilan/müşteri join'i ister; çok fazlaysa (URL sınırı) listeyi baştan çek
     if (yeniIds.length > 50) { fetchBildirimler(); return; }
     let eklenen: typeof bildirimler[number][] = [];
@@ -319,23 +306,19 @@ export default function DashboardScreen() {
         .in('id', yeniIds).eq('user_id', session.user.id).is('silindi_at', null);
       eklenen = (data ?? []).map(mapBildirim);
     }
+    const okundu = new Set(p.okundu ?? []), okunmadi = new Set(p.okunmadi ?? []), silindi = new Set(p.silindi ?? []);
     const prev = bildirimlerRef.current;
     const mevcut = new Set(prev.map(b => b.id));
-    // listede olmayan satır görünür hale geldiyse (ör. geri alınan silme) join'li veri yok, baştan çek
-    const eksik = [...guncel.values()].some(r => r && !r.silindi_at && !mevcut.has(r.id));
     const next = [
       ...eklenen.filter(b => !mevcut.has(b.id)),
-      ...prev.flatMap(b => {
-        if (!guncel.has(b.id)) return [b];
-        const r = guncel.get(b.id);
-        if (!r || r.silindi_at) return [];
-        return [{ ...b, okundu: !!r.okundu_at }];
-      }),
+      ...prev.filter(b => !silindi.has(b.id)).map(b =>
+        okundu.has(b.id) && !b.okundu ? { ...b, okundu: true }
+        : okunmadi.has(b.id) && b.okundu ? { ...b, okundu: false }
+        : b),
     ];
     bildirimlerRef.current = next;
     setBildirimler(next);
     cacheSet(`app_bildirimler_${session.user.id}`, next);
-    if (eksik) fetchBildirimler();
   }
 
   async function fetchBildirimler(seedFromCache = false) {
