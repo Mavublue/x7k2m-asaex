@@ -6,7 +6,6 @@ import { Colors } from '../../constants/theme';
 const icons: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   index: 'dashboard',
   ilanlar: 'apartment',
-  harita: 'map',
   gorevler: 'check-circle',
   musteriler: 'people',
   ayarlar: 'settings',
@@ -15,7 +14,6 @@ const icons: Record<string, keyof typeof MaterialIcons.glyphMap> = {
 const labels: Record<string, string> = {
   index: 'Ana Sayfa',
   ilanlar: 'İlanlar',
-  harita: 'Harita',
   gorevler: 'Görevler',
   musteriler: 'Müşteriler',
   ayarlar: 'Ayarlar',
@@ -42,7 +40,6 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="ilanlar" />
-      <Tabs.Screen name="harita" options={{ href: null }} />
       <Tabs.Screen name="gorevler" />
       <Tabs.Screen name="musteriler" />
       <Tabs.Screen name="ayarlar" />
