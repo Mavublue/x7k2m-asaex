@@ -2854,19 +2854,21 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
 type Adim = { tip: 'liste'; bas: number; son: number; kart: Map<string, number> } | { tip: 'ilan'; bas: number; son: number; ilanId: string };
 type ListeZiyaret = { device_id: string; ua: string | null; bas: number; son: number; adimlar: Adim[] };
 function listeZiyaretleri(oturumlari: OturumItem[], kartLog: KartLogItem[], paketToken: string, deviceFiltre: string | null): ListeZiyaret[] {
-  type Olay = { device_id: string; ua: string | null; t: number; bas: number; son: number; kartIlan?: string; kartSn?: number; ilanId?: string };
+  type Olay = { device_id: string; ua: string | null; bas: number; son: number; kartIlan?: string; kartSn?: number; ilanId?: string };
   const olaylar: Olay[] = [];
   oturumlari.forEach(o => {
     if (o.paket_token !== paketToken || (deviceFiltre && o.device_id !== deviceFiltre)) return;
     const bas = new Date(o.baslama_at).getTime();
-    olaylar.push({ device_id: o.device_id, ua: o.user_agent, t: bas, bas, son: new Date(o.son_aktif_at).getTime(), ilanId: o.ilan_id ?? undefined });
+    olaylar.push({ device_id: o.device_id, ua: o.user_agent, bas, son: new Date(o.son_aktif_at).getTime(), ilanId: o.ilan_id ?? undefined });
   });
   kartLog.forEach(k => {
     if (k.paket_token !== paketToken || (deviceFiltre && k.device_id !== deviceFiltre)) return;
     const t = new Date(k.at).getTime();
-    olaylar.push({ device_id: k.device_id, ua: null, t, bas: t - k.sn * 1000, son: t, kartIlan: k.ilan_id, kartSn: k.sn });
+    olaylar.push({ device_id: k.device_id, ua: null, bas: t - k.sn * 1000, son: t, kartIlan: k.ilan_id, kartSn: k.sn });
   });
-  olaylar.sort((a, b) => a.t - b.t);
+  // kart logu bakmanın BAŞLANGICINA göre dizilir: liste kapanırken giden son flush, ilan
+  // açılış kaydından ms'ler sonra sunucuya varsa da tıklamadan önceki listeye düşer
+  olaylar.sort((a, b) => a.bas - b.bas);
   const BOSLUK = 5 * 60 * 1000;
   const acik = new Map<string, ListeZiyaret>();
   const sonuc: ListeZiyaret[] = [];
