@@ -2848,86 +2848,131 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
   );
 }
 
-// Bir listenin ziyaretleri: aynı cihazın liste oturumu + listeden açılan ilan oturumları +
-// kart logları zaman sırasına dizilir; 5 dk'dan uzun boşluk yeni ziyaret sayılır. (web ile aynı)
-type ListeZiyaret = { device_id: string; ua: string | null; bas: number; son: number; kart: Map<string, number>; ilan: Map<string, number> };
+// Bir listenin hareket logu: aynı cihazın liste oturumu + listeden açılan ilan oturumları (her açılış
+// ayrı satır) + kart logları zaman sırasına dizilir; 5 dk'dan uzun boşluk yeni ziyaret. Ziyaret içinde
+// ardışık kart logları bir "liste" adımı, her ilan açılışı bir "ilan" adımı olur. (web ile aynı)
+type Adim = { tip: 'liste'; bas: number; son: number; kart: Map<string, number> } | { tip: 'ilan'; bas: number; son: number; ilanId: string };
+type ListeZiyaret = { device_id: string; ua: string | null; bas: number; son: number; adimlar: Adim[] };
 function listeZiyaretleri(oturumlari: OturumItem[], kartLog: KartLogItem[], paketToken: string, deviceFiltre: string | null): ListeZiyaret[] {
-  type Olay = { device_id: string; ua: string | null; bas: number; son: number; kartIlan?: string; kartSn?: number; ilanId?: string };
+  type Olay = { device_id: string; ua: string | null; t: number; bas: number; son: number; kartIlan?: string; kartSn?: number; ilanId?: string };
   const olaylar: Olay[] = [];
   oturumlari.forEach(o => {
     if (o.paket_token !== paketToken || (deviceFiltre && o.device_id !== deviceFiltre)) return;
-    olaylar.push({ device_id: o.device_id, ua: o.user_agent, bas: new Date(o.baslama_at).getTime(), son: new Date(o.son_aktif_at).getTime(), ilanId: o.ilan_id ?? undefined });
+    const bas = new Date(o.baslama_at).getTime();
+    olaylar.push({ device_id: o.device_id, ua: o.user_agent, t: bas, bas, son: new Date(o.son_aktif_at).getTime(), ilanId: o.ilan_id ?? undefined });
   });
   kartLog.forEach(k => {
     if (k.paket_token !== paketToken || (deviceFiltre && k.device_id !== deviceFiltre)) return;
     const t = new Date(k.at).getTime();
-    olaylar.push({ device_id: k.device_id, ua: null, bas: t - k.sn * 1000, son: t, kartIlan: k.ilan_id, kartSn: k.sn });
+    olaylar.push({ device_id: k.device_id, ua: null, t, bas: t - k.sn * 1000, son: t, kartIlan: k.ilan_id, kartSn: k.sn });
   });
-  olaylar.sort((a, b) => a.bas - b.bas);
+  olaylar.sort((a, b) => a.t - b.t);
   const BOSLUK = 5 * 60 * 1000;
   const acik = new Map<string, ListeZiyaret>();
   const sonuc: ListeZiyaret[] = [];
   olaylar.forEach(o => {
     let z = acik.get(o.device_id);
     if (!z || o.bas > z.son + BOSLUK) {
-      z = { device_id: o.device_id, ua: o.ua, bas: o.bas, son: o.son, kart: new Map(), ilan: new Map() };
+      z = { device_id: o.device_id, ua: o.ua, bas: o.bas, son: o.son, adimlar: [] };
       acik.set(o.device_id, z);
       sonuc.push(z);
     }
+    z.bas = Math.min(z.bas, o.bas);
     z.son = Math.max(z.son, o.son);
     if (!z.ua && o.ua) z.ua = o.ua;
-    if (o.kartIlan) z.kart.set(o.kartIlan, (z.kart.get(o.kartIlan) ?? 0) + (o.kartSn ?? 0));
-    if (o.ilanId) z.ilan.set(o.ilanId, (z.ilan.get(o.ilanId) ?? 0) + Math.max(0, Math.round((o.son - o.bas) / 1000)));
+    const son = z.adimlar[z.adimlar.length - 1];
+    if (o.kartIlan) {
+      if (son && son.tip === 'liste') {
+        son.kart.set(o.kartIlan, (son.kart.get(o.kartIlan) ?? 0) + (o.kartSn ?? 0));
+        son.son = Math.max(son.son, o.son);
+      } else {
+        z.adimlar.push({ tip: 'liste', bas: o.bas, son: o.son, kart: new Map([[o.kartIlan, o.kartSn ?? 0]]) });
+      }
+    } else if (o.ilanId) {
+      z.adimlar.push({ tip: 'ilan', bas: o.bas, son: o.son, ilanId: o.ilanId });
+    }
   });
   return sonuc.sort((a, b) => b.bas - a.bas);
 }
 
-function ziyaretTarih(ms: number) {
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+const gunBaslik = (ms: number) => { const d = new Date(ms); return `${d.getDate()} ${AYLAR[d.getMonth()]} ${GUNLER[d.getDay()]}`; };
+const saatKisa = (ms: number) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
+function HareketFoto({ foto, w, h }: { foto: string | null | undefined; w: number; h: number }) {
+  return foto
+    ? <R2Image source={foto} style={{ width: w, height: h, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
+    : <View style={{ width: w, height: h, borderRadius: 4, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 10 }}>🏠</Text></View>;
 }
 
-function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanAd }: { oturumlari: OturumItem[]; kartLog: KartLogItem[]; paketToken: string; deviceFiltre: string | null; ilanAd: Map<string, string> }) {
-  // ilk (en son) ziyaret varsayılan açık; dokunma tersine çevirir
+function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBilgi }: { oturumlari: OturumItem[]; kartLog: KartLogItem[]; paketToken: string; deviceFiltre: string | null; ilanBilgi: Map<string, { baslik: string; foto: string | null }> }) {
+  // en son ziyaret varsayılan açık; dokunma tersine çevirir
   const [ters, setTers] = useState<Set<string>>(new Set());
   const liste = listeZiyaretleri(oturumlari, kartLog, paketToken, deviceFiltre);
   if (liste.length === 0) return null;
   const cokCihaz = new Set(liste.map(z => z.device_id)).size > 1;
+  const gunler: { key: string; ziyaretler: ListeZiyaret[] }[] = [];
+  liste.forEach(z => {
+    const key = gunBaslik(z.bas);
+    const g = gunler[gunler.length - 1];
+    if (g && g.key === key) g.ziyaretler.push(z); else gunler.push({ key, ziyaretler: [z] });
+  });
+  let sira = 0;
   return (
-    <View style={{ gap: 4, marginBottom: 8, padding: 8, backgroundColor: 'rgba(167,139,250,0.08)', borderRadius: 6 }}>
-      <Text style={{ fontSize: 11, fontWeight: '700', color: '#c4b5fd' }}>🕘 Ziyaret Geçmişi · {liste.length} ziyaret</Text>
-      {liste.map((z, i) => {
-        const zKey = `${z.device_id}-${z.bas}`;
-        const acik = (i === 0) !== ters.has(zKey);
-        const canli = Date.now() - z.son < 8000;
-        const sure = Math.max(0, Math.round((z.son - z.bas) / 1000));
-        const kartlar = Array.from(z.kart.entries()).sort((a, b) => b[1] - a[1]);
-        const ilanlar = Array.from(z.ilan.entries()).sort((a, b) => b[1] - a[1]);
-        return (
-          <View key={zKey}>
-            <TouchableOpacity activeOpacity={0.6} onPress={() => setTers(prev => { const n = new Set(prev); n.has(zKey) ? n.delete(zKey) : n.add(zKey); return n; })}
-              style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Text style={{ fontSize: 11, color: '#c4b5fd' }}>{acik ? '▾' : '▸'}</Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>📅 {ziyaretTarih(z.bas)}</Text>
-              <Text style={{ fontSize: 11, color: canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: canli ? '700' : '400' }}>{canli ? '🟢 şu an' : formatSure(sure)}</Text>
-              {cokCihaz ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {cihazAdi(z.ua)}</Text> : null}
-              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· 👀 {kartlar.length} kart · 🏠 {ilanlar.length} ilan açtı</Text>
-            </TouchableOpacity>
-            {acik && (
-              <View style={{ gap: 2, marginTop: 3, marginLeft: 12, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: 'rgba(167,139,250,0.35)' }}>
-                {ilanlar.map(([iid, sn]) => (
-                  <Text key={`i-${iid}`} style={{ fontSize: 10, color: Colors.onSurface }}>🏠 Açtı: {ilanAd.get(iid) ?? 'İlan'} — {formatSure(sn)}</Text>
-                ))}
-                {kartlar.map(([iid, sn]) => (
-                  <Text key={`k-${iid}`} style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>👀 Listede: {ilanAd.get(iid) ?? 'İlan'} — {formatSure(sn)}</Text>
-                ))}
-                {ilanlar.length === 0 && kartlar.length === 0 ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>Sadece listeyi açtı</Text> : null}
+    <View style={{ gap: 6, marginBottom: 8, padding: 8, backgroundColor: 'rgba(167,139,250,0.08)', borderRadius: 6 }}>
+      <Text style={{ fontSize: 11, fontWeight: '700', color: '#c4b5fd' }}>🕘 Hareket Geçmişi · {liste.length} ziyaret</Text>
+      {gunler.map(g => (
+        <View key={g.key} style={{ gap: 4 }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: '#ddd6fe', borderBottomWidth: 1, borderBottomColor: 'rgba(167,139,250,0.3)', paddingBottom: 2 }}>📆 {g.key}</Text>
+          {g.ziyaretler.map(z => {
+            const i = sira++;
+            const zKey = `${z.device_id}-${z.bas}`;
+            const acik = (i === 0) !== ters.has(zKey);
+            const canli = Date.now() - z.son < 8000;
+            const sure = Math.max(0, Math.round((z.son - z.bas) / 1000));
+            const ilanSayi = z.adimlar.filter(a => a.tip === 'ilan').length;
+            return (
+              <View key={zKey}>
+                <TouchableOpacity activeOpacity={0.6} onPress={() => setTers(prev => { const n = new Set(prev); n.has(zKey) ? n.delete(zKey) : n.add(zKey); return n; })}
+                  style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Text style={{ fontSize: 11, color: '#c4b5fd' }}>{acik ? '▾' : '▸'}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>📱 {saatKisa(z.bas)} – {canli ? 'şu an' : saatKisa(z.son)}</Text>
+                  <Text style={{ fontSize: 11, color: canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: canli ? '700' : '400' }}>{canli ? '🟢 bakıyor' : formatSure(sure)}</Text>
+                  {cokCihaz ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {cihazAdi(z.ua)}</Text> : null}
+                  <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· 🏠 {ilanSayi} ilan açtı</Text>
+                </TouchableOpacity>
+                {acik && (
+                  <View style={{ gap: 4, marginTop: 4, marginLeft: 12, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: 'rgba(167,139,250,0.35)' }}>
+                    {z.adimlar.length === 0 ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>Sadece listeyi açtı</Text> : null}
+                    {z.adimlar.map((a, ai) => a.tip === 'liste' ? (
+                      <View key={ai} style={{ gap: 2 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>📋 Listede · {saatKisa(a.bas)}–{saatKisa(a.son)}</Text>
+                        {Array.from(a.kart.entries()).map(([iid, sn]) => (
+                          <View key={iid} style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                            <HareketFoto foto={ilanBilgi.get(iid)?.foto} w={30} h={22} />
+                            <Text numberOfLines={1} style={{ flex: 1, fontSize: 10, color: Colors.onSurfaceVariant }}>{ilanBilgi.get(iid)?.baslik ?? 'İlan'}</Text>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>{formatSure(sn)}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <View key={ai} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', padding: 5, backgroundColor: 'rgba(14,165,233,0.12)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.35)', borderRadius: 6 }}>
+                        <HareketFoto foto={ilanBilgi.get(a.ilanId)?.foto} w={44} h={34} />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#7dd3fc' }}>🏠 İlanı açtı · {saatKisa(a.bas)}</Text>
+                          <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{ilanBilgi.get(a.ilanId)?.baslik ?? 'İlan'}</Text>
+                        </View>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#7dd3fc' }}>{formatSure(Math.max(0, Math.round((a.son - a.bas) / 1000)))}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-        );
-      })}
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }
@@ -3095,7 +3140,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, kartLog, ot
             )}
             {acik && gPaketToken && paketZ.length > 0 ? (
               <ZiyaretGecmisi oturumlari={oturumlari} kartLog={kartLog} paketToken={gPaketToken} deviceFiltre={selDevice}
-                ilanAd={new Map(g.items.filter(p => p.ilanlar).map(p => [p.ilanlar!.id, p.ilanlar!.baslik]))} />
+                ilanBilgi={new Map(g.items.filter(p => p.ilanlar).map(p => [p.ilanlar!.id, { baslik: p.ilanlar!.baslik, foto: p.ilanlar!.fotograflar?.[0] ?? null }]))} />
             ) : null}
             {acik && <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
               {g.items.map((p, i) => {
