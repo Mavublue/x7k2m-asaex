@@ -319,6 +319,7 @@ export default function MusteriDetayScreen() {
   const [ziyaretler, setZiyaretler] = useState<Ziyaret[]>([]);
   const [kartGorunum, setKartGorunum] = useState<{ paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]>([]);
   const [oturumlari, setOturumlari] = useState<Oturum[]>([]);
+  const [kartLog, setKartLog] = useState<KartLogItem[]>([]);
   const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24 | 168>(24);
   const [, setTickNow] = useState(0);
   const [tokenUzatModal, setTokenUzatModal] = useState(false);
@@ -492,7 +493,7 @@ export default function MusteriDetayScreen() {
     if (!silent) setPaylasimYukleniyor(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { if (!silent) setPaylasimYukleniyor(false); return; }
-    const [tokenRes, gecmisRes, ziyaretRes, oturumRes, linklerRes, kartRes] = await Promise.all([
+    const [tokenRes, gecmisRes, ziyaretRes, oturumRes, linklerRes, kartRes, kartLogRes] = await Promise.all([
       supabase.from('musteri_tokenler').select('token, expires_at').eq('user_id', session.user.id).eq('musteri_id', id).maybeSingle(),
       supabase.from('musteri_paylasim_gecmisi')
         .select('paylasildigi_tarih, paket_token, ilanlar(id, baslik, fiyat, fotograflar, portfoy_no, durum)')
@@ -502,8 +503,10 @@ export default function MusteriDetayScreen() {
       supabase.rpc('get_musteri_oturumlari', { p_musteri_id: id }),
       supabase.rpc('get_musteri_linkleri', { p_musteri_id: id }),
       supabase.rpc('get_musteri_kart_gorunumleri', { p_musteri_id: id }),
+      supabase.rpc('get_musteri_kart_loglari', { p_musteri_id: id }),
     ]);
     setKartGorunum((kartRes.data ?? []) as any);
+    setKartLog((kartLogRes.data ?? []) as any);
     setAktifToken(tokenRes.data ? { token: tokenRes.data.token, expires_at: tokenRes.data.expires_at } : null);
     setPaylasilanLinkler((linklerRes.data ?? []) as any);
     setPaylasimGecmisi((gecmisRes.data ?? []) as any);
@@ -1738,6 +1741,7 @@ export default function MusteriDetayScreen() {
                     ekIlanlar={ekIlanlar}
                     ziyaretler={ziyaretler}
                     kartGorunum={kartGorunum}
+                    kartLog={kartLog}
                     oturumlari={oturumlari}
                     timelinePeriod={timelinePeriod}
                     setTimelinePeriod={setTimelinePeriod}
@@ -2465,9 +2469,10 @@ function GorevlerBox({
 type PaylasimGecmisiItem = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
 type ZiyaretItem = { paket_token: string | null; musteri_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
 type OturumItem = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
+type KartLogItem = { paket_token: string; ilan_id: string; device_id: string; sn: number; at: string };
 
 function PaylasimBox({
-  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, oturumlari,
+  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, kartLog, oturumlari,
   timelinePeriod, setTimelinePeriod, onUzatAc, onDoldur, onLinkOlustur,
   isGenel, paylasilanLinkler, acikLinkler, setAcikLinkler, musteriTel, onLinkUzat, onLinkIptal,
 }: {
@@ -2479,6 +2484,7 @@ function PaylasimBox({
   ekIlanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[];
   ziyaretler: ZiyaretItem[];
   kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[];
+  kartLog: KartLogItem[];
   oturumlari: OturumItem[];
   timelinePeriod: 1 | 6 | 24 | 168;
   setTimelinePeriod: (v: 1 | 6 | 24 | 168) => void;
@@ -2649,7 +2655,7 @@ function PaylasimBox({
             {paylasimGecmisi.length === 0 ? (
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', marginTop: 6 }}>Henüz ilan paylaşılmadı.</Text>
             ) : (
-              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} kartGorunum={kartGorunum} paylasilanLinkler={paylasilanLinkler} />
+              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} kartGorunum={kartGorunum} kartLog={kartLog} oturumlari={oturumlari} paylasilanLinkler={paylasilanLinkler} />
             )}
           </View>
         </View>
@@ -2842,7 +2848,91 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
   );
 }
 
-function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
+// Bir listenin ziyaretleri: aynı cihazın liste oturumu + listeden açılan ilan oturumları +
+// kart logları zaman sırasına dizilir; 5 dk'dan uzun boşluk yeni ziyaret sayılır. (web ile aynı)
+type ListeZiyaret = { device_id: string; ua: string | null; bas: number; son: number; kart: Map<string, number>; ilan: Map<string, number> };
+function listeZiyaretleri(oturumlari: OturumItem[], kartLog: KartLogItem[], paketToken: string, deviceFiltre: string | null): ListeZiyaret[] {
+  type Olay = { device_id: string; ua: string | null; bas: number; son: number; kartIlan?: string; kartSn?: number; ilanId?: string };
+  const olaylar: Olay[] = [];
+  oturumlari.forEach(o => {
+    if (o.paket_token !== paketToken || (deviceFiltre && o.device_id !== deviceFiltre)) return;
+    olaylar.push({ device_id: o.device_id, ua: o.user_agent, bas: new Date(o.baslama_at).getTime(), son: new Date(o.son_aktif_at).getTime(), ilanId: o.ilan_id ?? undefined });
+  });
+  kartLog.forEach(k => {
+    if (k.paket_token !== paketToken || (deviceFiltre && k.device_id !== deviceFiltre)) return;
+    const t = new Date(k.at).getTime();
+    olaylar.push({ device_id: k.device_id, ua: null, bas: t - k.sn * 1000, son: t, kartIlan: k.ilan_id, kartSn: k.sn });
+  });
+  olaylar.sort((a, b) => a.bas - b.bas);
+  const BOSLUK = 5 * 60 * 1000;
+  const acik = new Map<string, ListeZiyaret>();
+  const sonuc: ListeZiyaret[] = [];
+  olaylar.forEach(o => {
+    let z = acik.get(o.device_id);
+    if (!z || o.bas > z.son + BOSLUK) {
+      z = { device_id: o.device_id, ua: o.ua, bas: o.bas, son: o.son, kart: new Map(), ilan: new Map() };
+      acik.set(o.device_id, z);
+      sonuc.push(z);
+    }
+    z.son = Math.max(z.son, o.son);
+    if (!z.ua && o.ua) z.ua = o.ua;
+    if (o.kartIlan) z.kart.set(o.kartIlan, (z.kart.get(o.kartIlan) ?? 0) + (o.kartSn ?? 0));
+    if (o.ilanId) z.ilan.set(o.ilanId, (z.ilan.get(o.ilanId) ?? 0) + Math.max(0, Math.round((o.son - o.bas) / 1000)));
+  });
+  return sonuc.sort((a, b) => b.bas - a.bas);
+}
+
+function ziyaretTarih(ms: number) {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanAd }: { oturumlari: OturumItem[]; kartLog: KartLogItem[]; paketToken: string; deviceFiltre: string | null; ilanAd: Map<string, string> }) {
+  // ilk (en son) ziyaret varsayılan açık; dokunma tersine çevirir
+  const [ters, setTers] = useState<Set<string>>(new Set());
+  const liste = listeZiyaretleri(oturumlari, kartLog, paketToken, deviceFiltre);
+  if (liste.length === 0) return null;
+  const cokCihaz = new Set(liste.map(z => z.device_id)).size > 1;
+  return (
+    <View style={{ gap: 4, marginBottom: 8, padding: 8, backgroundColor: 'rgba(167,139,250,0.08)', borderRadius: 6 }}>
+      <Text style={{ fontSize: 11, fontWeight: '700', color: '#c4b5fd' }}>🕘 Ziyaret Geçmişi · {liste.length} ziyaret</Text>
+      {liste.map((z, i) => {
+        const zKey = `${z.device_id}-${z.bas}`;
+        const acik = (i === 0) !== ters.has(zKey);
+        const canli = Date.now() - z.son < 8000;
+        const sure = Math.max(0, Math.round((z.son - z.bas) / 1000));
+        const kartlar = Array.from(z.kart.entries()).sort((a, b) => b[1] - a[1]);
+        const ilanlar = Array.from(z.ilan.entries()).sort((a, b) => b[1] - a[1]);
+        return (
+          <View key={zKey}>
+            <TouchableOpacity activeOpacity={0.6} onPress={() => setTers(prev => { const n = new Set(prev); n.has(zKey) ? n.delete(zKey) : n.add(zKey); return n; })}
+              style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 11, color: '#c4b5fd' }}>{acik ? '▾' : '▸'}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>📅 {ziyaretTarih(z.bas)}</Text>
+              <Text style={{ fontSize: 11, color: canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: canli ? '700' : '400' }}>{canli ? '🟢 şu an' : formatSure(sure)}</Text>
+              {cokCihaz ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {cihazAdi(z.ua)}</Text> : null}
+              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· 👀 {kartlar.length} kart · 🏠 {ilanlar.length} ilan açtı</Text>
+            </TouchableOpacity>
+            {acik && (
+              <View style={{ gap: 2, marginTop: 3, marginLeft: 12, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: 'rgba(167,139,250,0.35)' }}>
+                {ilanlar.map(([iid, sn]) => (
+                  <Text key={`i-${iid}`} style={{ fontSize: 10, color: Colors.onSurface }}>🏠 Açtı: {ilanAd.get(iid) ?? 'İlan'} — {formatSure(sn)}</Text>
+                ))}
+                {kartlar.map(([iid, sn]) => (
+                  <Text key={`k-${iid}`} style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>👀 Listede: {ilanAd.get(iid) ?? 'İlan'} — {formatSure(sn)}</Text>
+                ))}
+                {ilanlar.length === 0 && kartlar.length === 0 ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>Sadece listeyi açtı</Text> : null}
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, kartLog, oturumlari, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; kartLog: KartLogItem[]; oturumlari: OturumItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
   const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
   const [paketCihazFiltre, setPaketCihazFiltre] = useState<Record<string, string | null>>({});
   const [popupIlanId, setPopupIlanId] = useState<string | null>(null);
@@ -3003,6 +3093,10 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, paylasilanL
                 ) : null}
               </View>
             )}
+            {acik && gPaketToken && paketZ.length > 0 ? (
+              <ZiyaretGecmisi oturumlari={oturumlari} kartLog={kartLog} paketToken={gPaketToken} deviceFiltre={selDevice}
+                ilanAd={new Map(g.items.filter(p => p.ilanlar).map(p => [p.ilanlar!.id, p.ilanlar!.baslik]))} />
+            ) : null}
             {acik && <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
               {g.items.map((p, i) => {
                 const ilan = p.ilanlar;
