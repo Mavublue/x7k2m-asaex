@@ -316,7 +316,7 @@ export default function MusteriDetayScreen() {
   const [paylasimYukleniyor, setPaylasimYukleniyor] = useState(false);
   const [aktifToken, setAktifToken] = useState<{ token: string; expires_at: string } | null>(null);
   const [paylasimGecmisi, setPaylasimGecmisi] = useState<PaylasimGecmisiRow[]>([]);
-  const [ekIlanlar, setEkIlanlar] = useState<{ id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[]>([]);
+  const [ekIlanlar, setEkIlanlar] = useState<{ id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null }[]>([]);
   const [ziyaretler, setZiyaretler] = useState<Ziyaret[]>([]);
   const [kartGorunum, setKartGorunum] = useState<{ paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]>([]);
   const [oturumlari, setOturumlari] = useState<Oturum[]>([]);
@@ -520,7 +520,7 @@ export default function MusteriDetayScreen() {
     const gecmisIds = new Set(((gecmisRes.data ?? []) as any[]).map(p => p.ilanlar?.id).filter(Boolean));
     const eksikIds = Array.from(new Set(oturumData.map(o => o.ilan_id).filter((x): x is string => !!x && !gecmisIds.has(x))));
     if (eksikIds.length) {
-      const { data: ek } = await supabase.from('ilanlar').select('id, baslik, fiyat, fotograflar, portfoy_no').in('id', eksikIds);
+      const { data: ek } = await supabase.from('ilanlar').select('id, baslik, fiyat, fotograflar, portfoy_no, durum').in('id', eksikIds);
       setEkIlanlar((ek ?? []) as any);
     } else {
       setEkIlanlar([]);
@@ -2659,7 +2659,7 @@ function PaylasimBox({
             {paylasimGecmisi.length === 0 ? (
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', marginTop: 6 }}>Henüz ilan paylaşılmadı.</Text>
             ) : (
-              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} kartGorunum={kartGorunum} kartLog={kartLog} oturumlari={oturumlari} paylasilanLinkler={paylasilanLinkler} />
+              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ekIlanlar={ekIlanlar} ziyaretler={ziyaretler} kartGorunum={kartGorunum} kartLog={kartLog} oturumlari={oturumlari} paylasilanLinkler={paylasilanLinkler} />
             )}
           </View>
         </View>
@@ -2675,6 +2675,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
   timelinePeriod: 1 | 6 | 24 | 168;
   setTimelinePeriod: (v: 1 | 6 | 24 | 168) => void;
 }) {
+  const [cizelgeAcik, setCizelgeAcik] = useState(false);
   const ilanMap = new Map<string, { baslik: string; portfoy: string | null; fiyat: number; foto: string | null }>();
   paylasimGecmisi.forEach(p => {
     if (p.ilanlar) ilanMap.set(p.ilanlar.id, {
@@ -2745,10 +2746,16 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
   const cardAreaH = laneCount * (CARD_H + 4);
   const chartH = cardAreaH + CONNECTOR_H + BAR_H + 4;
 
+  if (!cizelgeAcik) return (
+    <TouchableOpacity activeOpacity={0.7} onPress={() => setCizelgeAcik(true)} style={[paylasimStyles.timelineKart, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+      <Text style={paylasimStyles.bolumBaslik}>▸ 📊 Zaman Çizelgesi</Text>
+      <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>açmak için dokun</Text>
+    </TouchableOpacity>
+  );
   return (
     <View style={paylasimStyles.timelineKart}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-        <Text style={paylasimStyles.bolumBaslik}>📊 Zaman Çizelgesi</Text>
+        <TouchableOpacity onPress={() => setCizelgeAcik(false)}><Text style={paylasimStyles.bolumBaslik}>▾ 📊 Zaman Çizelgesi</Text></TouchableOpacity>
         <View style={paylasimStyles.periodGroup}>
           {([[1, '1 sa'], [6, '6 sa'], [24, '24 sa'], [168, '7 gün']] as const).map(([h, label]) => (
             <TouchableOpacity key={h} onPress={() => setTimelinePeriod(h)} style={[paylasimStyles.periodChip, timelinePeriod === h && paylasimStyles.periodChipActive]}>
@@ -2912,11 +2919,12 @@ function HareketFoto({ foto, w, h }: { foto: string | null | undefined; w: numbe
     : <View style={{ width: w, height: h, borderRadius: 4, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 10 }}>🏠</Text></View>;
 }
 
-function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBilgi }: { oturumlari: OturumItem[]; kartLog: KartLogItem[]; paketToken: string; deviceFiltre: string | null; ilanBilgi: Map<string, { baslik: string; foto: string | null }> }) {
+type IlanOzet = { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum?: string | null };
+function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBilgi, listeIds, cihazEtiket }: { oturumlari: OturumItem[]; kartLog: KartLogItem[]; paketToken: string; deviceFiltre: string | null; ilanBilgi: Map<string, IlanOzet>; listeIds: Set<string>; cihazEtiket: (z: { device_id: string; user_agent: string | null }) => string }) {
   // en son ziyaret varsayılan açık; dokunma tersine çevirir
   const [ters, setTers] = useState<Set<string>>(new Set());
   const liste = listeZiyaretleri(oturumlari, kartLog, paketToken, deviceFiltre);
-  if (liste.length === 0) return null;
+  if (liste.length === 0) return <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>Hareket kaydı yok</Text>;
   const cokCihaz = new Set(liste.map(z => z.device_id)).size > 1;
   const gunler: { key: string; ziyaretler: ListeZiyaret[] }[] = [];
   liste.forEach(z => {
@@ -2945,7 +2953,7 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
                   <Text style={{ fontSize: 11, color: '#c4b5fd' }}>{acik ? '▾' : '▸'}</Text>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurface }}>📱 {saatKisa(z.bas)} – {canli ? 'şu an' : saatKisa(z.son)}</Text>
                   <Text style={{ fontSize: 11, color: canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: canli ? '700' : '400' }}>{canli ? '🟢 bakıyor' : formatSure(sure)}</Text>
-                  {cokCihaz ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {cihazAdi(z.ua)}</Text> : null}
+                  {cokCihaz ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {cihazEtiket({ device_id: z.device_id, user_agent: z.ua })}</Text> : null}
                   <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· 🏠 {ilanSayi} ilan açtı</Text>
                 </TouchableOpacity>
                 {acik && (
@@ -2956,7 +2964,7 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
                         <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>📋 Listede · {saatKisa(a.bas)}–{saatKisa(a.son)}</Text>
                         {Array.from(a.kart.entries()).map(([iid, sn]) => (
                           <View key={iid} style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                            <HareketFoto foto={ilanBilgi.get(iid)?.foto} w={30} h={22} />
+                            <HareketFoto foto={ilanBilgi.get(iid)?.fotograflar?.[0]} w={30} h={22} />
                             <Text numberOfLines={1} style={{ flex: 1, fontSize: 10, color: Colors.onSurfaceVariant }}>{ilanBilgi.get(iid)?.baslik ?? 'İlan'}</Text>
                             <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>{formatSure(sn)}</Text>
                           </View>
@@ -2964,9 +2972,12 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
                       </View>
                     ) : (
                       <View key={ai} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', padding: 5, backgroundColor: 'rgba(14,165,233,0.12)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.35)', borderRadius: 6 }}>
-                        <HareketFoto foto={ilanBilgi.get(a.ilanId)?.foto} w={44} h={34} />
+                        <HareketFoto foto={ilanBilgi.get(a.ilanId)?.fotograflar?.[0]} w={44} h={34} />
                         <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#7dd3fc' }}>🏠 İlanı açtı · {saatKisa(a.bas)}</Text>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#7dd3fc' }}>
+                            🏠 İlanı açtı · {saatKisa(a.bas)}
+                            {!listeIds.has(a.ilanId) ? <Text style={{ fontSize: 9, color: '#fcd34d' }}>  ↪ listede yok · benzerden</Text> : null}
+                          </Text>
                           <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{ilanBilgi.get(a.ilanId)?.baslik ?? 'İlan'}</Text>
                         </View>
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#7dd3fc' }}>{formatSure(Math.max(0, Math.round((a.son - a.bas) / 1000)))}</Text>
@@ -2983,10 +2994,16 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
   );
 }
 
-function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, kartLog, oturumlari, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; kartLog: KartLogItem[]; oturumlari: OturumItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
+function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, kartLog, oturumlari, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ekIlanlar: IlanOzet[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; kartLog: KartLogItem[]; oturumlari: OturumItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
   const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
   const [paketCihazFiltre, setPaketCihazFiltre] = useState<Record<string, string | null>>({});
+  const [paketSekme, setPaketSekme] = useState<Record<string, 'ilgi' | 'hareket' | 'cihaz'>>({});
+  const [acikGrup, setAcikGrup] = useState<Set<string>>(new Set());
   const [popupIlanId, setPopupIlanId] = useState<string | null>(null);
+  // bilinen tüm ilanlar (paylaşılanlar + paylaşılmayıp açılanlar) — liste dışı açılışlar da adıyla görünsün
+  const ilanBilgi = new Map<string, IlanOzet>();
+  paylasimGecmisi.forEach(p => { if (p.ilanlar) ilanBilgi.set(p.ilanlar.id, p.ilanlar); });
+  ekIlanlar.forEach(e => { if (!ilanBilgi.has(e.id)) ilanBilgi.set(e.id, e); });
   const groups: Array<{ key: string; type: 'single' | 'paket'; date: string; items: PaylasimGecmisiItem[] }> = [];
   const seen = new Map<string, number>();
   paylasimGecmisi.forEach((p, i) => {
@@ -3100,111 +3117,178 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, kartLog, ot
             }
           }
         });
-        const paketZ = Array.from(byDevice.values());
+        const paketZ = Array.from(byDevice.values()).sort((a, b) => new Date(b.son_aktif_at).getTime() - new Date(a.son_aktif_at).getTime());
+        // aynı model telefonlar ayırt edilsin: ilk girişe göre #1, #2...
+        const cihazNo = new Map([...paketZ].sort((a, b) => new Date(a.ilk_giris_at).getTime() - new Date(b.ilk_giris_at).getTime()).map((z, i) => [z.device_id, i + 1]));
+        const cihazEtiket = (z: { device_id: string; user_agent: string | null }) => `${paketZ.length > 1 ? `#${cihazNo.get(z.device_id)} ` : ''}${cihazAdi(z.user_agent)}`;
         const canliN = paketZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
         const listedeGorulen = new Set(kartGorunum.filter(k => k.paket_token === gPaketToken && k.toplam_sure_sn > 0).map(k => k.ilan_id)).size;
         const selDevice = paketCihazFiltre[g.key] && byDevice.has(paketCihazFiltre[g.key]!) ? paketCihazFiltre[g.key]! : null;
         const acik = acikPaketler.has(g.key);
         const togglePaket = () => setAcikPaketler(prev => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; });
+        const sekme = paketSekme[g.key] ?? 'ilgi';
+        const listeIds = new Set(g.items.map(p => p.ilanlar?.id).filter((x): x is string => !!x));
+        // İlgi: listedeki ilanlar + bu listeden (benzer ilanlar üstünden) açılan liste dışı ilanlar
+        const ilgiIds = new Set(listeIds);
+        ziyaretler.forEach(z => { if (z.paket_token === gPaketToken && z.ilan_id) ilgiIds.add(z.ilan_id); });
+        const ilgi = Array.from(ilgiIds).map(iid => {
+          const zs = ziyaretler.filter(z => z.paket_token === gPaketToken && z.ilan_id === iid && (!selDevice || z.device_id === selDevice));
+          const gorunmeSn = kartGorunum
+            .filter(k => k.paket_token === gPaketToken && k.ilan_id === iid && (!selDevice || k.device_id === selDevice))
+            .reduce((t, k) => t + k.toplam_sure_sn, 0);
+          return {
+            id: iid, ilan: ilanBilgi.get(iid), listede: listeIds.has(iid),
+            acilis: zs.reduce((t, z) => t + Math.max(1, z.acilis_sayisi), 0),
+            sure: zs.reduce((t, z) => t + z.toplam_sure_sn, 0),
+            cihaz: zs.length, canli: zs.some(z => sonAktifText(z.son_aktif_at).canli), gorunmeSn,
+          };
+        });
+        const acilanlar = ilgi.filter(r => r.cihaz > 0).sort((a, b) => (Number(b.canli) - Number(a.canli)) || (b.sure - a.sure) || (b.gorunmeSn - a.gorunmeSn));
+        const sadeceListe = ilgi.filter(r => r.cihaz === 0 && r.gorunmeSn > 0).sort((a, b) => b.gorunmeSn - a.gorunmeSn);
+        const bakmadi = ilgi.filter(r => r.cihaz === 0 && r.gorunmeSn === 0 && r.listede && r.ilan);
+        const acilanSayi = new Set(ziyaretler.filter(z => z.paket_token === gPaketToken && z.ilan_id).map(z => z.ilan_id)).size;
+        // katlanır kompakt ilan grubu (sadece listede gördü / hiç bakmadı)
+        const kompaktGrup = (anahtar: string, baslik: string, rows: typeof ilgi, sag: ((r: typeof ilgi[number]) => string) | null, varsayilanAcik = false) => {
+          if (rows.length === 0) return null;
+          const gKey = `${g.key}-grp-${anahtar}`;
+          const grpAcik = varsayilanAcik !== acikGrup.has(gKey);
+          return (
+            <View style={{ marginTop: 4 }}>
+              <TouchableOpacity activeOpacity={0.6} onPress={() => setAcikGrup(prev => { const n = new Set(prev); n.has(gKey) ? n.delete(gKey) : n.add(gKey); return n; })} style={{ paddingVertical: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>{grpAcik ? '▾' : '▸'} {baslik} ({rows.length})</Text>
+              </TouchableOpacity>
+              {grpAcik && (
+                <View style={{ gap: 4, paddingLeft: 12 }}>
+                  {rows.map(r => (
+                    <TouchableOpacity key={r.id} activeOpacity={0.6} onPress={() => setPopupIlanId(r.id)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                      <HareketFoto foto={r.ilan?.fotograflar?.[0]} w={34} h={26} />
+                      <Text numberOfLines={1} style={{ flex: 1, fontSize: 11, color: Colors.onSurface }}>
+                        {r.ilan?.portfoy_no ? <Text style={{ color: '#fca5a5', fontWeight: '700' }}>#{r.ilan.portfoy_no} </Text> : null}{r.ilan?.baslik ?? 'İlan'}
+                      </Text>
+                      {r.ilan ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>₺{r.ilan.fiyat.toLocaleString('tr-TR')}</Text> : null}
+                      {sag ? <Text style={{ fontSize: 11, fontWeight: '700', color: '#c4b5fd', minWidth: 40, textAlign: 'right' }}>{sag(r)}</Text> : null}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        };
         return (
           <View key={g.key} style={paylasimStyles.gecmisKartPaket}>
-            <TouchableOpacity activeOpacity={0.7} onPress={togglePaket} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: acik ? 8 : 0 }}>
-              <Text style={{ fontSize: 12, color: '#b45309', transform: [{ rotate: acik ? '90deg' : '0deg' }] }}>▶</Text>
-              <View style={paylasimStyles.chipAmber}><Text style={paylasimStyles.chipAmberText}>📋 Liste — {g.items.length} ilan</Text></View>
-              <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📅 {paylasimTarihGoster(g.date)}</Text>
-              {paketZ.length > 0 ? (
-                <>
-                  <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {paketZ.length} cihaz açtı</Text></View>
-                  {canliN > 0 ? <View style={paylasimStyles.chipGreen}><Text style={paylasimStyles.chipGreenText}>🟢 {canliN} şu an bakıyor</Text></View> : null}
-                  {listedeGorulen > 0 ? <View style={{ backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 11, fontWeight: '700', color: '#c4b5fd' }}>👀 {listedeGorulen}/{g.items.length} ilana listede baktı</Text></View> : null}
-                </>
+            <TouchableOpacity activeOpacity={0.7} onPress={togglePaket}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={{ fontSize: 12, color: '#b45309', transform: [{ rotate: acik ? '90deg' : '0deg' }] }}>▶</Text>
+                <View style={paylasimStyles.chipAmber}><Text style={paylasimStyles.chipAmberText}>📋 Liste — {g.items.length} ilan</Text></View>
+                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📅 {paylasimTarihGoster(g.date)}</Text>
+              </View>
+              {paketZ.length === 0 ? (
+                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 4, marginLeft: 18 }}>Henüz açılmadı</Text>
               ) : (
-                <View style={paylasimStyles.chipGray}><Text style={paylasimStyles.chipGrayText}>Henüz açılmadı</Text></View>
+                <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 4, marginLeft: 18 }}>
+                  📱 {paketZ.length} cihaz
+                  {canliN > 0 ? <Text style={{ color: '#86efac', fontWeight: '700' }}> · 🟢 {canliN} şu an bakıyor</Text> : null}
+                  {' · 🏠 '}<Text style={{ color: '#7dd3fc', fontWeight: '700' }}>{acilanSayi}</Text> ilanı açtı
+                  {listedeGorulen > 0 ? <Text> · 👀 <Text style={{ color: '#c4b5fd', fontWeight: '700' }}>{listedeGorulen}</Text> ilana listede baktı</Text> : null}
+                </Text>
               )}
             </TouchableOpacity>
+            {acik && paketZ.length === 0 ? (
+              <View style={{ marginTop: 6 }}>{kompaktGrup('hepsi', 'Gönderilen ilanlar', ilgi.filter(r => r.ilan), null, true)}</View>
+            ) : null}
             {acik && paketZ.length > 0 && (
-              <View style={paylasimStyles.cihazListe}>
-                {paketZ.length > 1 ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant, marginBottom: 2 }}>Cihaza dokun → sadece o cihazın açtığı ilanları göster</Text> : null}
-                {paketZ.map(z => {
-                  const sa = sonAktifText(z.son_aktif_at);
-                  const secili = selDevice === z.device_id;
-                  const secilebilir = paketZ.length > 1;
-                  return (
-                    <TouchableOpacity key={z.device_id} activeOpacity={secilebilir ? 0.6 : 1} onPress={secilebilir ? () => setPaketCihazFiltre(prev => ({ ...prev, [g.key]: secili ? null : z.device_id })) : undefined} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap', paddingVertical: 3, paddingHorizontal: 5, borderRadius: 5, backgroundColor: secili ? 'rgba(59,130,246,0.15)' : 'transparent', borderWidth: 1, borderColor: secili ? '#3b82f6' : 'transparent' }}>
-                      {secilebilir ? <Text style={{ fontSize: 11 }}>{secili ? '☑️' : '⬜'}</Text> : null}
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
-                      <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
-                      <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
-                      {z.acilis_sayisi > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· {z.acilis_sayisi} oturum</Text> : null}
+              <View style={{ marginTop: 8 }}>
+                <View style={[paylasimStyles.periodGroup, { alignSelf: 'flex-start', marginBottom: 8 }]}>
+                  {([['ilgi', `İlgi (${acilanlar.length})`], ['hareket', 'Hareket'], ['cihaz', `Cihazlar (${paketZ.length})`]] as const).map(([k, l]) => (
+                    <TouchableOpacity key={k} onPress={() => setPaketSekme(prev => ({ ...prev, [g.key]: k }))} style={[paylasimStyles.periodChip, sekme === k && paylasimStyles.periodChipActive]}>
+                      <Text style={[paylasimStyles.periodChipText, { fontSize: 12 }, sekme === k && paylasimStyles.periodChipTextActive]}>{l}</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  ))}
+                </View>
                 {selDevice ? (
-                  <TouchableOpacity onPress={() => setPaketCihazFiltre(prev => ({ ...prev, [g.key]: null }))}><Text style={{ fontSize: 10, color: '#60a5fa', fontWeight: '600', marginTop: 2 }}>✕ Filtreyi kaldır</Text></TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(59,130,246,0.5)', backgroundColor: 'rgba(59,130,246,0.12)', marginBottom: 8 }}>
+                    <Text style={{ flex: 1, fontSize: 11, color: '#93c5fd' }}>📱 Sadece <Text style={{ fontWeight: '700' }}>{cihazEtiket(byDevice.get(selDevice)!)}</Text></Text>
+                    <TouchableOpacity onPress={() => setPaketCihazFiltre(prev => ({ ...prev, [g.key]: null }))}><Text style={{ fontSize: 11, fontWeight: '700', color: '#93c5fd' }}>✕ Tüm cihazlar</Text></TouchableOpacity>
+                  </View>
                 ) : null}
+                {sekme === 'ilgi' && (
+                  <View style={{ gap: 6 }}>
+                    {acilanlar.length === 0 ? <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>Hiç ilan açmadı{sadeceListe.length > 0 ? ' — sadece listede baktı' : ''}</Text> : null}
+                    {acilanlar.map(r => (
+                      <TouchableOpacity key={r.id} activeOpacity={0.7} onPress={() => setPopupIlanId(r.id)} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', padding: 6, borderRadius: 8, borderWidth: 1, borderColor: r.canli ? 'rgba(134,239,172,0.6)' : Colors.outlineVariant, backgroundColor: r.canli ? 'rgba(34,197,94,0.08)' : Colors.surfaceContainer }}>
+                        <HareketFoto foto={r.ilan?.fotograflar?.[0]} w={58} h={44} />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
+                            {r.ilan?.portfoy_no ? <View style={paylasimStyles.chipRedSmall}><Text style={paylasimStyles.chipRedTextSmall}>#{r.ilan.portfoy_no}</Text></View> : null}
+                            <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{r.ilan?.baslik ?? 'Silinmiş ilan'}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 1 }}>
+                            {r.ilan ? <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>₺{r.ilan.fiyat.toLocaleString('tr-TR')}</Text> : null}
+                            {!r.listede ? <Text style={{ fontSize: 9, fontWeight: '700', color: '#fcd34d', backgroundColor: 'rgba(245,158,11,0.18)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}>↪ listede yok · benzerden</Text> : null}
+                            {r.ilan?.durum && r.ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{r.ilan.durum}</Text> : null}
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                            <Text style={{ fontSize: 11, color: '#7dd3fc', fontWeight: '700' }}>🏠 {r.acilis > 1 ? `${r.acilis} kez açtı` : 'açtı'} · {formatSure(r.sure)}</Text>
+                            {r.gorunmeSn > 0 ? <Text style={{ fontSize: 11, color: '#c4b5fd', fontWeight: '600' }}>👀 listede {formatSure(r.gorunmeSn)}</Text> : null}
+                            {!selDevice && r.cihaz > 1 ? <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📱 {r.cihaz} cihaz</Text> : null}
+                            {r.canli ? <Text style={{ fontSize: 11, color: '#86efac', fontWeight: '700' }}>🟢 şu an bakıyor</Text> : null}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                    {kompaktGrup('liste', '👀 Açmadı, sadece listede gördü', sadeceListe, r => formatSure(r.gorunmeSn))}
+                    {kompaktGrup('bakmadi', listedeGorulen > 0 ? '⚪ Hiç bakmadı' : '⚪ Açmadığı ilanlar', bakmadi, null)}
+                  </View>
+                )}
+                {sekme === 'hareket' && gPaketToken ? (
+                  <ZiyaretGecmisi oturumlari={oturumlari} kartLog={kartLog} paketToken={gPaketToken} deviceFiltre={selDevice} ilanBilgi={ilanBilgi} listeIds={listeIds} cihazEtiket={cihazEtiket} />
+                ) : null}
+                {sekme === 'cihaz' && (
+                  <View style={{ gap: 4 }}>
+                    {paketZ.length > 1 ? <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>Cihaza dokun → İlgi ve Hareket sadece o cihaza göre gösterilir</Text> : null}
+                    {paketZ.map(z => {
+                      const sa = sonAktifText(z.son_aktif_at);
+                      const secili = selDevice === z.device_id;
+                      const secilebilir = paketZ.length > 1;
+                      const oKey = `${g.key}-${z.device_id}`;
+                      const oAcik = acikGrup.has(oKey);
+                      // geliş = Hareket'teki ziyaret (5 dk boşluk = yeni geliş)
+                      const gelisler = gPaketToken ? listeZiyaretleri(oturumlari, kartLog, gPaketToken, z.device_id) : [];
+                      const cihazIlan = new Set(ziyaretler.filter(x => x.paket_token === gPaketToken && x.device_id === z.device_id && x.ilan_id).map(x => x.ilan_id)).size;
+                      return (
+                        <View key={z.device_id} style={{ padding: 6, borderRadius: 6, backgroundColor: secili ? 'rgba(59,130,246,0.15)' : Colors.surfaceContainer, borderWidth: 1, borderColor: secili ? '#3b82f6' : 'transparent' }}>
+                          <TouchableOpacity activeOpacity={secilebilir ? 0.6 : 1} onPress={secilebilir ? () => setPaketCihazFiltre(prev => ({ ...prev, [g.key]: secili ? null : z.device_id })) : undefined}
+                            style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurface }}>📱 {cihazEtiket(z)}</Text>
+                            <Text style={{ fontSize: 11, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
+                            <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· Toplam {formatSure(z.toplam_sure_sn)}</Text>
+                            <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>· 🏠 {cihazIlan} ilan</Text>
+                          </TouchableOpacity>
+                          {gelisler.length > 0 ? (
+                            <TouchableOpacity activeOpacity={0.6} onPress={() => setAcikGrup(prev => { const n = new Set(prev); n.has(oKey) ? n.delete(oKey) : n.add(oKey); return n; })} style={{ marginTop: 3 }}>
+                              <Text style={{ fontSize: 11, color: '#7dd3fc', fontWeight: '600' }}>{gelisler.length} kez geldi {oAcik ? '▾' : '▸'}</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          {oAcik && (
+                            <View style={{ gap: 2, marginTop: 3, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: Colors.outlineVariant }}>
+                              {gelisler.map(v => {
+                                const vCanli = Date.now() - v.son < 8000;
+                                const vIlan = v.adimlar.filter(a => a.tip === 'ilan').length;
+                                return (
+                                  <Text key={v.bas} style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>
+                                    🕐 {paylasimTarihKisa(new Date(v.bas).toISOString())} · <Text style={{ color: vCanli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: vCanli ? '700' : '400' }}>{vCanli ? '🟢 bakıyor' : formatSure(Math.max(0, Math.round((v.son - v.bas) / 1000)))}</Text> · {vIlan > 0 ? `🏠 ${vIlan} ilan açtı` : 'sadece listeye baktı'}
+                                  </Text>
+                                );
+                              })}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             )}
-            {acik && gPaketToken && paketZ.length > 0 ? (
-              <ZiyaretGecmisi oturumlari={oturumlari} kartLog={kartLog} paketToken={gPaketToken} deviceFiltre={selDevice}
-                ilanBilgi={new Map(g.items.filter(p => p.ilanlar).map(p => [p.ilanlar!.id, { baslik: p.ilanlar!.baslik, foto: p.ilanlar!.fotograflar?.[0] ?? null }]))} />
-            ) : null}
-            {acik && <View style={{ borderLeftWidth: 2, borderLeftColor: 'rgba(245,158,11,0.5)', paddingLeft: 8, gap: 8, marginTop: 4 }}>
-              {g.items.map((p, i) => {
-                const ilan = p.ilanlar;
-                if (!ilan) return null;
-                let perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && z.paket_token === gPaketToken);
-                if (selDevice) perIlan = perIlan.filter(z => z.device_id === selDevice);
-                const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
-                // listede kartın ekranda kaldığı süre (tıklamasa da baktı mı)
-                const gorunmeSn = kartGorunum
-                  .filter(k => k.paket_token === gPaketToken && k.ilan_id === ilan.id && (!selDevice || k.device_id === selDevice))
-                  .reduce((t, k) => t + k.toplam_sure_sn, 0);
-                return { i, ilan, perIlan, perIlanCanli, acildi: perIlan.length > 0, gorunmeSn };
-              }).filter(Boolean).sort((a, b) => ((b!.acildi ? 1 : 0) - (a!.acildi ? 1 : 0)) || (b!.gorunmeSn - a!.gorunmeSn)).map(row => {
-                const { i, ilan, perIlan, perIlanCanli, gorunmeSn } = row!;
-                return (
-                  <View key={`${g.key}-${ilan.id}-${i}`} style={{ gap: 4 }}>
-                    <TouchableOpacity onPress={() => setPopupIlanId(ilan.id)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                      {ilan.fotograflar?.[0] ? (
-                        <R2Image source={ilan.fotograflar[0]} style={{ width: 40, height: 32, borderRadius: 4 } as any} resizeMode="cover" size="sm" />
-                      ) : (
-                        <View style={{ width: 40, height: 32, borderRadius: 4, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 12 }}>🏠</Text></View>
-                      )}
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                          {ilan.portfoy_no ? <View style={paylasimStyles.chipRedSmall}><Text style={paylasimStyles.chipRedTextSmall}>#{ilan.portfoy_no}</Text></View> : null}
-                          <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{ilan.baslik}</Text>
-                          {perIlan.length > 0 ? (
-                            <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {perIlan.length}{perIlanCanli > 0 ? ` · 🟢 ${perIlanCanli}` : ''}</Text></View>
-                          ) : null}
-                          {gorunmeSn > 0 ? (
-                            <View style={{ backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}><Text style={{ fontSize: 9, fontWeight: '700', color: '#c4b5fd' }}>👀 listede {formatSure(gorunmeSn)}</Text></View>
-                          ) : null}
-                        </View>
-                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '700' }}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
-                          {ilan.durum && ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{ilan.durum}</Text> : null}
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                    {perIlan.length > 0 && (
-                      <View style={{ marginLeft: 48, padding: 6, backgroundColor: Colors.surfaceContainer, borderRadius: 5, gap: 2 }}>
-                        {perIlan.map(z => {
-                          const sa = sonAktifText(z.son_aktif_at);
-                          return (
-                            <View key={`${ilan.id}-${z.device_id}`} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.onSurface }}>{cihazAdi(z.user_agent)}</Text>
-                              <Text style={{ fontSize: 10, color: sa.canli ? '#86efac' : Colors.onSurfaceVariant, fontWeight: sa.canli ? '700' : '400' }}>{sa.canli ? '🟢 ' : ''}{sa.text}</Text>
-                              <Text style={{ fontSize: 10, color: Colors.onSurfaceVariant }}>· {formatSure(z.toplam_sure_sn)}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>}
           </View>
         );
       })}
