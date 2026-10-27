@@ -317,6 +317,7 @@ export default function MusteriDetayScreen() {
   const [paylasimGecmisi, setPaylasimGecmisi] = useState<PaylasimGecmisiRow[]>([]);
   const [ekIlanlar, setEkIlanlar] = useState<{ id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[]>([]);
   const [ziyaretler, setZiyaretler] = useState<Ziyaret[]>([]);
+  const [kartGorunum, setKartGorunum] = useState<{ paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]>([]);
   const [oturumlari, setOturumlari] = useState<Oturum[]>([]);
   const [timelinePeriod, setTimelinePeriod] = useState<1 | 6 | 24 | 168>(24);
   const [, setTickNow] = useState(0);
@@ -491,7 +492,7 @@ export default function MusteriDetayScreen() {
     if (!silent) setPaylasimYukleniyor(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { if (!silent) setPaylasimYukleniyor(false); return; }
-    const [tokenRes, gecmisRes, ziyaretRes, oturumRes, linklerRes] = await Promise.all([
+    const [tokenRes, gecmisRes, ziyaretRes, oturumRes, linklerRes, kartRes] = await Promise.all([
       supabase.from('musteri_tokenler').select('token, expires_at').eq('user_id', session.user.id).eq('musteri_id', id).maybeSingle(),
       supabase.from('musteri_paylasim_gecmisi')
         .select('paylasildigi_tarih, paket_token, ilanlar(id, baslik, fiyat, fotograflar, portfoy_no, durum)')
@@ -500,7 +501,9 @@ export default function MusteriDetayScreen() {
       supabase.rpc('get_musteri_ziyaretleri', { p_musteri_id: id }),
       supabase.rpc('get_musteri_oturumlari', { p_musteri_id: id }),
       supabase.rpc('get_musteri_linkleri', { p_musteri_id: id }),
+      supabase.rpc('get_musteri_kart_gorunumleri', { p_musteri_id: id }),
     ]);
+    setKartGorunum((kartRes.data ?? []) as any);
     setAktifToken(tokenRes.data ? { token: tokenRes.data.token, expires_at: tokenRes.data.expires_at } : null);
     setPaylasilanLinkler((linklerRes.data ?? []) as any);
     setPaylasimGecmisi((gecmisRes.data ?? []) as any);
@@ -1734,6 +1737,7 @@ export default function MusteriDetayScreen() {
                     paylasimGecmisi={paylasimGecmisi}
                     ekIlanlar={ekIlanlar}
                     ziyaretler={ziyaretler}
+                    kartGorunum={kartGorunum}
                     oturumlari={oturumlari}
                     timelinePeriod={timelinePeriod}
                     setTimelinePeriod={setTimelinePeriod}
@@ -2463,7 +2467,7 @@ type ZiyaretItem = { paket_token: string | null; musteri_token: string | null; i
 type OturumItem = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
 
 function PaylasimBox({
-  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, oturumlari,
+  acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, oturumlari,
   timelinePeriod, setTimelinePeriod, onUzatAc, onDoldur, onLinkOlustur,
   isGenel, paylasilanLinkler, acikLinkler, setAcikLinkler, musteriTel, onLinkUzat, onLinkIptal,
 }: {
@@ -2474,6 +2478,7 @@ function PaylasimBox({
   paylasimGecmisi: PaylasimGecmisiItem[];
   ekIlanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null }[];
   ziyaretler: ZiyaretItem[];
+  kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[];
   oturumlari: OturumItem[];
   timelinePeriod: 1 | 6 | 24 | 168;
   setTimelinePeriod: (v: 1 | 6 | 24 | 168) => void;
@@ -2644,7 +2649,7 @@ function PaylasimBox({
             {paylasimGecmisi.length === 0 ? (
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', marginTop: 6 }}>Henüz ilan paylaşılmadı.</Text>
             ) : (
-              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} paylasilanLinkler={paylasilanLinkler} />
+              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ziyaretler={ziyaretler} kartGorunum={kartGorunum} paylasilanLinkler={paylasilanLinkler} />
             )}
           </View>
         </View>
@@ -2837,7 +2842,7 @@ function TimelineChart({ oturumlari, paylasimGecmisi, ekIlanlar, timelinePeriod,
   );
 }
 
-function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
+function PaylasimListesi({ paylasimGecmisi, ziyaretler, kartGorunum, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
   const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
   const [paketCihazFiltre, setPaketCihazFiltre] = useState<Record<string, string | null>>({});
   const [popupIlanId, setPopupIlanId] = useState<string | null>(null);
@@ -2956,6 +2961,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
         });
         const paketZ = Array.from(byDevice.values());
         const canliN = paketZ.filter(z => sonAktifText(z.son_aktif_at).canli).length;
+        const listedeGorulen = new Set(kartGorunum.filter(k => k.paket_token === gPaketToken && k.toplam_sure_sn > 0).map(k => k.ilan_id)).size;
         const selDevice = paketCihazFiltre[g.key] && byDevice.has(paketCihazFiltre[g.key]!) ? paketCihazFiltre[g.key]! : null;
         const acik = acikPaketler.has(g.key);
         const togglePaket = () => setAcikPaketler(prev => { const n = new Set(prev); n.has(g.key) ? n.delete(g.key) : n.add(g.key); return n; });
@@ -2969,6 +2975,7 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
                 <>
                   <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {paketZ.length} cihaz açtı</Text></View>
                   {canliN > 0 ? <View style={paylasimStyles.chipGreen}><Text style={paylasimStyles.chipGreenText}>🟢 {canliN} şu an bakıyor</Text></View> : null}
+                  {listedeGorulen > 0 ? <View style={{ backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}><Text style={{ fontSize: 11, fontWeight: '700', color: '#c4b5fd' }}>👀 {listedeGorulen}/{g.items.length} ilana listede baktı</Text></View> : null}
                 </>
               ) : (
                 <View style={paylasimStyles.chipGray}><Text style={paylasimStyles.chipGrayText}>Henüz açılmadı</Text></View>
@@ -3003,9 +3010,13 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
                 let perIlan = ziyaretler.filter(z => z.ilan_id === ilan.id && z.paket_token === gPaketToken);
                 if (selDevice) perIlan = perIlan.filter(z => z.device_id === selDevice);
                 const perIlanCanli = perIlan.filter(z => sonAktifText(z.son_aktif_at).canli).length;
-                return { i, ilan, perIlan, perIlanCanli, acildi: perIlan.length > 0 };
-              }).filter(Boolean).sort((a, b) => (b!.acildi ? 1 : 0) - (a!.acildi ? 1 : 0)).map(row => {
-                const { i, ilan, perIlan, perIlanCanli } = row!;
+                // listede kartın ekranda kaldığı süre (tıklamasa da baktı mı)
+                const gorunmeSn = kartGorunum
+                  .filter(k => k.paket_token === gPaketToken && k.ilan_id === ilan.id && (!selDevice || k.device_id === selDevice))
+                  .reduce((t, k) => t + k.toplam_sure_sn, 0);
+                return { i, ilan, perIlan, perIlanCanli, acildi: perIlan.length > 0, gorunmeSn };
+              }).filter(Boolean).sort((a, b) => ((b!.acildi ? 1 : 0) - (a!.acildi ? 1 : 0)) || (b!.gorunmeSn - a!.gorunmeSn)).map(row => {
+                const { i, ilan, perIlan, perIlanCanli, gorunmeSn } = row!;
                 return (
                   <View key={`${g.key}-${ilan.id}-${i}`} style={{ gap: 4 }}>
                     <TouchableOpacity onPress={() => setPopupIlanId(ilan.id)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -3020,6 +3031,9 @@ function PaylasimListesi({ paylasimGecmisi, ziyaretler, paylasilanLinkler }: { p
                           <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>{ilan.baslik}</Text>
                           {perIlan.length > 0 ? (
                             <View style={paylasimStyles.chipBlue}><Text style={paylasimStyles.chipBlueText}>👁️ {perIlan.length}{perIlanCanli > 0 ? ` · 🟢 ${perIlanCanli}` : ''}</Text></View>
+                          ) : null}
+                          {gorunmeSn > 0 ? (
+                            <View style={{ backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}><Text style={{ fontSize: 9, fontWeight: '700', color: '#c4b5fd' }}>👀 listede {formatSure(gorunmeSn)}</Text></View>
                           ) : null}
                         </View>
                         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>

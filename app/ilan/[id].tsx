@@ -687,6 +687,7 @@ export default function IlanDetayScreen() {
     { label: 'Kategori', deger: ilan.kategori },
     { label: 'Oda Sayısı', deger: ilan.oda_sayisi },
     { label: 'Banyo Sayısı', deger: (ilan as any).banyo_sayisi ?? null },
+    { label: 'Bina Yaşı', deger: (ilan as any).bina_yasi ?? null },
     { label: 'Metrekare', deger: ilan.metrekare ? `${ilan.metrekare} m²` : null },
     { label: 'Kat Sayısı', deger: (ilan as any).kat_sayisi ?? null },
     { label: 'Bulunduğu Kat', deger: (ilan as any).bulundugu_kat ?? null },
