@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { isBotUA } from '../../lib/bot';
 import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Musteri, Ilan, MusteriNot, MusteriGorev, MusteriIstek } from '../../types';
@@ -505,13 +506,16 @@ export default function MusteriDetayScreen() {
       supabase.rpc('get_musteri_kart_gorunumleri', { p_musteri_id: id }),
       supabase.rpc('get_musteri_kart_loglari', { p_musteri_id: id }),
     ]);
-    setKartGorunum((kartRes.data ?? []) as any);
-    setKartLog((kartLogRes.data ?? []) as any);
+    // robot (Google sesli okuma vb.) cihazlarını tamamen çıkar — kart verisinde UA yok, device_id ile süz
+    const botDev = new Set([...((ziyaretRes.data ?? []) as any[]), ...((oturumRes.data ?? []) as any[])].filter(r => isBotUA(r.user_agent)).map(r => r.device_id));
+    const insan = (r: any) => !botDev.has(r.device_id);
+    setKartGorunum(((kartRes.data ?? []) as any[]).filter(insan) as any);
+    setKartLog(((kartLogRes.data ?? []) as any[]).filter(insan) as any);
     setAktifToken(tokenRes.data ? { token: tokenRes.data.token, expires_at: tokenRes.data.expires_at } : null);
     setPaylasilanLinkler((linklerRes.data ?? []) as any);
     setPaylasimGecmisi((gecmisRes.data ?? []) as any);
-    setZiyaretler((ziyaretRes.data ?? []) as any);
-    const oturumData = (oturumRes.data ?? []) as { ilan_id: string | null }[];
+    setZiyaretler(((ziyaretRes.data ?? []) as any[]).filter(insan) as any);
+    const oturumData = ((oturumRes.data ?? []) as any[]).filter(insan) as { ilan_id: string | null }[];
     setOturumlari(oturumData as any);
     const gecmisIds = new Set(((gecmisRes.data ?? []) as any[]).map(p => p.ilanlar?.id).filter(Boolean));
     const eksikIds = Array.from(new Set(oturumData.map(o => o.ilan_id).filter((x): x is string => !!x && !gecmisIds.has(x))));

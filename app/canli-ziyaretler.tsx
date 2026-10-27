@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { isBotUA } from '../lib/bot';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import R2Image from '../components/R2Image';
 
@@ -136,8 +137,8 @@ export default function CanliZiyaretlerScreen() {
       supabase.rpc('get_canli_ziyaretler', { p_emlakci_id: user.id }),
       supabase.rpc('get_canli_oturumlari', { p_emlakci_id: user.id, p_son_saat: period }),
     ]);
-    if (Array.isArray(canli)) setRows(canli as CanliRow[]);
-    if (Array.isArray(otu)) setOturumlari(otu as OturumRow[]);
+    if (Array.isArray(canli)) setRows((canli as CanliRow[]).filter(r => !isBotUA(r.user_agent)));
+    if (Array.isArray(otu)) setOturumlari((otu as OturumRow[]).filter(r => !isBotUA(r.user_agent)));
     setLoading(false);
   }, []);
 
