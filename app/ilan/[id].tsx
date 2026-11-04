@@ -342,6 +342,10 @@ export default function IlanDetayScreen() {
   async function handleCogalt() {
     if (!ilan) return;
     setMenuModal(false);
+    if (!(ilan as any).musteri_gizle && (!ilan.musteri_lat || !ilan.musteri_lng)) {
+      Alert.alert('Müşteri konumu yok', 'Müşteriye görünür ilanda müşteri konumu zorunlu. Çoğaltmadan önce ilanı düzenleyip müşteri konumunu seç veya "Müşteriye Gizle"yi aç.');
+      return;
+    }
     setCogaltiyor(true);
     try {
       await cogaltIslem();

@@ -381,6 +381,12 @@ export default function IlanDuzenleScreen() {
       Alert.alert('Görünür fotoğraf yok', 'Müşteriye görünür en az bir fotoğraf gerekli. Bir fotoğrafı gizli kutusundan çıkar.');
       return;
     }
+    // Müşteri konumu yoksa müşteri sayfası emlakçının birebir konumunu gösterir: görünür ilanda zorunlu
+    if (!musteriGizle && (!musteriKonumAktif || !musteriLat || !musteriLng)) {
+      setMusteriKonumAktif(true);
+      Alert.alert('Müşteri konumu yok', 'Müşteriye görünür ilanda müşteri konumu zorunlu. Müşteri konumunu seç veya "Müşteriye Gizle"yi aç.');
+      return;
+    }
 
     // Sağ kutudaki (gizli) fotolar fotograflar'da olmaz — orphan sanıp silme
     const silinenler = orijinalFotograflar.filter(k => !fotograflar.includes(k) && !gizliFotograflar.includes(k));
