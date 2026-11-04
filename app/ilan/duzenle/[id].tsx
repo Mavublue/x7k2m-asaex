@@ -621,7 +621,7 @@ export default function IlanDuzenleScreen() {
             </View>
             {aciklamaTab === 'not' ? (
               <>
-                <TextInput style={[styles.input, styles.textarea]} placeholder="Kendi notlarınız (müşteri görmez)..." value={aciklama} onChangeText={setAciklama} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+                <TextInput style={[styles.input, styles.textarea]} placeholder="Kendi notlarınız (müşteri görmez)..." value={aciklama} onChangeText={setAciklama} multiline placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
                 {submitted && !musteriAciklamasi && (
                   <Text style={styles.errText}>Müşteri açıklaması zorunludur.</Text>
                 )}
@@ -633,7 +633,7 @@ export default function IlanDuzenleScreen() {
                     <Text style={styles.ayniYapBtnText}>İlan Notuyla Aynı Yap</Text>
                   </TouchableOpacity>
                 )}
-                <TextInput style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline numberOfLines={4} placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
+                <TextInput style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
               </>
             )}
           </FormGroup>

@@ -597,7 +597,6 @@ export default function IlanEkleScreen() {
                   value={aciklama}
                   onChangeText={setAciklama}
                   multiline
-                  numberOfLines={4}
                   placeholderTextColor={Colors.outlineVariant}
                   textAlignVertical="top"
                 />
@@ -613,7 +612,6 @@ export default function IlanEkleScreen() {
                   value={musteriAciklamasi}
                   onChangeText={setMusteriAciklamasi}
                   multiline
-                  numberOfLines={4}
                   placeholderTextColor={Colors.outlineVariant}
                   textAlignVertical="top"
                 />
