@@ -9,6 +9,7 @@ import R2Image from '../../components/R2Image';
 import FiligranDurumKarti from '../../components/FiligranDurumKarti';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
+import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { Eslesme } from '../../types';
@@ -624,17 +625,20 @@ export default function DashboardScreen() {
     if (editSaatDate) { dt.setHours(editSaatDate.getHours(), editSaatDate.getMinutes(), 0, 0); }
     else { dt.setHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').update({ baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() }).eq('id', editGorev.id);
+    yerelBildirimleriYenile();
     setGorevDashboard(prev => prev.map(g => g.id === editGorev.id ? { ...g, baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() } : g));
     setEditGorev(null);
   }
 
   async function gorevTamamlaDashboard(gorevId: string) {
     await supabase.from('musteri_gorevler').update({ tamamlandi: true }).eq('id', gorevId);
+    yerelBildirimleriYenile();
     setGorevDashboard(prev => prev.filter(g => g.id !== gorevId));
   }
 
   async function gorevSilDashboard(id: string) {
     await supabase.from('musteri_gorevler').delete().eq('id', id);
+    yerelBildirimleriYenile();
     setGorevDashboard(prev => prev.filter(g => g.id !== id));
     setGecmisCount(prev => gorevFiltre === 'gecmis' ? Math.max(0, prev - 1) : prev);
     setSilOnayId(null);
@@ -649,6 +653,7 @@ export default function DashboardScreen() {
     if (genelSaatDate) { dt.setHours(genelSaatDate.getHours(), genelSaatDate.getMinutes(), 0, 0); }
     else { dt.setHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').insert({ baslik: genelBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false, ...(genelMusteriId ? { musteri_id: genelMusteriId } : {}) });
+    yerelBildirimleriYenile();
     setGenelBaslik(''); setGenelTarihDate(new Date()); setGenelSaatDate(null); setGenelMusteriId(null); setGenelMusteriArama(''); setGenelGorevModal(false);
     fetchGorevDashboard(gorevFiltre);
   }

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
 import { ayirTelefon, birlestirTelefon, VARSAYILAN_TELEFON_KODU } from '../../constants/telefonKodlari';
@@ -255,6 +256,7 @@ export default function MusteriEkleScreen() {
       musteri_tipi: musteriTipi,
     }).select('id').single();
     if (error) { Alert.alert('Hata', error.message); setLoading(false); return; }
+    yerelBildirimleriYenile();
     if (inserted) {
       const iRows = istekler
         .filter(i => i.tipler.length || i.butceMin || i.butceMax || i.konumlar.length || i.satilikKiralik)

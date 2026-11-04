@@ -1,12 +1,13 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { Alert, View, Text, TouchableOpacity } from 'react-native';
+import { Alert, AppState, View, Text, TouchableOpacity } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { registerPushToken } from '../lib/pushNotifications';
+import { yerelBildirimleriYenile } from '../lib/yerelBildirim';
 import { Session } from '@supabase/supabase-js';
 import { useDownloadProgress, cancelDownload } from '../lib/downloadProgress';
 import { cacheClear } from '../lib/cache';
@@ -55,6 +56,14 @@ export default function RootLayout() {
     }
   }, [session, loading]);
 
+  // Giriş/çıkışta ve app her öne geldiğinde telefondaki bildirimleri yeniden kur
+  useEffect(() => {
+    if (loading) return;
+    yerelBildirimleriYenile();
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') yerelBildirimleriYenile(); });
+    return () => sub.remove();
+  }, [loading, session?.user?.id]);
+
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
       const data = response.notification.request.content.data as any;
@@ -76,6 +85,7 @@ export default function RootLayout() {
                 hedef_tarih: gorev_tarih ? new Date(gorev_tarih).toISOString() : null,
                 aciklama: 'Nottan önerildi',
               });
+              yerelBildirimleriYenile();
               router.push(`/musteri/${musteri_id}` as any);
             },
           },

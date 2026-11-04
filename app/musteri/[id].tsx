@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { isBotUA } from '../../lib/bot';
 import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
@@ -683,6 +684,7 @@ export default function MusteriDetayScreen() {
       if (kErr) { Alert.alert('Ek kişi kaydı hatası', kErr.message); setSaving(false); return; }
     }
 
+    yerelBildirimleriYenile();
     setDuzenle(false);
     fetchMusteri();
     setSaving(false);
@@ -977,6 +979,7 @@ export default function MusteriDetayScreen() {
       const { error } = await supabase.from('musteri_gorevler').insert(payload);
       if (error) { Alert.alert('Hata', error.message); return; }
     }
+    yerelBildirimleriYenile();
     setGorevEkle(false);
     setGorevEditId(null);
     setGorevBaslik('');
@@ -988,6 +991,7 @@ export default function MusteriDetayScreen() {
 
   async function handleGorevTamamla(g: MusteriGorev) {
     await supabase.from('musteri_gorevler').update({ tamamlandi: !g.tamamlandi }).eq('id', g.id);
+    yerelBildirimleriYenile();
     setGorevler(prev => prev.map(x => x.id === g.id ? { ...x, tamamlandi: !x.tamamlandi } : x));
   }
 
@@ -996,6 +1000,7 @@ export default function MusteriDetayScreen() {
       { text: 'Vazgeç', style: 'cancel' },
       { text: 'Sil', style: 'destructive', onPress: async () => {
         await supabase.from('musteri_gorevler').delete().eq('id', gorevId);
+        yerelBildirimleriYenile();
         setGorevler(prev => prev.filter(g => g.id !== gorevId));
       }},
     ]);
@@ -1614,7 +1619,7 @@ export default function MusteriDetayScreen() {
                         const pad = (n: number) => String(n).padStart(2, '0');
                         const yeni = `${pad(sel.getDate())}.${pad(sel.getMonth()+1)}.${sel.getFullYear()}`;
                         setTakipTarihi(yeni);
-                        supabase.from('musteriler').update({ takip_tarihi: isoFormat(yeni) }).eq('id', id).then(() => {});
+                        supabase.from('musteriler').update({ takip_tarihi: isoFormat(yeni) }).eq('id', id).then(() => { yerelBildirimleriYenile(); });
                       }
                     }}
                   />
@@ -2235,6 +2240,7 @@ export default function MusteriDetayScreen() {
                   musteri_id: id, user_id: u?.id, baslik: gorevOneriModal.baslik,
                   hedef_tarih: hedefTarih, aciklama: 'Nottan önerildi',
                 });
+                yerelBildirimleriYenile();
                 if (gorevOneriModal.rowId) await supabase.from('asistan_oneriler').delete().eq('id', gorevOneriModal.rowId);
                 setGorevOneriModal(null);
                 refreshGorevler();

@@ -7,6 +7,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
@@ -100,6 +101,7 @@ export default function GorevlerScreen() {
 
   async function gorevTamamla(id: string) {
     await supabase.from('musteri_gorevler').update({ tamamlandi: true }).eq('id', id);
+    yerelBildirimleriYenile();
     const wasGecmis = gecmisGorevler.some(g => g.id === id);
     setGorevler(prev => prev.filter(g => g.id !== id));
     setGecmisGorevler(prev => prev.filter(g => g.id !== id));
@@ -108,11 +110,13 @@ export default function GorevlerScreen() {
 
   async function gorevGeriAl(id: string) {
     await supabase.from('musteri_gorevler').update({ tamamlandi: false }).eq('id', id);
+    yerelBildirimleriYenile();
     setGorevler(prev => prev.filter(g => g.id !== id));
   }
 
   async function gorevSil(id: string) {
     await supabase.from('musteri_gorevler').delete().eq('id', id);
+    yerelBildirimleriYenile();
     const wasGecmis = gecmisGorevler.some(g => g.id === id);
     setGorevler(prev => prev.filter(g => g.id !== id));
     setGecmisGorevler(prev => prev.filter(g => g.id !== id));
@@ -125,6 +129,7 @@ export default function GorevlerScreen() {
     if (editSaatDate) { dt.setHours(editSaatDate.getHours(), editSaatDate.getMinutes(), 0, 0); }
     else { dt.setHours(0, 0, 0, 0); }
     await supabase.from('musteri_gorevler').update({ baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() }).eq('id', editGorev.id);
+    yerelBildirimleriYenile();
     setGorevler(prev => prev.map(g => g.id === editGorev.id ? { ...g, baslik: editBaslik.trim(), hedef_tarih: dt.toISOString() } : g));
     setEditGorev(null);
   }
@@ -144,6 +149,7 @@ export default function GorevlerScreen() {
     } else {
       await supabase.from('musteri_gorevler').insert({ baslik: ekleBaslik.trim(), hedef_tarih: dt.toISOString(), user_id: user.id, tamamlandi: false });
     }
+    yerelBildirimleriYenile();
     setEkleBaslik(''); setEkleTarihDate(new Date()); setEkleSaatDate(null); setEkleMusteriIds([]); setEkleMusteriArama(''); setEkleModal(false);
     fetchGorevler(gorevFiltre);
   }
