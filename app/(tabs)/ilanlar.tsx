@@ -18,10 +18,37 @@ import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/ca
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
-import { TURKIYE, IL_LISTESI, getMahalleGruplar } from '../../constants/turkiye';
+import { TURKIYE, IL_LISTESI, getMahalleGruplar, MahalleGrup } from '../../constants/turkiye';
 
 function normalizeMahalle(m: string): string {
   return m.toLowerCase().replace(/\s*(mahallesi|mah\.?)\s*$/, '').replace(/\s+/g, '').trim();
+}
+
+function konumAgaciOlustur(ilanlar: Pick<Ilan, 'konum' | 'ilce' | 'mahalle'>[]) {
+  const ham: Record<string, Record<string, Map<string, string>>> = {};
+  ilanlar.forEach(i => {
+    if (!i.konum?.trim()) return;
+    const ilceler = (ham[i.konum] ??= {});
+    if (!i.ilce?.trim()) return;
+    const mahalleler = (ilceler[i.ilce] ??= new Map());
+    if (i.mahalle?.trim()) mahalleler.set(normalizeMahalle(i.mahalle), i.mahalle);
+  });
+  const agac: Record<string, Record<string, MahalleGrup[]>> = {};
+  Object.entries(ham).forEach(([il, ilceler]) => {
+    agac[il] = {};
+    Object.entries(ilceler).forEach(([ilce, mahalleler]) => {
+      const tumGruplar = getMahalleGruplar(il, ilce);
+      const bilinen = new Set(tumGruplar.flatMap(g => g.mahalleler).map(normalizeMahalle));
+      const gruplar = tumGruplar
+        .map(g => ({ semt: g.semt, mahalleler: g.mahalleler.filter(m => mahalleler.has(normalizeMahalle(m))) }))
+        .filter(g => g.mahalleler.length > 0);
+      // Sabit listede olmayan mahalleler de kaybolmasın: semtsiz, en altta
+      const digerleri = [...mahalleler].filter(([k]) => !bilinen.has(k)).map(([, m]) => m).sort((a, b) => a.localeCompare(b, 'tr'));
+      if (digerleri.length > 0) gruplar.push({ semt: null, mahalleler: digerleri });
+      agac[il][ilce] = gruplar;
+    });
+  });
+  return agac;
 }
 
 function fmtPin(fiyat: number) {
@@ -235,25 +262,30 @@ export default function IlanlarScreen() {
   const [kategoriModal, setKategoriModal] = useState(false);
   const [topluKategori, setTopluKategori] = useState<Set<string>>(new Set());
 
+  const konumAgaci = useMemo(() => konumAgaciOlustur(ilanlar), [ilanlar]);
+  const konumIller = useMemo(() => [
+    ...ILLER_LISTESI.filter(il => konumAgaci[il]),
+    ...Object.keys(konumAgaci).filter(il => !ILLER_LISTESI.includes(il)).sort((a, b) => a.localeCompare(b, 'tr')),
+  ], [konumAgaci]);
+
   type Section = { title: string; showHeader: boolean; data: string[]; key: string };
   let konumSections: Section[] = [];
   const q = konumSearch.toLowerCase();
   if (filterPage === 'il') {
     konumSections = [{
       title: '', showHeader: false, key: 'iller',
-      data: ILLER_LISTESI.filter(i => i.toLowerCase().includes(q)),
+      data: konumIller.filter(i => i.toLowerCase().includes(q)),
     }];
   } else if (filterPage === 'ilce') {
     gecici.filterIl.forEach(il => {
-      const ilceler = (ILLER[il] ?? []).slice().sort((a,b) => a.localeCompare(b,'tr')).filter(i => i.toLowerCase().includes(q));
+      const ilceler = Object.keys(konumAgaci[il] ?? {}).sort((a,b) => a.localeCompare(b,'tr')).filter(i => i.toLowerCase().includes(q));
       if (ilceler.length > 0) konumSections.push({ title: il, showHeader: gecici.filterIl.length > 1, data: ilceler, key: il });
     });
   } else if (filterPage === 'mahalle') {
     const cokIlce = gecici.filterIl.length > 1 || gecici.filterIlce.length > 1;
     gecici.filterIl.forEach(il => {
       gecici.filterIlce.forEach(ilce => {
-        if (!(ILLER[il] ?? []).includes(ilce)) return;
-        const gruplar = getMahalleGruplar(il, ilce)
+        const gruplar = (konumAgaci[il]?.[ilce] ?? [])
           .map(g => {
             const semtMatch = g.semt && g.semt.toLowerCase().includes(q);
             return { semt: g.semt, mahalleler: semtMatch ? g.mahalleler : g.mahalleler.filter(m => m.toLowerCase().includes(q)) };
@@ -659,7 +691,7 @@ export default function IlanlarScreen() {
           {(() => {
             const chips: { key: string; label: string; onRemove: () => void }[] = [];
             filtre.filterIl.forEach(il => {
-              const ilceler = filtre.filterIlce.filter(ilce => (ILLER[il] ?? []).includes(ilce));
+              const ilceler = filtre.filterIlce.filter(ilce => (ILLER[il] ?? []).includes(ilce) || konumAgaci[il]?.[ilce]);
               if (ilceler.length === 0) {
                 chips.push({
                   key: `il-${il}`, label: `📍 ${il}`,
@@ -668,7 +700,7 @@ export default function IlanlarScreen() {
                 return;
               }
               ilceler.forEach(ilce => {
-                const gruplar = getMahalleGruplar(il, ilce);
+                const gruplar = [...getMahalleGruplar(il, ilce), ...(konumAgaci[il]?.[ilce] ?? [])];
                 const mahallelerInIlce = filtre.filterMahalle.filter(m => gruplar.some(g => g.mahalleler.includes(m)));
                 if (mahallelerInIlce.length === 0) {
                   chips.push({
