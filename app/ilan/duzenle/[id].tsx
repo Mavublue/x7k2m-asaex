@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../../lib/supabase';
+import { youtubeId, youtubeNormalize } from '../../../lib/youtube';
 import { getUploadUrl, optimizePhoto, deleteFile, getWatermarkText } from '../../../lib/r2';
 import { Colors, Radius, Spacing } from '../../../constants/theme';
 import { Ilan } from '../../../types';
@@ -98,6 +99,7 @@ export default function IlanDuzenleScreen() {
   const [secilenKategoriler, setSecilenKategoriler] = useState<string[]>(['Daire']);
   const [aciklama, setAciklama] = useState('');
   const [musteriAciklamasi, setMusteriAciklamasi] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [aciklamaTab, setAciklamaTab] = useState<'not' | 'musteri'>('not');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
@@ -232,6 +234,7 @@ export default function IlanDuzenleScreen() {
         setSecilenKategoriler(ilan.kategori ? ilan.kategori.split(',').map(s => s.trim()).filter(Boolean) : []);
         setAciklama(ilan.aciklama ?? '');
         setMusteriAciklamasi(ilan.musteri_aciklamasi ?? '');
+        setVideoUrl(ilan.video_url ?? '');
         supabase.from('ilan_ozellikler').select('ozellik_id').eq('ilan_id', id).then(({ data: jr }) => {
           if (jr) setSecilenOzellikler(jr.map((r: any) => r.ozellik_id));
         });
@@ -375,6 +378,10 @@ export default function IlanDuzenleScreen() {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
     }
+    if (videoUrl.trim() && !youtubeId(videoUrl)) {
+      Alert.alert('YouTube linki geçersiz', 'Videonun linkini kontrol et veya kutuyu boş bırak.');
+      return;
+    }
     const sagList = gizliFotograflar.filter(k => !fotograflar.includes(k));
     const gorunur = fotograflar.filter(k => !gizliFotograflar.includes(k));
     if ((fotograflar.length + sagList.length) > 0 && gorunur.length === 0) {
@@ -406,6 +413,7 @@ export default function IlanDuzenleScreen() {
       tip, durum, kategori: secilenKategoriler.join(', '),
       aciklama: aciklama || null,
       musteri_aciklamasi: musteriAciklamasi || null,
+      video_url: youtubeNormalize(videoUrl),
       bina_yasi: binaYasi || null,
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       kat_sayisi: katSayisi || null,
@@ -642,6 +650,10 @@ export default function IlanDuzenleScreen() {
                 <TextInput style={[styles.input, styles.textarea, submitted && !musteriAciklamasi && styles.inputErr]} placeholder="Müşteriye gösterilecek açıklama..." value={musteriAciklamasi} onChangeText={setMusteriAciklamasi} multiline placeholderTextColor={Colors.outlineVariant} textAlignVertical="top" />
               </>
             )}
+          </FormGroup>
+
+          <FormGroup label="YouTube Video Linki">
+            <TextInput style={[styles.input, submitted && !!videoUrl.trim() && !youtubeId(videoUrl) && styles.inputErr]} placeholder="https://youtu.be/..." value={videoUrl} onChangeText={setVideoUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholderTextColor={Colors.outlineVariant} />
           </FormGroup>
 
           <FormGroup label={arsaTarla ? 'Bina Yaşı' : 'Bina Yaşı *'}>

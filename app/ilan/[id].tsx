@@ -22,6 +22,7 @@ import { supabase } from '../../lib/supabase';
 import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import R2Image from '../../components/R2Image';
+import YoutubeVideo from '../../components/YoutubeVideo';
 import SatildiAfisModal from '../../components/SatildiAfisModal';
 import KolajModal from '../../components/KolajModal';
 import FotoTemizleModal from '../../components/FotoTemizleModal';
@@ -850,6 +851,14 @@ export default function IlanDetayScreen() {
               <Text style={styles.ozellikLabel}>Tip</Text>
             </View>
           </View>
+
+          {/* Video */}
+          {!!ilan.video_url && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Video</Text>
+              <YoutubeVideo url={ilan.video_url} />
+            </View>
+          )}
 
           {/* Açıklama */}
           {musteriGorunum ? (

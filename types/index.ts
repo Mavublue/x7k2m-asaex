@@ -13,6 +13,7 @@ export interface Ilan {
   musteri_gizle?: boolean | null;
   aciklama: string | null;
   musteri_aciklamasi: string | null;
+  video_url?: string | null;
   bina_yasi: string | null;
   brut_metrekare: number | null;
   banyo_sayisi: number | null;

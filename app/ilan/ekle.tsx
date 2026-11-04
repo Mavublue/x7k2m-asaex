@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../../lib/supabase';
+import { youtubeId, youtubeNormalize } from '../../lib/youtube';
 import { getUploadUrl, optimizePhoto, getWatermarkText } from '../../lib/r2';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import MapPickerModal from '../../components/MapPickerModal';
@@ -79,6 +80,7 @@ export default function IlanEkleScreen() {
   const [secilenKategoriler, setSecilenKategoriler] = useState<string[]>(['Daire']);
   const [aciklama, setAciklama] = useState('');
   const [musteriAciklamasi, setMusteriAciklamasi] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [aciklamaTab, setAciklamaTab] = useState<'not' | 'musteri'>('not');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
@@ -299,6 +301,10 @@ export default function IlanEkleScreen() {
       Alert.alert('Eksik Bilgi', 'Lütfen zorunlu (*) alanları doldurun.');
       return;
     }
+    if (videoUrl.trim() && !youtubeId(videoUrl)) {
+      Alert.alert('YouTube linki geçersiz', 'Videonun linkini kontrol et veya kutuyu boş bırak.');
+      return;
+    }
     const sagList = gizliFotograflar.filter(k => !fotograflar.includes(k));
     const gorunur = fotograflar.filter(k => !gizliFotograflar.includes(k));
     if ((fotograflar.length + sagList.length) > 0 && gorunur.length === 0) {
@@ -330,6 +336,7 @@ export default function IlanEkleScreen() {
       tip, kategori: secilenKategoriler.join(', '),
       aciklama: aciklama || null,
       musteri_aciklamasi: musteriAciklamasi || null,
+      video_url: youtubeNormalize(videoUrl),
       bina_yasi: binaYasi || null,
       banyo_sayisi: banyoSayisi ? parseInt(banyoSayisi) : null,
       kat_sayisi: katSayisi || null,
@@ -623,6 +630,10 @@ export default function IlanEkleScreen() {
                 />
               </>
             )}
+          </FormGroup>
+
+          <FormGroup label="YouTube Video Linki">
+            <TextInput style={[styles.input, submitted && !!videoUrl.trim() && !youtubeId(videoUrl) && styles.inputErr]} placeholder="https://youtu.be/..." value={videoUrl} onChangeText={setVideoUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholderTextColor={Colors.outlineVariant} />
           </FormGroup>
 
           {/* Bina Yaşı */}
