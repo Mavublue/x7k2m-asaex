@@ -856,7 +856,7 @@ export default function IlanDetayScreen() {
           {!!ilan.video_url && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Video</Text>
-              <YoutubeVideo url={ilan.video_url} />
+              <YoutubeVideo url={ilan.video_url} kapak={(ilan.fotograflar ?? []).find(f => !((ilan as any).gizli_fotograflar ?? []).includes(f))} />
             </View>
           )}
 
