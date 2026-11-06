@@ -124,7 +124,9 @@ export default function MusteriEkleScreen() {
     return () => clearTimeout(handle);
   }, [etiket]);
 
-  async function enKucukBosEtiket() {
+  useEffect(() => { enKucukBosEtiket(true); }, []);
+
+  async function enKucukBosEtiket(sadeceBossa = false) {
     setEtiketDolduruluyor(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -137,7 +139,7 @@ export default function MusteriEkleScreen() {
       });
       let n = 1;
       while (kullanilan.has(n)) n++;
-      setEtiket(String(n));
+      setEtiket(prev => (sadeceBossa && prev.trim() ? prev : String(n)));
     } finally {
       setEtiketDolduruluyor(false);
     }
@@ -338,7 +340,7 @@ export default function MusteriEkleScreen() {
                   returnKeyType="done"
                   keyboardType="number-pad"
                 />
-                <TouchableOpacity onPress={enKucukBosEtiket} disabled={etiketDolduruluyor}
+                <TouchableOpacity onPress={() => enKucukBosEtiket()} disabled={etiketDolduruluyor}
                   style={{ paddingHorizontal: 6, paddingVertical: 6, marginLeft: 2 }}>
                   <Text style={{ fontSize: 16, opacity: etiketDolduruluyor ? 0.4 : 1 }}>✨</Text>
                 </TouchableOpacity>
