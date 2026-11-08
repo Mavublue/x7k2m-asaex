@@ -116,7 +116,8 @@ export default function FiligranDurumKarti() {
     const { data, error } = await supabase
       .from('ilanlar')
       .select('id, baslik, fotograflar, musteri_acildi_at')
-      .eq('musteri_gizle', true);
+      .eq('musteri_gizle', true)
+      .or('durum.is.null,durum.neq.İptal'); // İptal ilan uyarıda çıkmasın
     if (error) return;
     // Bir kere: en yeni temiz foto son müşteriye açılıştan sonraysa (aç-kapa yapınca tekrar çıkmaz)
     const liste = ((data ?? []) as { id: string; baslik: string | null; fotograflar: string[] | null; musteri_acildi_at: string | null }[])
