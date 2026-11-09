@@ -310,7 +310,7 @@ export default function MusteriDetayScreen() {
   const [showGorevOneriSaatPicker, setShowGorevOneriSaatPicker] = useState(false);
 
   // Paylaşımlar
-  type PaylasimGecmisiRow = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
+  type PaylasimGecmisiRow = { id: string; paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
   type Ziyaret = { paket_token: string | null; musteri_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
   type Oturum = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
   const [paylasimAcik, setPaylasimAcik] = useState(false);
@@ -498,7 +498,7 @@ export default function MusteriDetayScreen() {
     const [tokenRes, gecmisRes, ziyaretRes, oturumRes, linklerRes, kartRes, kartLogRes] = await Promise.all([
       supabase.from('musteri_tokenler').select('token, expires_at').eq('user_id', session.user.id).eq('musteri_id', id).maybeSingle(),
       supabase.from('musteri_paylasim_gecmisi')
-        .select('paylasildigi_tarih, paket_token, ilanlar(id, baslik, fiyat, fotograflar, portfoy_no, durum)')
+        .select('id, paylasildigi_tarih, paket_token, ilanlar(id, baslik, fiyat, fotograflar, portfoy_no, durum)')
         .eq('user_id', session.user.id).eq('musteri_id', id)
         .order('paylasildigi_tarih', { ascending: false }),
       supabase.rpc('get_musteri_ziyaretleri', { p_musteri_id: id }),
@@ -586,6 +586,39 @@ export default function MusteriDetayScreen() {
           .eq('emlakci_id', session.user.id).eq('token', linkToken);
         if (error) { Alert.alert('Hata', error.message); return; }
         setPaylasilanLinkler(prev => prev.map(l => l.token === linkToken ? { ...l, expires_at: nowIso } : l));
+      }},
+    ]);
+  }
+
+  // tek ilan: sadece geçmiş kaydı (link müşterinin ortak token'ı, kapatılırsa hepsi kapanır)
+  function paylasimSil(gecmisId: string) {
+    Alert.alert('Paylaşımı Sil', 'Bu paylaşım geçmişten silinsin mi?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: async () => {
+        const { error } = await supabase.from('musteri_paylasim_gecmisi').delete().eq('id', gecmisId);
+        if (error) { Alert.alert('Hata', error.message); return; }
+        setPaylasimGecmisi(prev => prev.filter(p => p.id !== gecmisId));
+      }},
+    ]);
+  }
+
+  // liste: geçmişten sil + linkin süresini doldur
+  function paketSil(paketToken: string) {
+    Alert.alert('Listeyi Sil', 'Bu liste silinsin mi? Link de kapanır, müşteri artık açamaz.', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const nowIso = new Date().toISOString();
+        const { error: e1 } = await supabase.from('paylasim_paketleri')
+          .update({ expires_at: nowIso })
+          .eq('emlakci_id', session.user.id).eq('token', paketToken);
+        if (e1) { Alert.alert('Hata', e1.message); return; }
+        const { error: e2 } = await supabase.from('musteri_paylasim_gecmisi').delete()
+          .eq('user_id', session.user.id).eq('musteri_id', id).eq('paket_token', paketToken);
+        if (e2) { Alert.alert('Hata', e2.message); return; }
+        setPaylasimGecmisi(prev => prev.filter(p => p.paket_token !== paketToken));
+        setPaylasilanLinkler(prev => prev.map(l => l.token === paketToken ? { ...l, expires_at: nowIso } : l));
       }},
     ]);
   }
@@ -1761,6 +1794,8 @@ export default function MusteriDetayScreen() {
                     musteriTel={musteri?.telefon ?? null}
                     onLinkUzat={tokenUzatAc}
                     onLinkIptal={linkIptal}
+                    onPaylasimSil={paylasimSil}
+                    onPaketSil={paketSil}
                     onUzatAc={() => tokenUzatAc()}
                     onDoldur={tokenDoldur}
                     onLinkOlustur={handleLinkModalAc}
@@ -2476,7 +2511,7 @@ function GorevlerBox({
   );
 }
 
-type PaylasimGecmisiItem = { paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
+type PaylasimGecmisiItem = { id: string; paylasildigi_tarih: string; paket_token: string | null; ilanlar: { id: string; baslik: string; fiyat: number; fotograflar: string[] | null; portfoy_no: string | null; durum: string | null } | null };
 type ZiyaretItem = { paket_token: string | null; musteri_token: string | null; ilan_id: string | null; device_id: string; ilk_giris_at: string; son_aktif_at: string; toplam_sure_sn: number; acilis_sayisi: number; user_agent: string | null };
 type OturumItem = { paket_token: string | null; ilan_id: string | null; device_id: string; baslama_at: string; son_aktif_at: string; user_agent: string | null };
 type KartLogItem = { paket_token: string; ilan_id: string; device_id: string; sn: number; at: string };
@@ -2484,7 +2519,7 @@ type KartLogItem = { paket_token: string; ilan_id: string; device_id: string; sn
 function PaylasimBox({
   acik, setAcik, yukleniyor, aktifToken, paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, kartLog, oturumlari,
   timelinePeriod, setTimelinePeriod, onUzatAc, onDoldur, onLinkOlustur,
-  isGenel, paylasilanLinkler, acikLinkler, setAcikLinkler, musteriTel, onLinkUzat, onLinkIptal,
+  isGenel, paylasilanLinkler, acikLinkler, setAcikLinkler, musteriTel, onLinkUzat, onLinkIptal, onPaylasimSil, onPaketSil,
 }: {
   acik: boolean;
   setAcik: (v: boolean) => void;
@@ -2508,6 +2543,8 @@ function PaylasimBox({
   musteriTel: string | null;
   onLinkUzat: (token: string) => void;
   onLinkIptal: (token: string) => void;
+  onPaylasimSil: (gecmisId: string) => void;
+  onPaketSil: (paketToken: string) => void;
 }) {
   return (
     <View style={paylasimStyles.box}>
@@ -2665,7 +2702,7 @@ function PaylasimBox({
             {paylasimGecmisi.length === 0 ? (
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, fontStyle: 'italic', marginTop: 6 }}>Henüz ilan paylaşılmadı.</Text>
             ) : (
-              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ekIlanlar={ekIlanlar} ziyaretler={ziyaretler} kartGorunum={kartGorunum} kartLog={kartLog} oturumlari={oturumlari} paylasilanLinkler={paylasilanLinkler} />
+              <PaylasimListesi paylasimGecmisi={paylasimGecmisi} ekIlanlar={ekIlanlar} ziyaretler={ziyaretler} kartGorunum={kartGorunum} kartLog={kartLog} oturumlari={oturumlari} paylasilanLinkler={paylasilanLinkler} onPaylasimSil={onPaylasimSil} onPaketSil={onPaketSil} />
             )}
           </View>
         </View>
@@ -3000,7 +3037,7 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
   );
 }
 
-function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, kartLog, oturumlari, paylasilanLinkler }: { paylasimGecmisi: PaylasimGecmisiItem[]; ekIlanlar: IlanOzet[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; kartLog: KartLogItem[]; oturumlari: OturumItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[] }) {
+function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, kartLog, oturumlari, paylasilanLinkler, onPaylasimSil, onPaketSil }: { paylasimGecmisi: PaylasimGecmisiItem[]; ekIlanlar: IlanOzet[]; ziyaretler: ZiyaretItem[]; kartGorunum: { paket_token: string; ilan_id: string; device_id: string; toplam_sure_sn: number; son_gorulme_at: string }[]; kartLog: KartLogItem[]; oturumlari: OturumItem[]; paylasilanLinkler: { token: string; baslik: string | null; musteri_token: string | null }[]; onPaylasimSil: (gecmisId: string) => void; onPaketSil: (paketToken: string) => void }) {
   const [acikPaketler, setAcikPaketler] = useState<Set<string>>(new Set());
   const [paketCihazFiltre, setPaketCihazFiltre] = useState<Record<string, string | null>>({});
   const [paketSekme, setPaketSekme] = useState<Record<string, 'ilgi' | 'hareket' | 'cihaz'>>({});
@@ -3068,6 +3105,9 @@ function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, 
                     {ilan.durum && ilan.durum !== 'Aktif' ? <Text style={{ fontSize: 9, color: '#fca5a5', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3, fontWeight: '700' }}>{ilan.durum}</Text> : null}
                   </View>
                 </View>
+                <TouchableOpacity onPress={() => onPaylasimSil(p.id)} hitSlop={8} style={{ alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: 'rgba(239,68,68,0.15)' }}>
+                  <Text style={{ fontSize: 13 }}>🗑</Text>
+                </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                 {ilanZ.length > 0 ? (
@@ -3187,6 +3227,9 @@ function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, 
                 <Text style={{ fontSize: 12, color: '#b45309', transform: [{ rotate: acik ? '90deg' : '0deg' }] }}>▶</Text>
                 <View style={paylasimStyles.chipAmber}><Text style={paylasimStyles.chipAmberText}>📋 Liste — {g.items.length} ilan</Text></View>
                 <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>📅 {paylasimTarihGoster(g.date)}</Text>
+                <TouchableOpacity onPress={() => { const t = g.items[0].paket_token; if (t) onPaketSil(t); }} hitSlop={8} style={{ marginLeft: 'auto', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: 'rgba(239,68,68,0.15)' }}>
+                  <Text style={{ fontSize: 13 }}>🗑</Text>
+                </TouchableOpacity>
               </View>
               {paketZ.length === 0 ? (
                 <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 4, marginLeft: 18 }}>Henüz açılmadı</Text>
