@@ -1513,7 +1513,7 @@ export default function IlanlarScreen() {
                           </TouchableOpacity>
                         </View>
                       </View>
-                      <View style={{ borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.surfaceContainerLow, maxHeight: 220 }}>
+                      <View style={{ borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.surfaceContainerLow, maxHeight: 360 }}>
                         <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
                           {paylasIlanlar.map(i => {
                             const haric = paylasHaric.has(i.id);
@@ -1530,15 +1530,15 @@ export default function IlanlarScreen() {
                                   {!haric && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 14 }}>✓</Text>}
                                 </View>
                                 {i.fotograflar?.[0] ? (
-                                  <R2Image source={i.fotograflar[0]} size="sm" style={{ width: 40, height: 40, borderRadius: 6, opacity: haric ? 0.5 : 1, backgroundColor: Colors.surfaceContainerLow }} />
+                                  <R2Image source={i.fotograflar[0]} size="sm" style={{ width: 64, height: 64, borderRadius: 8, opacity: haric ? 0.5 : 1, backgroundColor: Colors.surfaceContainerLow }} />
                                 ) : (
-                                  <View style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', opacity: haric ? 0.5 : 1 }}>
-                                    <Text style={{ fontSize: 14 }}>🏠</Text>
+                                  <View style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', opacity: haric ? 0.5 : 1 }}>
+                                    <Text style={{ fontSize: 20 }}>🏠</Text>
                                   </View>
                                 )}
                                 <View style={{ flex: 1, opacity: haric ? 0.5 : 1 }}>
-                                  <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '600', color: Colors.onSurface, textDecorationLine: haric ? 'line-through' : 'none' }}>{i.baslik}</Text>
-                                  <Text style={{ fontSize: 11, color: Colors.onSurfaceVariant }}>₺{i.fiyat.toLocaleString('tr-TR')} · {i.tip}{i.ilce ? ` · ${i.ilce}` : ''}</Text>
+                                  <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '600', color: Colors.onSurface, textDecorationLine: haric ? 'line-through' : 'none' }}>{i.baslik}</Text>
+                                  <Text style={{ fontSize: 12.5, color: Colors.onSurfaceVariant, marginTop: 2 }}>₺{i.fiyat.toLocaleString('tr-TR')} · {i.tip}{i.ilce ? ` · ${i.ilce}` : ''}</Text>
                                 </View>
                               </TouchableOpacity>
                             );
