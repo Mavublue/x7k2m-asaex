@@ -20,6 +20,7 @@ import R2Image from '../../components/R2Image';
 import { Ilan } from '../../types';
 import { TURKIYE, IL_LISTESI, getMahalleGruplar, MahalleGrup } from '../../constants/turkiye';
 
+import { musteriSirala } from '../../lib/musteriSirala';
 function normalizeMahalle(m: string): string {
   return m.toLowerCase().replace(/\s*(mahallesi|mah\.?)\s*$/, '').replace(/\s+/g, '').trim();
 }
@@ -505,7 +506,7 @@ export default function IlanlarScreen() {
     setPaylasHaric(new Set());
     setPaylasIlanlar(kaynak === 'secim' ? ilanlar.filter(i => seciliIds.has(i.id)) : filtered);
     supabase.from('musteriler').select('id, ad, soyad, etiketler, telefon').eq('durum', 'Aktif').order('ad')
-      .then(({ data }) => { if (data) setPaylasMusteriler(data); });
+      .then(({ data }) => { if (data) setPaylasMusteriler(musteriSirala(data)); });
     setPaylasModal(true);
   }
 

@@ -3007,7 +3007,7 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
                         <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>📋 Listede · {saatKisa(a.bas)}–{saatKisa(a.son)}</Text>
                         {Array.from(a.kart.entries()).map(([iid, sn]) => (
                           <View key={iid} style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                            <HareketFoto foto={ilanBilgi.get(iid)?.fotograflar?.[0]} w={30} h={22} />
+                            <HareketFoto foto={ilanBilgi.get(iid)?.fotograflar?.[0]} w={56} h={42} />
                             <Text numberOfLines={1} style={{ flex: 1, fontSize: 10, color: Colors.onSurfaceVariant }}>{ilanBilgi.get(iid)?.baslik ?? 'İlan'}</Text>
                             <Text style={{ fontSize: 10, fontWeight: '700', color: '#c4b5fd' }}>{formatSure(sn)}</Text>
                           </View>
@@ -3015,7 +3015,7 @@ function ZiyaretGecmisi({ oturumlari, kartLog, paketToken, deviceFiltre, ilanBil
                       </View>
                     ) : (
                       <View key={ai} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', padding: 5, backgroundColor: 'rgba(14,165,233,0.12)', borderWidth: 1, borderColor: 'rgba(14,165,233,0.35)', borderRadius: 6 }}>
-                        <HareketFoto foto={ilanBilgi.get(a.ilanId)?.fotograflar?.[0]} w={44} h={34} />
+                        <HareketFoto foto={ilanBilgi.get(a.ilanId)?.fotograflar?.[0]} w={72} h={54} />
                         <View style={{ flex: 1, minWidth: 0 }}>
                           <Text style={{ fontSize: 10, fontWeight: '700', color: '#7dd3fc' }}>
                             🏠 İlanı açtı · {saatKisa(a.bas)}
@@ -3207,7 +3207,7 @@ function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, 
                 <View style={{ gap: 4, paddingLeft: 12 }}>
                   {rows.map(r => (
                     <TouchableOpacity key={r.id} activeOpacity={0.6} onPress={() => setPopupIlanId(r.id)} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                      <HareketFoto foto={r.ilan?.fotograflar?.[0]} w={34} h={26} />
+                      <HareketFoto foto={r.ilan?.fotograflar?.[0]} w={56} h={42} />
                       <Text numberOfLines={1} style={{ flex: 1, fontSize: 11, color: Colors.onSurface }}>
                         {r.ilan?.portfoy_no ? <Text style={{ color: '#fca5a5', fontWeight: '700' }}>#{r.ilan.portfoy_no} </Text> : null}{r.ilan?.baslik ?? 'İlan'}
                       </Text>
@@ -3265,7 +3265,7 @@ function PaylasimListesi({ paylasimGecmisi, ekIlanlar, ziyaretler, kartGorunum, 
                     {acilanlar.length === 0 ? <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant }}>Hiç ilan açmadı{sadeceListe.length > 0 ? ' — sadece listede baktı' : ''}</Text> : null}
                     {acilanlar.map(r => (
                       <TouchableOpacity key={r.id} activeOpacity={0.7} onPress={() => setPopupIlanId(r.id)} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', padding: 6, borderRadius: 8, borderWidth: 1, borderColor: r.canli ? 'rgba(134,239,172,0.6)' : Colors.outlineVariant, backgroundColor: r.canli ? 'rgba(34,197,94,0.08)' : Colors.surfaceContainer }}>
-                        <HareketFoto foto={r.ilan?.fotograflar?.[0]} w={58} h={44} />
+                        <HareketFoto foto={r.ilan?.fotograflar?.[0]} w={84} h={63} />
                         <View style={{ flex: 1, minWidth: 0 }}>
                           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
                             {r.ilan?.portfoy_no ? <View style={paylasimStyles.chipRedSmall}><Text style={paylasimStyles.chipRedTextSmall}>#{r.ilan.portfoy_no}</Text></View> : null}

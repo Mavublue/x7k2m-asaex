@@ -32,6 +32,7 @@ import { maskeDurum } from '../../lib/maskesil';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import { Ilan } from '../../types';
 
+import { musteriSirala } from '../../lib/musteriSirala';
 function ZoomableImage({ uri, onZoomChange }: { uri: string; onZoomChange: (z: boolean) => void }) {
   const pinchRef = useRef(null);
   const panRef = useRef(null);
@@ -562,7 +563,7 @@ export default function IlanDetayScreen() {
     setLinkSaat('24');
     const { data } = await supabase.from('musteriler').select('id, ad, soyad, telefon, durum, etiketler, musteri_iletisim(ad, telefon, tip), musteri_istekler(butce_min, butce_max)').eq('durum', 'Aktif').order('ad');
     if (data) {
-      setLinkMusteriler(data as any);
+      setLinkMusteriler(musteriSirala(data as any));
       if (presetMusteriId) {
         const m = (data as any[]).find(x => x.id === presetMusteriId);
         if (m) setLinkMusteriAra(`${m.ad ?? ''} ${m.soyad ?? ''}`.trim());
