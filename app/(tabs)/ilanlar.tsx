@@ -501,6 +501,46 @@ export default function IlanlarScreen() {
   function filtreUygula() { setFiltre(gecici); setFiltrePaneli(false); }
   function filtreSifirla() { setGecici(BOS_FILTRE); }
 
+  // Filtre sekmeleri: 0 = Ana, gerisi ek. Aktif sekmenin canlı filtresi state'te; listedeki kaydı geçişte güncellenir.
+  type SekmeSnap = { filtre: FiltreState; search: string; siralama: typeof siralama };
+  const [sekme, setSekme] = useState<{ aktif: number; sekmeler: (SekmeSnap | null)[] }>({ aktif: 0, sekmeler: [null] });
+
+  function sekmeUygula(s: SekmeSnap | null) {
+    setFiltre(s?.filtre ?? BOS_FILTRE);
+    setSearch(s?.search ?? '');
+    setSiralama(s?.siralama ?? 'tarih_yeni');
+  }
+
+  // Mevcut filtre saklanır, yeni sekme sıfır filtreyle açılır.
+  function ekSekmeAc() {
+    const s = [...sekme.sekmeler];
+    s[sekme.aktif] = { filtre, search, siralama };
+    s.push(null);
+    setSekme({ aktif: s.length - 1, sekmeler: s });
+    sekmeUygula(null);
+    setGecici(BOS_FILTRE); setFilterPage('main'); setFiltrePaneli(true);
+  }
+
+  function sekmeGec(hedef: number) {
+    if (hedef === sekme.aktif || hedef >= sekme.sekmeler.length) return;
+    const s = [...sekme.sekmeler];
+    s[sekme.aktif] = { filtre, search, siralama };
+    sekmeUygula(s[hedef]);
+    setSekme({ aktif: hedef, sekmeler: s });
+  }
+
+  // Aktif sekme kapanırsa soldakine geçilir; Ana kapanmaz.
+  function ekSekmeKapat(idx: number) {
+    if (idx === 0) return;
+    const s = [...sekme.sekmeler];
+    s[sekme.aktif] = { filtre, search, siralama };
+    s.splice(idx, 1);
+    let aktif = sekme.aktif;
+    if (aktif === idx) { aktif = idx - 1; sekmeUygula(s[aktif]); }
+    else if (aktif > idx) aktif--;
+    setSekme({ aktif, sekmeler: s });
+  }
+
   function handleListePaylas(kaynak: 'filtre' | 'secim' = 'filtre') {
     setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); setKopyalandi(false); setPaylasEtiketAra('');
     setPaylasHaric(new Set());
@@ -665,7 +705,22 @@ export default function IlanlarScreen() {
   const SonucSatiri = () => (
     <>
       <View style={styles.sonucRow}>
-        <Text style={styles.sonucSayisi}>{filtered.length} ilan</Text>
+        <Text style={[styles.sonucSayisi, { flex: 0 }]}>{filtered.length} ilan</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.sekmeler}>
+          {sekme.sekmeler.length > 1 && sekme.sekmeler.map((_, i) => (
+            <TouchableOpacity key={i} style={[styles.sekme, sekme.aktif === i && styles.sekmeAktif]} onPress={() => sekmeGec(i)}>
+              <Text style={[styles.sekmeText, sekme.aktif === i && styles.sekmeTextAktif]}>{i === 0 ? 'Ana' : `Ek ${i}`}</Text>
+              {i > 0 && (
+                <TouchableOpacity onPress={() => ekSekmeKapat(i)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}>
+                  <Text style={[styles.sekmeKapat, sekme.aktif === i && styles.sekmeTextAktif]}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.sekme} onPress={ekSekmeAc}>
+            <Text style={styles.sekmeText}>{sekme.sekmeler.length > 1 ? '＋' : '＋ Ek filtre'}</Text>
+          </TouchableOpacity>
+        </ScrollView>
         <View ref={siralamaBtnRef} collapsable={false}>
           <TouchableOpacity style={styles.siralamaBtn} onPress={() => {
             if (siralamaAcik) { setSiralamaAcik(false); return; }
@@ -1934,6 +1989,12 @@ const styles = StyleSheet.create({
   popupKapatText: { fontSize: 16, color: Colors.onSurfaceVariant },
   sonucRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.xl, marginBottom: 2, marginTop: -2 },
   sonucSayisi: { fontSize: 12, color: Colors.onSurfaceVariant, flex: 1 },
+  sekmeler: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 },
+  sekme: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surface },
+  sekmeAktif: { borderColor: Colors.primary, backgroundColor: Colors.primaryFixed },
+  sekmeText: { fontSize: 12, color: Colors.onSurface, fontWeight: '600' },
+  sekmeTextAktif: { color: Colors.primary },
+  sekmeKapat: { fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '700' },
   siralamaBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surface },
   siralamaBtnText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   siralamaChevron: { fontSize: 9, color: Colors.onSurfaceVariant },
