@@ -108,11 +108,26 @@ function ZoomableImage({ uri, onZoomChange }: { uri: string; onZoomChange: (z: b
   );
 }
 
-function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMaske }: {
+// Maske işi süren foto rozeti: ⏳ İşleniyor… / ✓ Onay bekliyor
+function MaskeRozet({ d, kucuk, style }: { d?: 'isleniyor' | 'hazir'; kucuk?: boolean; style?: any }) {
+  if (!d) return null;
+  const isl = d === 'isleniyor';
+  return (
+    <View pointerEvents="none" style={[{ position: 'absolute', zIndex: 5, backgroundColor: isl ? 'rgba(37,99,235,0.9)' : 'rgba(22,163,74,0.9)' },
+      kucuk ? { bottom: 2, left: 2, right: 2, borderRadius: 4, paddingVertical: 1 } : { top: 12, right: 12, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }, style]}>
+      <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '700', fontSize: kucuk ? 9 : 12, textAlign: 'center' }}>
+        {isl ? (kucuk ? '⏳ İşleniyor' : '⏳ Maske işleniyor…') : (kucuk ? '✓ Onay' : '✓ Onay bekliyor')}
+      </Text>
+    </View>
+  );
+}
+
+function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMaske, maskeDurumMap }: {
   fotos: string[]; initialIdx: number; onClose: () => void;
   listRef: React.RefObject<FlatList<string> | null>;
   thumbRef: React.RefObject<ScrollView | null>;
   onMaske?: (fotoKey: string) => void;
+  maskeDurumMap?: Record<string, 'isleniyor' | 'hazir'>;
 }) {
   const [idx, setIdx] = useState(initialIdx);
   const [zoomed, setZoomed] = useState(false);
@@ -167,6 +182,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMas
           <View style={{ position: 'absolute', top: 56, left: 0, right: 0, alignItems: 'center', zIndex: 5 }}>
             <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999 }}>{idx + 1} / {fotos.length}</Text>
           </View>
+          <MaskeRozet d={maskeDurumMap?.[fotos[idx]]} style={{ top: 92, right: undefined, left: 20, zIndex: 10 }} />
           <FlatList
             ref={listRef}
             data={fotos}
@@ -188,6 +204,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMas
                 <TouchableOpacity key={i} onPress={() => { setIdx(i); listRef.current?.scrollToIndex({ index: i, animated: false }); }}
                   style={{ width: 64, height: 56, borderRadius: 6, overflow: 'hidden', borderWidth: 2, borderColor: i === idx ? '#fff' : 'transparent', opacity: i === idx ? 1 : 0.55 }}>
                   <R2Image source={f} style={{ width: '100%', height: '100%' }} resizeMode="cover" size="sm" />
+                  <MaskeRozet d={maskeDurumMap?.[f]} kucuk />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -260,6 +277,7 @@ export default function IlanDetayScreen() {
   const [filigranAktif, setFiligranAktif] = useState(false); // bu ilanda filigran işi sürüyor mu → Düzenle kilidi
   const [onayBekleyen, setOnayBekleyen] = useState(0); // temizlenip onay bekleyen (hazır) foto sayısı → uyarı
   const [islemSayisi, setIslemSayisi] = useState(0); // süren filigran/maske işi (bekliyor+isleniyor+hazir) → rozet
+  const [maskeFotoDurum, setMaskeFotoDurum] = useState<Record<string, 'isleniyor' | 'hazir'>>({}); // foto_key → galeri rozeti
   const oncekiFiligran = useRef(false); // filigran işi aktif→bitti geçişini yakala (tazeleme için)
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -308,7 +326,7 @@ export default function IlanDetayScreen() {
   // Filigran işi sürerken (bekliyor/işleniyor/hazır) Düzenle'yi kilitle — düzenleme kaydı
   // arka planda süren onayların üstüne yazıp fotoları bozabiliyor. DB'ye bakar → her cihazda geçerli.
   useEffect(() => {
-    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); setOnayBekleyen(0); setIslemSayisi(0); return; }
+    if (!watermarkYetkili(userEmail)) { setFiligranAktif(false); setOnayBekleyen(0); setIslemSayisi(0); setMaskeFotoDurum({}); return; }
     let alive = true;
     const kontrol = async () => {
       try {
@@ -321,6 +339,13 @@ export default function IlanDetayScreen() {
         setIslemSayisi(islem.length);
         // Temizlenip onay bekleyen (hazır) foto sayısı → ilan detayda uyarı göster
         setOnayBekleyen(hepsi.filter((x) => x.durum === 'hazir').length);
+        // Maske işi süren fotolar → galeride "İşleniyor / Onay bekliyor" rozeti
+        const md: Record<string, 'isleniyor' | 'hazir'> = {};
+        for (const x of mr) {
+          if (x.durum === 'bekliyor' || x.durum === 'isleniyor') md[x.foto_key] = 'isleniyor';
+          else if (x.durum === 'hazir' && !md[x.foto_key]) md[x.foto_key] = 'hazir';
+        }
+        setMaskeFotoDurum(md);
         // İş aktif→bitti geçince (modal kapalı olsa bile) ilanı tazele → yeni temiz key'ler gelsin
         if (oncekiFiligran.current && !aktifMi) fetchIlan();
         oncekiFiligran.current = aktifMi;
@@ -769,6 +794,7 @@ export default function IlanDetayScreen() {
                           <Text style={styles.gizliBadgeText}>🚫 Müşteriye gizli</Text>
                         </View>
                       )}
+                      <MaskeRozet d={maskeFotoDurum[item]} />
                     </TouchableOpacity>
                   );
                 }}
@@ -790,6 +816,7 @@ export default function IlanDetayScreen() {
                               <Text style={styles.thumbGizliText}>🚫</Text>
                             </View>
                           )}
+                          <MaskeRozet d={maskeFotoDurum[f]} kucuk />
                         </View>
                       </TouchableOpacity>
                       );
@@ -1472,6 +1499,7 @@ export default function IlanDetayScreen() {
           listRef={fullscreenListRef}
           thumbRef={fullscreenThumbRef}
           onMaske={watermarkYetkili(userEmail) ? (key) => setMaskeCizKey(key) : undefined}
+          maskeDurumMap={maskeFotoDurum}
         />
       </Modal>
 
@@ -1480,7 +1508,11 @@ export default function IlanDetayScreen() {
         ilanId={id as string}
         fotoKey={maskeCizKey ?? ''}
         onClose={() => setMaskeCizKey(null)}
-        onGonderildi={fetchIlan}
+        onGonderildi={() => {
+          const k = maskeCizKey;
+          if (k) setMaskeFotoDurum((m) => ({ ...m, [k]: 'isleniyor' })); // anında rozet; realtime sonra doğrular
+          fetchIlan();
+        }}
       />
 
       <PersistentTabBar />
