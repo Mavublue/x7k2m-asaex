@@ -690,6 +690,7 @@ export default function IlanlarScreen() {
   }
 
   const badge = aktifFiltreSayisi(filtre);
+  const tumunuSifirla = () => { setFiltre(BOS_FILTRE); setSearch(''); };
   const [aramaModalAcik, setAramaModalAcik] = useState(false);
 
   const SearchPill = ({ style }: { style?: any }) => (
@@ -699,6 +700,11 @@ export default function IlanlarScreen() {
         {search || (badge > 0 ? `${badge} filtre aktif` : 'Ara ve filtrele...')}
       </Text>
       {badge > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>}
+      {(badge > 0 || !!search) && (
+        <TouchableOpacity style={styles.pillSifirla} onPress={tumunuSifirla} hitSlop={{ top: 10, bottom: 10, left: 8, right: 10 }}>
+          <Text style={styles.pillSifirlaText}>✕</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 
@@ -917,6 +923,11 @@ export default function IlanlarScreen() {
                 <View style={styles.floatingBadge}>
                   <Text style={styles.floatingBadgeText}>{badge}</Text>
                 </View>
+              )}
+              {(badge > 0 || !!search) && (
+                <TouchableOpacity style={styles.pillSifirla} onPress={tumunuSifirla} hitSlop={{ top: 10, bottom: 10, left: 8, right: 10 }}>
+                  <Text style={styles.pillSifirlaText}>✕</Text>
+                </TouchableOpacity>
               )}
             </TouchableOpacity>
             <TouchableOpacity style={[styles.floatingYeni, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
@@ -2035,6 +2046,8 @@ const styles = StyleSheet.create({
   emptyBox: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
   emptyEmoji: { fontSize: 40 },
   emptyText: { fontSize: 15, color: Colors.onSurfaceVariant, textAlign: 'center' },
+  pillSifirla: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(229,57,53,0.15)', alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  pillSifirlaText: { color: '#E53935', fontSize: 12, fontWeight: '700' },
   sifirlaBtn: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   sifirlaText: { color: Colors.primary, fontWeight: '600' },
 
