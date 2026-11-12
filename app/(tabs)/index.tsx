@@ -82,6 +82,7 @@ export default function DashboardScreen() {
   const [inlineNotAcik, setInlineNotAcik] = useState(false);
   const [inlineNotIcerik, setInlineNotIcerik] = useState('');
   const [inlineNotSaving, setInlineNotSaving] = useState(false);
+  const [inlineNotEditId, setInlineNotEditId] = useState<string | null>(null);
   const [inlineDuzenleAcik, setInlineDuzenleAcik] = useState(false);
   const [inlineDzSaving, setInlineDzSaving] = useState(false);
   const [dzAd, setDzAd] = useState('');
@@ -433,7 +434,7 @@ export default function DashboardScreen() {
   }
 
   function inlineFormlariKapat() {
-    setInlineNotAcik(false); setInlineNotIcerik(''); setInlineNotSaving(false);
+    setInlineNotAcik(false); setInlineNotIcerik(''); setInlineNotSaving(false); setInlineNotEditId(null);
     setInlineDuzenleAcik(false); setInlineDzSaving(false);
   }
 
@@ -475,14 +476,42 @@ export default function DashboardScreen() {
     const icerik = inlineNotIcerik.trim();
     if (!icerik) return;
     setInlineNotSaving(true);
-    const tarih = new Date().toISOString();
-    const { data, error } = await supabase.from('musteri_notlar')
-      .insert({ musteri_id: musteriDetay.id, icerik, tarih }).select().single();
-    setInlineNotSaving(false);
-    if (error) { Alert.alert('Hata', error.message); return; }
-    setMusteriDetay((prev: any) => prev ? { ...prev, notlar: [data, ...(prev.notlar ?? [])].slice(0, 5) } : prev);
+    if (inlineNotEditId) {
+      const editId = inlineNotEditId;
+      const { error } = await supabase.from('musteri_notlar').update({ icerik }).eq('id', editId);
+      setInlineNotSaving(false);
+      if (error) { Alert.alert('Hata', error.message); return; }
+      setMusteriDetay((prev: any) => prev ? { ...prev, notlar: (prev.notlar ?? []).map((n: any) => n.id === editId ? { ...n, icerik } : n) } : prev);
+    } else {
+      const tarih = new Date().toISOString();
+      const { data, error } = await supabase.from('musteri_notlar')
+        .insert({ musteri_id: musteriDetay.id, icerik, tarih }).select().single();
+      setInlineNotSaving(false);
+      if (error) { Alert.alert('Hata', error.message); return; }
+      setMusteriDetay((prev: any) => prev ? { ...prev, notlar: [data, ...(prev.notlar ?? [])].slice(0, 5) } : prev);
+    }
     setInlineNotIcerik('');
+    setInlineNotEditId(null);
     setInlineNotAcik(false);
+  }
+
+  function inlineNotDuzenleAc(n: any) {
+    setInlineDuzenleAcik(false);
+    setInlineNotEditId(n.id);
+    setInlineNotIcerik(n.icerik ?? '');
+    setInlineNotAcik(true);
+  }
+
+  function inlineNotSil(notId: string) {
+    Alert.alert('Notu Sil', 'Bu not silinsin mi?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: async () => {
+        const { error } = await supabase.from('musteri_notlar').delete().eq('id', notId);
+        if (error) { Alert.alert('Hata', error.message); return; }
+        setMusteriDetay((prev: any) => prev ? { ...prev, notlar: (prev.notlar ?? []).filter((n: any) => n.id !== notId) } : prev);
+        if (inlineNotEditId === notId) { setInlineNotEditId(null); setInlineNotIcerik(''); setInlineNotAcik(false); }
+      }},
+    ]);
   }
 
   async function toggleOkundu(id: string) {
@@ -1221,7 +1250,7 @@ export default function DashboardScreen() {
                       <Text style={{ fontSize: 13 }}>✏️</Text>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: inlineDuzenleAcik ? '#fff' : Colors.onSurface }}>Düzenle</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { if (inlineNotAcik) { setInlineNotAcik(false); } else { setInlineDuzenleAcik(false); setInlineNotIcerik(''); setInlineNotAcik(true); } }}
+                    <TouchableOpacity onPress={() => { if (inlineNotAcik) { setInlineNotAcik(false); } else { setInlineDuzenleAcik(false); setInlineNotEditId(null); setInlineNotIcerik(''); setInlineNotAcik(true); } }}
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: inlineNotAcik ? '#92400e' : 'rgba(146,64,14,0.9)' }}>
                       <Text style={{ fontSize: 13 }}>📝</Text>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Not Ekle</Text>
@@ -1285,14 +1314,14 @@ export default function DashboardScreen() {
                   {/* Inline Not Ekle Formu */}
                   {inlineNotAcik ? (
                     <View style={{ backgroundColor: 'rgba(234,179,8,0.08)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', padding: Spacing.md, gap: 10 }}>
-                      <Text style={styles.bdInputLabel}>Yeni Not</Text>
+                      <Text style={styles.bdInputLabel}>{inlineNotEditId ? 'Notu Düzenle' : 'Yeni Not'}</Text>
                       <TextInput value={inlineNotIcerik} onChangeText={setInlineNotIcerik} placeholder="Not içeriği…" placeholderTextColor={Colors.onSurfaceVariant} multiline style={[styles.bdInput, { minHeight: 72, textAlignVertical: 'top' }]} />
                       <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={() => { setInlineNotAcik(false); setInlineNotIcerik(''); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh }}>
+                        <TouchableOpacity onPress={() => { setInlineNotAcik(false); setInlineNotIcerik(''); setInlineNotEditId(null); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh }}>
                           <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>Vazgeç</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={inlineNotKaydet} disabled={inlineNotSaving || !inlineNotIcerik.trim()} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: '#92400e', opacity: (inlineNotSaving || !inlineNotIcerik.trim()) ? 0.6 : 1 }}>
-                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{inlineNotSaving ? 'Kaydediliyor…' : 'Kaydet'}</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{inlineNotSaving ? 'Kaydediliyor…' : inlineNotEditId ? 'Güncelle' : 'Kaydet'}</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1355,7 +1384,16 @@ export default function DashboardScreen() {
                       <Text style={styles.bdSectionTitle}>Son Notlar</Text>
                       {(musteriDetay.notlar ?? []).map((n: any) => (
                         <View key={n.id} style={{ backgroundColor: 'rgba(234,179,8,0.10)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', borderRadius: 8, padding: 12, marginBottom: 6 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#fcd34d', marginBottom: 4 }}>{n.tarih ? new Date(n.tarih).toLocaleDateString('tr-TR') : ''}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: '#fcd34d' }}>{n.tarih ? new Date(n.tarih).toLocaleDateString('tr-TR') : ''}</Text>
+                            <TouchableOpacity onPress={() => Alert.alert('Not', '', [
+                              { text: 'Düzenle', onPress: () => inlineNotDuzenleAc(n) },
+                              { text: 'Sil', style: 'destructive', onPress: () => inlineNotSil(n.id) },
+                              { text: 'İptal', style: 'cancel' },
+                            ])} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ paddingHorizontal: 4, marginTop: -6, marginBottom: -6 }}>
+                              <Text style={{ fontSize: 18, color: '#fcd34d', fontWeight: '700' }}>⋯</Text>
+                            </TouchableOpacity>
+                          </View>
                           <Text style={{ fontSize: 12, color: '#fde68a', lineHeight: 18 }}>{n.icerik}</Text>
                         </View>
                       ))}
