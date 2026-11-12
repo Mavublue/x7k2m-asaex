@@ -511,18 +511,20 @@ export default function IlanlarScreen() {
     setSiralama(s?.siralama ?? 'tarih_yeni');
   }
 
-  // Mevcut filtre saklanır, yeni sekme sıfır filtreyle açılır.
+  // Yeni sekme mevcut filtrenin kopyasıyla açılır; mevcut sekme olduğu gibi kalır.
   function ekSekmeAc() {
     const s = [...sekme.sekmeler];
-    s[sekme.aktif] = { filtre, search, siralama };
-    s.push(null);
+    const snap = { filtre, search, siralama };
+    s[sekme.aktif] = snap;
+    s.push(snap);
     setSekme({ aktif: s.length - 1, sekmeler: s });
-    sekmeUygula(null);
-    setGecici(BOS_FILTRE); setFilterPage('main'); setFiltrePaneli(true);
+    filtreAc();
   }
 
+  // Aktif sekmeye tıklamak filtre panelini açar.
   function sekmeGec(hedef: number) {
-    if (hedef === sekme.aktif || hedef >= sekme.sekmeler.length) return;
+    if (hedef === sekme.aktif) { filtreAc(); return; }
+    if (hedef >= sekme.sekmeler.length) return;
     const s = [...sekme.sekmeler];
     s[sekme.aktif] = { filtre, search, siralama };
     sekmeUygula(s[hedef]);
