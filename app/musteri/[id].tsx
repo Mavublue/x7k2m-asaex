@@ -18,6 +18,7 @@ import TelefonInput from '../../components/TelefonInput';
 import PersistentTabBar from '../../components/PersistentTabBar';
 import SabitKaydetButon from '../../components/SabitKaydetButon';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import YeniIlanlarHaritaModal from '../../components/YeniIlanlarHaritaModal';
 
 const ILLER = TURKIYE;
 const ILLER_LISTESI = IL_LISTESI;
@@ -301,6 +302,7 @@ export default function MusteriDetayScreen() {
 
   // Link paylaş
   const [linkModal, setLinkModal] = useState(false);
+  const [yeniIlanlarAcik, setYeniIlanlarAcik] = useState(false);
   const [linkTumIlanlar, setLinkTumIlanlar] = useState<Ilan[]>([]);
   const [linkSecimIds, setLinkSecimIds] = useState<string[]>([]);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
@@ -1103,6 +1105,9 @@ export default function MusteriDetayScreen() {
               )}
               <TouchableOpacity style={styles.duzenleBtn} onPress={() => { setDuzenle(true); fetchTumOzellikler(); }}>
                 <Text style={styles.duzenleBtnText}>✏️ Düzenle</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkBtn} onPress={() => setYeniIlanlarAcik(true)}>
+                <Text style={styles.linkBtnText}>🆕</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.linkBtn} onPress={handleLinkModalAc}>
                 <Text style={styles.linkBtnText}>🔗</Text>
@@ -2080,6 +2085,8 @@ export default function MusteriDetayScreen() {
           </KeyboardAvoidingView>
         </Modal>
       )}
+
+      <YeniIlanlarHaritaModal musteriId={id} visible={yeniIlanlarAcik} onClose={() => setYeniIlanlarAcik(false)} />
 
       {/* Link Paylaş Modali */}
       <Modal visible={linkModal} animationType="slide" transparent onRequestClose={() => setLinkModal(false)}>
