@@ -46,8 +46,11 @@ function NotIcerik({ icerik }: { icerik: string }) {
   return (
     <Text selectable style={styles.notIcerik}>
       {parcalar.map((p, i) => {
-        const rakam = (p.match(/\d/g) || []).length;
-        if (rakam >= 7) {
+        // Sadece gerçek telefon: 10-13 rakam, 0/5/90/+ ile başlar (fiyat vb. sayılar link olmaz)
+        const rakamlar = p.replace(/[^\d]/g, '');
+        const telefonMu = rakamlar.length >= 10 && rakamlar.length <= 13
+          && (p.trim().startsWith('+') || /^(0|5|90)/.test(rakamlar));
+        if (telefonMu) {
           return (
             <Text key={i} style={styles.notTelLink} onPress={() => telAra(p.trim())}>{p}</Text>
           );

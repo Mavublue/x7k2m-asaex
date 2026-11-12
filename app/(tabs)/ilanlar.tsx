@@ -702,24 +702,31 @@ export default function IlanlarScreen() {
     </TouchableOpacity>
   );
 
+  // Liste satırında ve haritada yüzen çubuğun altında ortak kullanılır.
+  const sekmeButonlari = (
+    <>
+      {sekme.sekmeler.length > 1 && sekme.sekmeler.map((_, i) => (
+        <TouchableOpacity key={i} style={[styles.sekme, sekme.aktif === i && styles.sekmeAktif]} onPress={() => sekmeGec(i)}>
+          <Text style={[styles.sekmeText, sekme.aktif === i && styles.sekmeTextAktif]}>{i === 0 ? 'Ana' : `Ek ${i}`}</Text>
+          {i > 0 && (
+            <TouchableOpacity onPress={() => ekSekmeKapat(i)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}>
+              <Text style={[styles.sekmeKapat, sekme.aktif === i && styles.sekmeTextAktif]}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity style={styles.sekme} onPress={ekSekmeAc}>
+        <Text style={styles.sekmeText}>{sekme.sekmeler.length > 1 ? '＋' : '＋ Ek filtre'}</Text>
+      </TouchableOpacity>
+    </>
+  );
+
   const SonucSatiri = () => (
     <>
       <View style={styles.sonucRow}>
         <Text style={[styles.sonucSayisi, { flex: 0 }]}>{filtered.length} ilan</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.sekmeler}>
-          {sekme.sekmeler.length > 1 && sekme.sekmeler.map((_, i) => (
-            <TouchableOpacity key={i} style={[styles.sekme, sekme.aktif === i && styles.sekmeAktif]} onPress={() => sekmeGec(i)}>
-              <Text style={[styles.sekmeText, sekme.aktif === i && styles.sekmeTextAktif]}>{i === 0 ? 'Ana' : `Ek ${i}`}</Text>
-              {i > 0 && (
-                <TouchableOpacity onPress={() => ekSekmeKapat(i)} hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}>
-                  <Text style={[styles.sekmeKapat, sekme.aktif === i && styles.sekmeTextAktif]}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={styles.sekme} onPress={ekSekmeAc}>
-            <Text style={styles.sekmeText}>{sekme.sekmeler.length > 1 ? '＋' : '＋ Ek filtre'}</Text>
-          </TouchableOpacity>
+          {sekmeButonlari}
         </ScrollView>
         <View ref={siralamaBtnRef} collapsable={false}>
           <TouchableOpacity style={styles.siralamaBtn} onPress={() => {
@@ -919,6 +926,11 @@ export default function IlanlarScreen() {
               <Text style={styles.floatingYeniText}>+</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Filtre sekmeleri (yüzen çubuğun altında) */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.floatingSekmeler} contentContainerStyle={styles.sekmeler}>
+            {sekmeButonlari}
+          </ScrollView>
 
           {seciliIlan && popupPos && (() => {
             const POPUP_H = 96;
@@ -1995,6 +2007,7 @@ const styles = StyleSheet.create({
   sekmeText: { fontSize: 12, color: Colors.onSurface, fontWeight: '600' },
   sekmeTextAktif: { color: Colors.primary },
   sekmeKapat: { fontSize: 11, color: Colors.onSurfaceVariant, fontWeight: '700' },
+  floatingSekmeler: { position: 'absolute', top: 64, left: 12, right: 12, flexGrow: 0, zIndex: 10 },
   siralamaBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: Colors.outline, backgroundColor: Colors.surface },
   siralamaBtnText: { fontSize: 12, color: Colors.onSurface, fontWeight: '500' },
   siralamaChevron: { fontSize: 9, color: Colors.onSurfaceVariant },
