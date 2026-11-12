@@ -395,9 +395,6 @@ export default function IlanDuzenleScreen() {
       return;
     }
 
-    // Sağ kutudaki (gizli) fotolar fotograflar'da olmaz — orphan sanıp silme
-    const silinenler = orijinalFotograflar.filter(k => !fotograflar.includes(k) && !gizliFotograflar.includes(k));
-    await Promise.all(silinenler.map(key => deleteFile(key).catch(e => console.error('silme hatası:', key, e))));
     setLoading(true);
 
     const { error } = await supabase.from('ilanlar').update({
@@ -432,6 +429,10 @@ export default function IlanDuzenleScreen() {
       setLoading(false);
       return;
     }
+    // Kayıt başarılı → çıkarılan eski fotoları R2'den sil (önce silinirse hata durumunda ilan ölü key gösterir)
+    // Sağ kutudaki (gizli) fotolar fotograflar'da olmaz — orphan sanıp silme
+    const silinenler = orijinalFotograflar.filter(k => !fotograflar.includes(k) && !gizliFotograflar.includes(k));
+    await Promise.all(silinenler.map(key => deleteFile(key).catch(e => console.error('silme hatası:', key, e))));
     await supabase.from('ilan_ozellikler').delete().eq('ilan_id', id);
     if (secilenOzellikler.length) {
       const uniqueIds = [...new Set(secilenOzellikler)];
