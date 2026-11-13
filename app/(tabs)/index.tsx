@@ -83,6 +83,8 @@ export default function DashboardScreen() {
   const [inlineNotIcerik, setInlineNotIcerik] = useState('');
   const [inlineNotSaving, setInlineNotSaving] = useState(false);
   const [inlineNotEditId, setInlineNotEditId] = useState<string | null>(null);
+  const [inlineNotTarih, setInlineNotTarih] = useState<Date>(new Date());
+  const [inlineNotPicker, setInlineNotPicker] = useState<'date' | 'time' | null>(null);
   const [inlineDuzenleAcik, setInlineDuzenleAcik] = useState(false);
   const [inlineDzSaving, setInlineDzSaving] = useState(false);
   const [dzAd, setDzAd] = useState('');
@@ -476,20 +478,23 @@ export default function DashboardScreen() {
     const icerik = inlineNotIcerik.trim();
     if (!icerik) return;
     setInlineNotSaving(true);
+    const tarih = inlineNotTarih.toISOString();
     if (inlineNotEditId) {
       const editId = inlineNotEditId;
-      const { error } = await supabase.from('musteri_notlar').update({ icerik }).eq('id', editId);
+      const { error } = await supabase.from('musteri_notlar').update({ icerik, tarih }).eq('id', editId);
       setInlineNotSaving(false);
       if (error) { Alert.alert('Hata', error.message); return; }
-      setMusteriDetay((prev: any) => prev ? { ...prev, notlar: (prev.notlar ?? []).map((n: any) => n.id === editId ? { ...n, icerik } : n) } : prev);
+      setMusteriDetay((prev: any) => prev ? { ...prev, notlar: (prev.notlar ?? []).map((n: any) => n.id === editId ? { ...n, icerik, tarih } : n)
+        .sort((a: any, b: any) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime()) } : prev);
     } else {
-      const tarih = new Date().toISOString();
       const { data, error } = await supabase.from('musteri_notlar')
         .insert({ musteri_id: musteriDetay.id, icerik, tarih }).select().single();
       setInlineNotSaving(false);
       if (error) { Alert.alert('Hata', error.message); return; }
-      setMusteriDetay((prev: any) => prev ? { ...prev, notlar: [data, ...(prev.notlar ?? [])].slice(0, 5) } : prev);
+      setMusteriDetay((prev: any) => prev ? { ...prev, notlar: [data, ...(prev.notlar ?? [])]
+        .sort((a: any, b: any) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime()).slice(0, 5) } : prev);
     }
+    setInlineNotPicker(null);
     setInlineNotIcerik('');
     setInlineNotEditId(null);
     setInlineNotAcik(false);
@@ -499,6 +504,8 @@ export default function DashboardScreen() {
     setInlineDuzenleAcik(false);
     setInlineNotEditId(n.id);
     setInlineNotIcerik(n.icerik ?? '');
+    setInlineNotTarih(n.tarih ? new Date(n.tarih) : new Date());
+    setInlineNotPicker(null);
     setInlineNotAcik(true);
   }
 
@@ -1250,7 +1257,7 @@ export default function DashboardScreen() {
                       <Text style={{ fontSize: 13 }}>✏️</Text>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: inlineDuzenleAcik ? '#fff' : Colors.onSurface }}>Düzenle</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { if (inlineNotAcik) { setInlineNotAcik(false); } else { setInlineDuzenleAcik(false); setInlineNotEditId(null); setInlineNotIcerik(''); setInlineNotAcik(true); } }}
+                    <TouchableOpacity onPress={() => { if (inlineNotAcik) { setInlineNotAcik(false); } else { setInlineDuzenleAcik(false); setInlineNotEditId(null); setInlineNotIcerik(''); setInlineNotTarih(new Date()); setInlineNotPicker(null); setInlineNotAcik(true); } }}
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: inlineNotAcik ? '#92400e' : 'rgba(146,64,14,0.9)' }}>
                       <Text style={{ fontSize: 13 }}>📝</Text>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Not Ekle</Text>
@@ -1316,8 +1323,46 @@ export default function DashboardScreen() {
                     <View style={{ backgroundColor: 'rgba(234,179,8,0.08)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)', padding: Spacing.md, gap: 10 }}>
                       <Text style={styles.bdInputLabel}>{inlineNotEditId ? 'Notu Düzenle' : 'Yeni Not'}</Text>
                       <TextInput value={inlineNotIcerik} onChangeText={setInlineNotIcerik} placeholder="Not içeriği…" placeholderTextColor={Colors.onSurfaceVariant} multiline style={[styles.bdInput, { minHeight: 72, textAlignVertical: 'top' }]} />
+                      <TouchableOpacity onPress={() => { Keyboard.dismiss(); setInlineNotPicker('date'); }} style={[styles.bdInput, { justifyContent: 'center' }]}>
+                        <Text style={{ fontSize: 13, color: Colors.onSurface }}>📅 {inlineNotTarih.toLocaleDateString('tr-TR')} {String(inlineNotTarih.getHours()).padStart(2, '0')}:{String(inlineNotTarih.getMinutes()).padStart(2, '0')}</Text>
+                      </TouchableOpacity>
+                      {inlineNotPicker && (
+                        <DateTimePicker
+                          value={inlineNotTarih}
+                          mode={inlineNotPicker}
+                          is24Hour
+                          locale="tr-TR"
+                          display={Platform.OS === 'ios' ? (inlineNotPicker === 'date' ? 'inline' : 'spinner') : inlineNotPicker === 'date' ? 'calendar' : 'default'}
+                          onChange={(_, sel) => {
+                            if (Platform.OS === 'android') {
+                              if (inlineNotPicker === 'date') {
+                                if (sel) {
+                                  const merged = new Date(inlineNotTarih);
+                                  merged.setFullYear(sel.getFullYear(), sel.getMonth(), sel.getDate());
+                                  setInlineNotTarih(merged);
+                                  setInlineNotPicker('time');
+                                } else { setInlineNotPicker(null); }
+                              } else {
+                                if (sel) {
+                                  const merged = new Date(inlineNotTarih);
+                                  merged.setHours(sel.getHours(), sel.getMinutes());
+                                  setInlineNotTarih(merged);
+                                }
+                                setInlineNotPicker(null);
+                              }
+                            } else if (sel) {
+                              setInlineNotTarih(sel);
+                            }
+                          }}
+                        />
+                      )}
+                      {Platform.OS === 'ios' && inlineNotPicker && (
+                        <TouchableOpacity onPress={() => setInlineNotPicker(inlineNotPicker === 'date' ? 'time' : null)} style={{ alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 24 }}>
+                          <Text style={{ color: '#60a5fa', fontWeight: '700', fontSize: 14 }}>{inlineNotPicker === 'date' ? 'Saat Seç' : 'Tamam'}</Text>
+                        </TouchableOpacity>
+                      )}
                       <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={() => { setInlineNotAcik(false); setInlineNotIcerik(''); setInlineNotEditId(null); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh }}>
+                        <TouchableOpacity onPress={() => { setInlineNotAcik(false); setInlineNotIcerik(''); setInlineNotEditId(null); setInlineNotPicker(null); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.surfaceContainerHigh }}>
                           <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.onSurfaceVariant }}>Vazgeç</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={inlineNotKaydet} disabled={inlineNotSaving || !inlineNotIcerik.trim()} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: '#92400e', opacity: (inlineNotSaving || !inlineNotIcerik.trim()) ? 0.6 : 1 }}>
