@@ -113,7 +113,10 @@ export default function IlanDuzenleScreen() {
   const [orijinalFotograflar, setOrijinalFotograflar] = useState<string[]>([]);
   const [pending, setPending] = useState<{ tempId: string; uri: string; percent: number; task: any | null }[]>([]);
   const cancelledRef = useRef<Set<string>>(new Set());
-  const fotoYukleniyor = pending.length > 0;
+  // Galeri seçimi sonrası iOS fotoları hazırlarken (sıkıştırma) pending henüz boş —
+  // bu sürede de kaydet engellensin diye aktif ekleme işlemlerini ayrıca say.
+  const [fotoHazirlik, setFotoHazirlik] = useState(0);
+  const fotoYukleniyor = pending.length > 0 || fotoHazirlik > 0;
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [headerAlt, setHeaderAlt] = useState(56);
@@ -270,6 +273,12 @@ export default function IlanDuzenleScreen() {
   }
 
   async function fotografEkle() {
+    setFotoHazirlik(n => n + 1);
+    try { await fotografEkleIc(); }
+    finally { setFotoHazirlik(n => n - 1); }
+  }
+
+  async function fotografEkleIc() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('İzin gerekli', 'Galeri iznine ihtiyaç var.'); return; }
 
@@ -299,6 +308,7 @@ export default function IlanDuzenleScreen() {
     try { watermarkText = await getWatermarkText(); }
     catch { watermarkText = undefined; }
 
+    let hatali = 0;
     const uploadOne = async (item: typeof newItems[number]) => {
       if (cancelledRef.current.has(item.tempId)) return;
       try {
@@ -344,7 +354,7 @@ export default function IlanDuzenleScreen() {
         // Variant üretimi upload havuzunu bloklamasın — arka planda çalışsın
         optimizePhoto(key, isFirst, watermarkText).catch(e => console.error('optimize hata:', key, e));
       } catch (e) {
-        if (!cancelledRef.current.has(item.tempId)) console.error(e);
+        if (!cancelledRef.current.has(item.tempId)) { console.error(e); hatali++; }
         setPending(prev => prev.filter(p => p.tempId !== item.tempId));
       }
     };
@@ -362,12 +372,15 @@ export default function IlanDuzenleScreen() {
       Array.from({ length: Math.min(CONCURRENCY, newItems.length) }, worker)
     );
     cancelledRef.current.clear();
+    if (hatali > 0) Alert.alert('Yükleme hatası', `${hatali} fotoğraf yüklenemedi. Lütfen onları tekrar ekleyin.`);
   }
 
   async function handleKaydet() {
     if (loading) return;
     if (fotoYukleniyor) {
-      Alert.alert('Bekleyin', 'Fotoğraflar henüz yükleniyor, lütfen bekleyin.');
+      Alert.alert('Bekleyin', pending.length > 0
+        ? `${pending.length} fotoğraf daha yükleniyor, bitince kaydedin.`
+        : 'Fotoğraflar hazırlanıyor, bitince kaydedin.');
       return;
     }
     setSubmitted(true);
@@ -866,7 +879,10 @@ export default function IlanDuzenleScreen() {
           </View>
         </View>
       </Modal>
-      <SabitKaydetButon top={headerAlt} onPress={handleKaydet} saving={loading} />
+      <SabitKaydetButon
+        top={headerAlt} onPress={handleKaydet} saving={loading}
+        label={fotoYukleniyor ? (pending.length > 0 ? `⏳ Foto ${pending.length}` : '⏳ Hazırlanıyor') : undefined}
+      />
       <PersistentTabBar />
     </SafeAreaView>
   );
