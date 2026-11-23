@@ -9,7 +9,7 @@ import * as Clipboard from 'expo-clipboard';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const POPUP_W = 290;
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import { supabase } from '../../lib/supabase';
@@ -543,10 +543,10 @@ export default function IlanlarScreen() {
     setSekme({ aktif, sekmeler: s });
   }
 
-  function handleListePaylas(kaynak: 'filtre' | 'secim' = 'filtre') {
-    setPaylasLink(''); setPaylasMusteri(''); setPaylasMusteriAra(''); setKopyalandi(false); setPaylasEtiketAra('');
+  function handleListePaylas(kaynak: 'filtre' | 'secim' = 'filtre', ozel?: { ilanlar: Ilan[]; musteriId: string | null; musteriAd: string }) {
+    setPaylasLink(''); setPaylasMusteri(ozel?.musteriId ?? ''); setPaylasMusteriAra(ozel?.musteriAd ?? ''); setKopyalandi(false); setPaylasEtiketAra('');
     setPaylasHaric(new Set());
-    setPaylasIlanlar(kaynak === 'secim' ? ilanlar.filter(i => seciliIds.has(i.id)) : filtered);
+    setPaylasIlanlar(ozel ? ozel.ilanlar : kaynak === 'secim' ? ilanlar.filter(i => seciliIds.has(i.id)) : filtered);
     supabase.from('musteriler').select('id, ad, soyad, etiketler, telefon').eq('durum', 'Aktif').order('ad')
       .then(({ data }) => { if (data) setPaylasMusteriler(musteriSirala(data)); });
     setPaylasModal(true);
@@ -590,8 +590,34 @@ export default function IlanlarScreen() {
       ilanIds.map(ilanId => ({ user_id: session.user.id, musteri_id: paylasMusteri, ilan_id: ilanId, paket_token: ilanIds.length > 1 ? token : null }))
     );
     setPaylasLink(genel ? `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}/${musteriToken}` : `${process.env.EXPO_PUBLIC_WEB_URL}/ozel-ilanlar/${token}`);
+    if (jarvisKartId) {
+      // Jarvis "ilan gönder" kartı: link oluşturuldu → kart onaylandı
+      await supabase.from('jarvis_kartlar').update({ durum: 'onaylandi', karar_at: new Date().toISOString() }).eq('id', jarvisKartId);
+      setJarvisKartId(null);
+    }
     setPaylasYukleniyor(false);
   }
+
+  // Jarvis "ilan gönder" kartından gelindiyse paylaş penceresini kartın ilanları + müşterisiyle aç
+  const { jarvisKart } = useLocalSearchParams<{ jarvisKart?: string }>();
+  const [jarvisKartId, setJarvisKartId] = useState<string | null>(null);
+  const jarvisAcilan = useRef<string | null>(null);
+  useEffect(() => {
+    if (!jarvisKart || loading || !ilanlar.length || jarvisAcilan.current === jarvisKart) return;
+    jarvisAcilan.current = jarvisKart;
+    router.setParams({ jarvisKart: undefined });
+    supabase.from('jarvis_kartlar').select('id, musteri_id, veri, durum, musteriler(ad, soyad)').eq('id', jarvisKart).single()
+      .then(({ data }) => {
+        if (!data || data.durum !== 'bekliyor') return;
+        const ids: string[] = (data.veri as { ilan_ids?: string[] })?.ilan_ids ?? [];
+        const secilen = ilanlar.filter(i => ids.includes(i.id) && i.durum === 'Aktif');
+        if (!secilen.length) { Alert.alert('Uyarı', 'Karttaki ilanlar artık aktif değil'); return; }
+        const m = (data as any).musteriler;
+        setJarvisKartId(data.id);
+        handleListePaylas('secim', { ilanlar: secilen, musteriId: data.musteri_id, musteriAd: m ? `${m.ad}${m.soyad ? ` ${m.soyad}` : ''}` : '' });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jarvisKart, loading, ilanlar]);
 
 
   function secimToggle(id: string) {

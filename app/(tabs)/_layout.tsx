@@ -7,6 +7,7 @@ const icons: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   index: 'dashboard',
   ilanlar: 'apartment',
   gorevler: 'check-circle',
+  jarvis: 'smart-toy',
   musteriler: 'people',
   ayarlar: 'settings',
 };
@@ -15,6 +16,7 @@ const labels: Record<string, string> = {
   index: 'Ana Sayfa',
   ilanlar: 'İlanlar',
   gorevler: 'Görevler',
+  jarvis: 'Jarvis',
   musteriler: 'Müşteriler',
   ayarlar: 'Ayarlar',
 };
@@ -41,6 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="ilanlar" />
       <Tabs.Screen name="gorevler" />
+      <Tabs.Screen name="jarvis" />
       <Tabs.Screen name="musteriler" />
       <Tabs.Screen name="ayarlar" />
     </Tabs>

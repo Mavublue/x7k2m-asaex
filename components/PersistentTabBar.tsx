@@ -4,12 +4,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 
-type TabKey = 'index' | 'ilanlar' | 'gorevler' | 'musteriler' | 'ayarlar';
+type TabKey = 'index' | 'ilanlar' | 'gorevler' | 'jarvis' | 'musteriler' | 'ayarlar';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof MaterialIcons.glyphMap; path: string }[] = [
   { key: 'index', label: 'Ana Sayfa', icon: 'dashboard', path: '/(tabs)' },
   { key: 'ilanlar', label: 'İlanlar', icon: 'apartment', path: '/(tabs)/ilanlar' },
   { key: 'gorevler', label: 'Görevler', icon: 'check-circle', path: '/(tabs)/gorevler' },
+  { key: 'jarvis', label: 'Jarvis', icon: 'smart-toy', path: '/(tabs)/jarvis' },
   { key: 'musteriler', label: 'Müşteriler', icon: 'people', path: '/(tabs)/musteriler' },
   { key: 'ayarlar', label: 'Ayarlar', icon: 'settings', path: '/(tabs)/ayarlar' },
 ];
