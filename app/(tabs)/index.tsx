@@ -297,7 +297,7 @@ export default function DashboardScreen() {
       case 'asistan': {
         const mesaj = String(veri.mesaj ?? '').replace(/[#*_`]/g, '').trim();
         if (b.musteri_id) { baslik = musteriLabel || '?'; alt = mesaj; }
-        else { baslik = veri.tip === 'sabah' ? '🌅 Sabah Özeti' : veri.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti'; alt = mesaj; }
+        else { baslik = veri.tip === 'gorev-saat' ? '⏰ Görev Zamanı' : veri.tip === 'sabah' ? '🌅 Sabah Özeti' : veri.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti'; alt = mesaj; }
         hedefId = b.musteri_id ?? '';
         break;
       }
