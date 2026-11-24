@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Linking,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useFocusEffect } from 'expo-router';
@@ -40,6 +40,24 @@ export default function JarvisEkran() {
   const [duzenle, setDuzenle] = useState<Record<string, any>>({});
   const [mesgul, setMesgul] = useState<string | null>(null);
   const [yuklendi, setYuklendi] = useState(false);
+  const [popup, setPopup] = useState<any | null>(null);
+
+  // Soru kartı seçeneğindeki / karttaki müşterinin kısa detayı (web'deki popup ile aynı veri)
+  async function musteriAc(id: string) {
+    setPopup({ id, _yukleniyor: true });
+    const [{ data: m }, { data: rpc }, { data: istekler }] = await Promise.all([
+      supabase.from('musteriler').select('id, ad, soyad, etiketler, durum, musteri_tipi, telefon').eq('id', id).maybeSingle(),
+      supabase.rpc('get_musteri_detay', { mid: id }),
+      supabase.from('musteri_istekler').select('*').eq('musteri_id', id),
+    ]);
+    if (!m) { setPopup(null); Alert.alert('Müşteri bulunamadı'); return; }
+    setPopup({
+      ...m,
+      notlar: (((rpc as any)?.notlar ?? []) as any[]).slice(0, 5),
+      iletisim: (((rpc as any)?.iletisim ?? []) as any[]),
+      istekler: (istekler ?? []) as any[],
+    });
+  }
 
   const yukle = useCallback(async () => {
     const { data } = await supabase.from('jarvis_komutlar')
@@ -181,9 +199,16 @@ export default function JarvisEkran() {
         {kart.durum === 'bekliyor' && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {(kart.veri.secenekler ?? []).map((s: any, i: number) => (
-              <Pressable key={i} disabled={mesgul === kart.id} onPress={() => secenekSec(kart, s.komut)} style={[styles.btn, { borderColor: '#2563eb' }]}>
-                <Text style={[styles.btnYazi, { color: '#60a5fa' }]}>{s.etiket}</Text>
-              </Pressable>
+              <View key={i} style={{ flexDirection: 'row', gap: 2 }}>
+                <Pressable disabled={mesgul === kart.id} onPress={() => secenekSec(kart, s.komut)} style={[styles.btn, { borderColor: '#2563eb' }]}>
+                  <Text style={[styles.btnYazi, { color: '#60a5fa' }]}>{s.etiket}</Text>
+                </Pressable>
+                {!!s.musteri_id && (
+                  <Pressable onPress={() => musteriAc(s.musteri_id)} hitSlop={6} style={[styles.btn, { borderColor: '#2563eb', paddingHorizontal: 10 }]}>
+                    <Text style={styles.btnYazi}>👁</Text>
+                  </Pressable>
+                )}
+              </View>
             ))}
           </View>
         )}
@@ -220,8 +245,9 @@ export default function JarvisEkran() {
                 <View key={kart.id} style={[styles.kart,
                   kart.durum === 'onaylandi' ? { borderColor: '#166534', backgroundColor: '#052e16' }
                     : kart.durum === 'reddedildi' ? { opacity: 0.5 } : { borderColor: '#854d0e', backgroundColor: '#1c1404' }]}>
-                  <Text style={[styles.soluk, { fontWeight: '700', marginBottom: 6 }]}>
-                    {ROZET[kart.tur]}{kart.musteri_id ? ` — ${musteriler[kart.musteri_id] ?? '…'}` : ''}
+                  <Text style={[styles.soluk, { fontWeight: '700', marginBottom: 6 }]}
+                    onPress={kart.musteri_id ? () => musteriAc(kart.musteri_id!) : undefined}>
+                    {ROZET[kart.tur]}{kart.musteri_id ? ` — ${musteriler[kart.musteri_id] ?? '…'} 👁` : ''}
                     {kart.durum === 'onaylandi' ? ' · ✓ yapıldı' : kart.durum === 'reddedildi' ? ' · reddedildi' : ''}
                   </Text>
                   {kartGovde(kart)}
@@ -252,6 +278,72 @@ export default function JarvisEkran() {
           ))}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={!!popup} transparent animationType="fade" onRequestClose={() => setPopup(null)}>
+        <Pressable style={styles.perde} onPress={() => setPopup(null)}>
+          <Pressable style={styles.popup} onPress={() => {}}>
+            {popup?._yukleniyor ? (
+              <ActivityIndicator style={{ padding: 30 }} color={Colors.primary} />
+            ) : popup && (
+              <>
+                <View style={styles.popupUst}>
+                  <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.govde, { fontSize: 16, fontWeight: '800' }]}>{popup.ad} {popup.soyad ?? ''}</Text>
+                    {!!popup.etiketler && <Text style={styles.soluk}>#{popup.etiketler}</Text>}
+                    {!!popup.durum && <Text style={[styles.etiket, popup.durum === 'Aktif' && { color: '#3aaa6e' }]}>{popup.durum}</Text>}
+                  </View>
+                  {!!popup.telefon && (
+                    <Pressable onPress={() => Linking.openURL(`tel:${popup.telefon}`)} style={styles.ikonBtn}><Text>📞</Text></Pressable>
+                  )}
+                  <Pressable onPress={() => { const id = popup.id; setPopup(null); router.push(`/musteri/${id}` as any); }}
+                    style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, paddingVertical: 6 }]}>
+                    <Text style={[styles.btnYazi, { color: '#fff' }]}>Detay →</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setPopup(null)} hitSlop={8}><Text style={[styles.soluk, { fontSize: 20 }]}>✕</Text></Pressable>
+                </View>
+                <ScrollView contentContainerStyle={{ padding: 14, gap: 16 }}>
+                  {popup.iletisim.length > 0 && (
+                    <View>
+                      <Text style={styles.bolum}>EK KİŞİLER</Text>
+                      {popup.iletisim.map((k: any) => (
+                        <Pressable key={k.id} onPress={() => k.telefon && Linking.openURL(`tel:${k.telefon}`)} style={styles.satir}>
+                          <Text style={[styles.govde, { flex: 1, fontWeight: '600' }]}>{k.ad}{k.tip ? `  · ${k.tip}` : ''}</Text>
+                          {!!k.telefon && <Text style={styles.soluk}>📞 {k.telefon}</Text>}
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                  {popup.istekler.length > 0 && (
+                    <View>
+                      <Text style={styles.bolum}>İSTEKLER</Text>
+                      {popup.istekler.map((i: any, idx: number) => (
+                        <View key={i.id} style={styles.istek}>
+                          <Text style={[styles.govde, { fontSize: 13 }]}>
+                            {`#${idx + 1}  `}
+                            {[i.satilik_kiralik,
+                              (i.butce_min || i.butce_max) ? `${i.butce_min ? fiyatYaz(i.butce_min) : '—'} – ${i.butce_max ? fiyatYaz(i.butce_max) : '—'}` : null,
+                              i.tip, i.tercih_konum ? String(i.tercih_konum).split('|').join(', ') : null,
+                              i.min_oda ? `Min ${i.min_oda}` : null].filter(Boolean).join(' · ')}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <View>
+                    <Text style={styles.bolum}>SON NOTLAR</Text>
+                    {popup.notlar.length === 0 ? <Text style={styles.soluk}>Not yok.</Text> : popup.notlar.map((n: any) => (
+                      <View key={n.id} style={styles.not}>
+                        {!!n.tarih && <Text style={{ fontSize: 11, fontWeight: '600', color: '#fbbf24', marginBottom: 3 }}>{tarihYaz(n.tarih, true)}</Text>}
+                        <Text style={[styles.govde, { fontSize: 13, lineHeight: 19 }]}>{n.icerik}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -272,4 +364,19 @@ const styles = StyleSheet.create({
   kart: { marginTop: 10, padding: 10, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.outlineVariant },
   btn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: Radius.sm, borderWidth: 1 },
   btnYazi: { fontSize: 13, fontWeight: '700' },
+  perde: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 },
+  popup: {
+    backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, maxHeight: '85%',
+    borderWidth: 1, borderColor: Colors.outlineVariant, overflow: 'hidden',
+  },
+  popupUst: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant,
+  },
+  ikonBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: Colors.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
+  etiket: { fontSize: 11, fontWeight: '600', color: Colors.onSurfaceVariant, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.surfaceContainer, overflow: 'hidden' },
+  bolum: { fontSize: 11, fontWeight: '800', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 6 },
+  satir: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: Colors.surfaceContainer, borderRadius: 8, marginBottom: 6 },
+  istek: { padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: Colors.primary, backgroundColor: Colors.surfaceContainer, marginBottom: 6 },
+  not: { padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#854d0e', backgroundColor: '#1c1404', marginBottom: 6 },
 });
