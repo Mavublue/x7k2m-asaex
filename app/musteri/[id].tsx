@@ -168,8 +168,12 @@ function saatLabel(t: number) {
 }
 
 export default function MusteriDetayScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, jarvisKart } = useLocalSearchParams<{ id: string; jarvisKart?: string }>();
   const [musteri, setMusteri] = useState<Musteri | null>(null);
+  // Jarvis "Müşteri isteği" kartı: taze veri gelince istek forma eklenir/yazılır, düzenle açılır; kaydedilince kart onaylanır
+  const jarvisRef = useRef<{ islem: string; istek: any } | null>(null);
+  const jarvisKartIdRef = useRef<string | null>(null);
+  const tazeRef = useRef(false);
   const [eslesen, setEslesen] = useState<Ilan[]>([]);
   const [elleEslesen, setElleEslesen] = useState<{id: string; ilan: Ilan}[]>([]);
   const [eslesenYuklendi, setEslesenYuklendi] = useState(false);
@@ -415,6 +419,8 @@ export default function MusteriDetayScreen() {
     }
     applyMusteri(rpcData, gData, bData);
     cacheSet(cacheKey, { rpcData, gData, bData });
+    tazeRef.current = true;
+    jarvisUygula();
   }, [id, applyMusteri]);
 
   const fetchTumOzellikler = useCallback(async () => {
@@ -495,6 +501,39 @@ export default function MusteriDetayScreen() {
   }, [id]);
 
   useFocusEffect(useCallback(() => { fetchMusteri(); }, [fetchMusteri]));
+
+  useEffect(() => {
+    if (!jarvisKart) return;
+    router.setParams({ jarvisKart: undefined });
+    (async () => {
+      const { data: k } = await supabase.from('jarvis_kartlar').select('id, tur, veri, durum, musteri_id').eq('id', jarvisKart).maybeSingle();
+      const v = k?.veri as any;
+      if (!k || k.tur !== 'musteri_istek' || k.durum !== 'bekliyor' || k.musteri_id !== id || !v?.istek) return;
+      jarvisKartIdRef.current = k.id;
+      jarvisRef.current = { islem: v.islem ?? 'ekle', istek: v.istek };
+      jarvisUygula();
+    })();
+  }, [jarvisKart]);
+
+  function jarvisUygula() {
+    const j = jarvisRef.current;
+    if (!j || !tazeRef.current) return;
+    jarvisRef.current = null;
+    const i = j.istek;
+    const alanlar: Partial<IstekState> = {};
+    if (i.satilik_kiralik === 'Satılık' || i.satilik_kiralik === 'Kiralık') alanlar.satilikKiralik = i.satilik_kiralik;
+    if (i.tip) alanlar.tipler = String(i.tip).split(',').map((x: string) => x.trim()).filter(Boolean);
+    if (i.butce_min) alanlar.butceMin = formatButce(String(i.butce_min));
+    if (i.butce_max) alanlar.butceMax = formatButce(String(i.butce_max));
+    if (i.tercih_konum) alanlar.konumlar = String(i.tercih_konum).split('|').map((x: string) => x.trim()).filter(Boolean);
+    if (i.min_oda) alanlar.minOda = i.min_oda;
+    const bos: IstekState = { satilikKiralik: '', tipler: [], tipler_haric: [], butceMin: '', butceMax: '', konumlar: [], minOda: '', binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [] };
+    setIstekler(p => j.islem === 'degistir' && p.length
+      ? [{ ...p[0], ...alanlar }, ...p.slice(1)]
+      : [...p, { ...bos, ...alanlar }]);
+    setDuzenle(true);
+    fetchTumOzellikler();
+  }
 
   const fetchPaylasim = useCallback(async (silent = false) => {
     if (!silent) setPaylasimYukleniyor(true);
@@ -723,6 +762,10 @@ export default function MusteriDetayScreen() {
     }
 
     yerelBildirimleriYenile();
+    if (jarvisKartIdRef.current) {
+      await supabase.from('jarvis_kartlar').update({ durum: 'onaylandi', duzenlendi: false, karar_at: new Date().toISOString() }).eq('id', jarvisKartIdRef.current);
+      jarvisKartIdRef.current = null;
+    }
     setDuzenle(false);
     fetchMusteri();
     setSaving(false);

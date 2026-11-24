@@ -6,7 +6,7 @@ import {
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
   Modal, FlatList,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { Colors, Radius, Spacing } from '../../constants/theme';
@@ -49,6 +49,9 @@ function notTarihParse(s: string): Date | null {
 }
 
 export default function MusteriEkleScreen() {
+  // Jarvis "Yeni müşteri" kartından gelindiyse (?jarvisKart=id) form dolu açılır, kaydedilince kart onaylanır
+  const { jarvisKart } = useLocalSearchParams<{ jarvisKart?: string }>();
+  const [jarvisKartId, setJarvisKartId] = useState<string | null>(null);
   const [ad, setAd] = useState('');
   const [soyad, setSoyad] = useState('');
   const [varsayilanKod, setVarsayilanKod] = useState(VARSAYILAN_TELEFON_KODU);
@@ -200,9 +203,35 @@ export default function MusteriEkleScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase.from('profiller').select('default_telefon_kodu').eq('id', user.id).single();
+      const kod = data?.default_telefon_kodu || VARSAYILAN_TELEFON_KODU;
       if (data?.default_telefon_kodu) {
         setVarsayilanKod(data.default_telefon_kodu);
         setTelKod(data.default_telefon_kodu);
+      }
+      if (!jarvisKart) return;
+      const { data: k } = await supabase.from('jarvis_kartlar').select('id, tur, veri, durum').eq('id', jarvisKart).maybeSingle();
+      if (!k || k.tur !== 'musteri_ekle' || k.durum !== 'bekliyor') return;
+      const v = k.veri as any;
+      setJarvisKartId(k.id);
+      setAd(v.ad ?? '');
+      setSoyad(v.soyad ?? '');
+      if (v.telefon) {
+        const sp = ayirTelefon(v.telefon, kod);
+        setTelKod(sp.kod);
+        setTelNumara(sp.numara);
+      }
+      const i = v.istek;
+      if (i) {
+        setIstekler([{
+          satilikKiralik: i.satilik_kiralik === 'Satılık' || i.satilik_kiralik === 'Kiralık' ? i.satilik_kiralik : '',
+          tipler: i.tip ? String(i.tip).split(',').map((x: string) => x.trim()).filter(Boolean) : [], tipler_haric: [],
+          butceMin: i.butce_min ? formatButce(String(i.butce_min)) : '',
+          butceMax: i.butce_max ? formatButce(String(i.butce_max)) : '',
+          konumlar: i.tercih_konum ? String(i.tercih_konum).split('|').map((x: string) => x.trim()).filter(Boolean) : [],
+          minOda: i.min_oda ?? '',
+          binaYaslari: [], binaYaslari_haric: [], ozelIstekler: [], ozelIstekler_haric: [],
+          katSayilari: [], katSayilari_haric: [], bulunduguKatlar: [], bulunduguKatlar_haric: [],
+        }]);
       }
     })();
   }, []);
@@ -303,6 +332,9 @@ export default function MusteriEkleScreen() {
       const nRows = finalNotlar.map(n => ({ musteri_id: (inserted as any).id, icerik: n.icerik, tarih: n.tarih }));
       const { error: nErr } = await supabase.from('musteri_notlar').insert(nRows);
       if (nErr) { Alert.alert('Not kaydı hatası', nErr.message); setLoading(false); return; }
+    }
+    if (jarvisKartId) {
+      await supabase.from('jarvis_kartlar').update({ durum: 'onaylandi', duzenlendi: false, karar_at: new Date().toISOString() }).eq('id', jarvisKartId);
     }
     router.back();
     setLoading(false);

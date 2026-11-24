@@ -31,8 +31,10 @@ function baslikUret(metin: string) {
   return t.length > 40 ? t.slice(0, 40).trimEnd() + '…' : t;
 }
 
+type KartTur = 'not' | 'gorev' | 'ilan_gonder' | 'soru' | 'gorev_guncelle' | 'musteri_durum' | 'ilan_durum'
+  | 'ilan_fiyat' | 'link_uzat' | 'musteri_ekle' | 'musteri_istek';
 type Kart = {
-  id: string; tur: 'not' | 'gorev' | 'ilan_gonder' | 'soru'; musteri_id: string | null;
+  id: string; tur: KartTur; musteri_id: string | null;
   veri: any; durum: 'bekliyor' | 'onaylandi' | 'reddedildi'; duzenlendi: boolean;
 };
 type Komut = {
@@ -42,9 +44,22 @@ type Komut = {
 };
 type IlanMini = { id: string; portfoy_no: string | null; fiyat: number | null; oda_sayisi: string | null; ilce: string | null; mahalle: string | null };
 
-const ROZET: Record<Kart['tur'], string> = { not: '📝 Not', gorev: '📋 Görev', ilan_gonder: '🏠 İlan gönder', soru: '❓ Soru' };
+const ROZET: Record<KartTur, string> = {
+  not: '📝 Not', gorev: '📋 Görev', ilan_gonder: '🏠 İlan gönder', soru: '❓ Soru',
+  gorev_guncelle: '📋 Görev', musteri_durum: '👤 Müşteri durumu', ilan_durum: '🏠 İlan durumu',
+  ilan_fiyat: '💰 İlan fiyatı', link_uzat: '🔗 Link süresi', musteri_ekle: '👤 Yeni müşteri', musteri_istek: '🎯 Müşteri isteği',
+};
+// Onayda mevcut form dolu açılan kartlar (kurallar formda: etiket, telefon, istek)
+const FORM_KART: KartTur[] = ['ilan_gonder', 'musteri_ekle', 'musteri_istek'];
+const GOREV_ISLEM: Record<string, string> = { tamamla: 'Tamamlandı yap', ertele: 'Ertele', sil: 'Sil' };
 
 const fiyatYaz = (f: number | null) => (f == null ? '—' : '₺' + Math.round(f).toLocaleString('tr-TR'));
+function istekYaz(i: any) {
+  if (!i) return '';
+  const butce = (i.butce_min || i.butce_max) ? `${i.butce_min ? fiyatYaz(i.butce_min) : '—'} – ${i.butce_max ? fiyatYaz(i.butce_max) : '—'}` : null;
+  return [i.satilik_kiralik, i.tip, butce, i.tercih_konum ? String(i.tercih_konum).split('|').join(', ') : null,
+    i.min_oda ? `min ${i.min_oda}` : null].filter(Boolean).join(' · ');
+}
 function tarihYaz(iso: string, saatli: boolean) {
   const d = new Date(iso);
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'short' })
@@ -217,6 +232,15 @@ export default function JarvisEkran() {
       router.navigate({ pathname: '/(tabs)/ilanlar', params: { jarvisKart: kart.id } });
       return;
     }
+    if (kart.tur === 'musteri_ekle') {
+      // Yeni müşteri formu dolu açılır; kaydedilince kart onaylanır
+      router.push({ pathname: '/musteri/ekle', params: { jarvisKart: kart.id } } as any);
+      return;
+    }
+    if (kart.tur === 'musteri_istek') {
+      router.push({ pathname: '/musteri/[id]', params: { id: kart.musteri_id!, jarvisKart: kart.id } } as any);
+      return;
+    }
     setMesgul(kart.id);
     try {
       const d = duzenle[kart.id];
@@ -236,6 +260,10 @@ export default function JarvisEkran() {
         });
         if (error) { Alert.alert('Görev eklenemedi', error.message); return; }
         yerelBildirimleriYenile();
+      } else {
+        const hata = await tekDokunus(kart);
+        if (hata) { Alert.alert('Yapılamadı', hata); return; }
+        if (kart.tur === 'gorev_guncelle') yerelBildirimleriYenile();
       }
       await kartKarar(kart, 'onaylandi', !!d);
       setDuzenle(p => { const n = { ...p }; delete n[kart.id]; return n; });
@@ -243,6 +271,43 @@ export default function JarvisEkran() {
     } finally {
       setMesgul(null);
     }
+  }
+
+  // A grubu: tek dokunuşla kayıt (kurallar DB tetikleyicilerinde: pasif→gizle, fiyat düştü bildirimi, tamamlanma tarihi)
+  async function tekDokunus(kart: Kart): Promise<string | null> {
+    const v = kart.veri;
+    if (kart.tur === 'gorev_guncelle') {
+      const q = supabase.from('musteri_gorevler');
+      const { error } = v.islem === 'sil' ? await q.delete().eq('id', v.gorev_id)
+        : v.islem === 'tamamla' ? await q.update({ tamamlandi: true }).eq('id', v.gorev_id)
+        : await q.update({ hedef_tarih: v.hedef_tarih }).eq('id', v.gorev_id);
+      return error?.message ?? null;
+    }
+    if (kart.tur === 'musteri_durum') {
+      const { error } = await supabase.from('musteriler').update({ durum: v.durum }).eq('id', kart.musteri_id!);
+      return error?.message ?? null;
+    }
+    if (kart.tur === 'ilan_durum' || kart.tur === 'ilan_fiyat') {
+      const alan = kart.tur === 'ilan_durum' ? { durum: v.durum } : { fiyat: v.fiyat };
+      const { error } = await supabase.from('ilanlar').update(alan).eq('id', v.ilan_id);
+      return error?.message ?? null;
+    }
+    if (kart.tur === 'link_uzat') {
+      // Müşteri detayındaki "Süreyi Uzat" ile aynı: token + o token'ın paketleri
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return 'oturum yok';
+      const yeniIso = new Date(Date.now() + Number(v.sure_saat) * 3600 * 1000).toISOString();
+      const { data: tk } = await supabase.from('musteri_tokenler').select('token')
+        .eq('user_id', session.user.id).eq('musteri_id', kart.musteri_id!).maybeSingle();
+      if (!tk) return 'müşterinin linki yok';
+      const { error } = await supabase.from('musteri_tokenler').update({ expires_at: yeniIso })
+        .eq('user_id', session.user.id).eq('musteri_id', kart.musteri_id!);
+      if (error) return error.message;
+      await supabase.from('paylasim_paketleri').update({ expires_at: yeniIso })
+        .eq('emlakci_id', session.user.id).eq('musteri_token', tk.token);
+      return null;
+    }
+    return 'bilinmeyen kart';
   }
 
   async function reddet(kart: Kart) {
@@ -282,6 +347,59 @@ export default function JarvisEkran() {
           <Text style={[styles.govde, { fontWeight: '700' }]}>{kart.veri.baslik}</Text>
           <Text style={styles.soluk}>🗓 {tarihYaz(kart.veri.hedef_tarih, !!kart.veri.saatli)}</Text>
         </View>
+      );
+    }
+    if (kart.tur === 'gorev_guncelle') {
+      return (
+        <View>
+          <Text style={[styles.govde, { fontWeight: '700' }]}>{kart.veri.baslik}</Text>
+          <Text style={styles.soluk}>
+            {GOREV_ISLEM[kart.veri.islem]}
+            {kart.veri.eski_tarih ? ` · şu an ${tarihYaz(kart.veri.eski_tarih, true)}` : ''}
+            {kart.veri.islem === 'ertele' ? ` → ${tarihYaz(kart.veri.hedef_tarih, !!kart.veri.saatli)}` : ''}
+          </Text>
+        </View>
+      );
+    }
+    if (kart.tur === 'musteri_durum') {
+      return <Text style={styles.govde}>{kart.veri.eski_durum ?? '—'} → <Text style={{ fontWeight: '700' }}>{kart.veri.durum}</Text></Text>;
+    }
+    if (kart.tur === 'ilan_durum' || kart.tur === 'ilan_fiyat') {
+      const v = kart.veri;
+      return (
+        <View>
+          <Text style={styles.soluk}>#{v.portfoy_no ?? '—'} · {v.oda ?? ''} · {v.yer} · {v.baslik}</Text>
+          <Text style={[styles.govde, { marginTop: 4 }]}>
+            {kart.tur === 'ilan_durum' ? `${v.eski_durum ?? '—'} → ` : `${fiyatYaz(v.eski_fiyat)} → `}
+            <Text style={{ fontWeight: '700' }}>{kart.tur === 'ilan_durum' ? v.durum : fiyatYaz(v.fiyat)}</Text>
+          </Text>
+        </View>
+      );
+    }
+    if (kart.tur === 'link_uzat') {
+      const s = Number(kart.veri.sure_saat);
+      return (
+        <Text style={styles.govde}>
+          {s % 24 === 0 ? `${s / 24} gün` : `${s} saat`} uzat
+          {kart.veri.eski_bitis ? <Text style={styles.soluk}>{` · şu an bitiş ${tarihYaz(kart.veri.eski_bitis, true)}`}</Text> : null}
+        </Text>
+      );
+    }
+    if (kart.tur === 'musteri_ekle') {
+      const v = kart.veri;
+      return (
+        <View>
+          <Text style={[styles.govde, { fontWeight: '700' }]}>{[v.ad, v.soyad].filter(Boolean).join(' ')}{v.telefon ? <Text style={styles.soluk}>{` · ${v.telefon}`}</Text> : null}</Text>
+          {!!v.istek && <Text style={styles.soluk}>🎯 {istekYaz(v.istek)}</Text>}
+          {v.benzer?.length > 0 && <Text style={{ color: '#f59e0b', fontSize: 12, marginTop: 4 }}>⚠️ Benzer isim var: {v.benzer.join(', ')}</Text>}
+        </View>
+      );
+    }
+    if (kart.tur === 'musteri_istek') {
+      return (
+        <Text style={styles.govde}>
+          {kart.veri.islem === 'degistir' ? 'İsteği değiştir: ' : 'İstek ekle: '}<Text style={{ fontWeight: '700' }}>{istekYaz(kart.veri.istek)}</Text>
+        </Text>
       );
     }
     if (kart.tur === 'ilan_gonder') {
@@ -381,7 +499,7 @@ export default function JarvisEkran() {
                   {kart.durum === 'bekliyor' && kart.tur !== 'soru' && (
                     <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
                       <Pressable disabled={mesgul === kart.id} onPress={() => onayla(kart)} style={[styles.btn, { backgroundColor: '#16a34a', borderColor: '#16a34a' }]}>
-                        <Text style={[styles.btnYazi, { color: '#fff' }]}>{kart.tur === 'ilan_gonder' ? 'Gönder…' : 'Onayla'}</Text>
+                        <Text style={[styles.btnYazi, { color: '#fff' }]}>{kart.tur === 'ilan_gonder' ? 'Gönder…' : FORM_KART.includes(kart.tur) ? 'Formu aç…' : 'Onayla'}</Text>
                       </Pressable>
                       {(kart.tur === 'not' || kart.tur === 'gorev') && !duzenle[kart.id] && (
                         <Pressable disabled={mesgul === kart.id} style={[styles.btn, { borderColor: '#2563eb' }]}
