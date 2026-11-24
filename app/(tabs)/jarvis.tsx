@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Linking,
 } from 'react-native';
@@ -9,8 +10,27 @@ import { supabase } from '../../lib/supabase';
 import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
-// Jarvis (5a): komut yaz → Jarvis okur ve ONAY KARTI hazırlar → onaylayınca kaydı BU oturum yapar (RLS).
+// Jarvis: sohbet düzeni — ☰ ile sohbet listesi, ortada mesajlaşma, altta yazma kutusu.
+// Komut → Jarvis okur ve ONAY KARTI hazırlar → onaylayınca kaydı BU oturum yapar (RLS).
+// Jarvis'in hafızası = aynı sohbetin son 4 mesajı (jarvis_komut_al).
 // Web karşılığı: ilan-web/app/panel/jarvis/page.tsx
+type Sohbet = { id: string; baslik: string; guncelleme_at: string };
+const SECILI_KEY = 'jarvis_secili_sohbet';
+
+function kisaTarih(iso: string) {
+  const d = new Date(iso);
+  const bugun = new Date();
+  if (d.toDateString() === bugun.toDateString()) return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const dun = new Date(bugun); dun.setDate(bugun.getDate() - 1);
+  if (d.toDateString() === dun.toDateString()) return 'Dün';
+  return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
+
+function baslikUret(metin: string) {
+  const t = metin.replace(/\s+/g, ' ').trim();
+  return t.length > 40 ? t.slice(0, 40).trimEnd() + '…' : t;
+}
+
 type Kart = {
   id: string; tur: 'not' | 'gorev' | 'ilan_gonder' | 'soru'; musteri_id: string | null;
   veri: any; durum: 'bekliyor' | 'onaylandi' | 'reddedildi'; duzenlendi: boolean;
@@ -41,6 +61,36 @@ export default function JarvisEkran() {
   const [mesgul, setMesgul] = useState<string | null>(null);
   const [yuklendi, setYuklendi] = useState(false);
   const [popup, setPopup] = useState<any | null>(null);
+  const [sohbetler, setSohbetler] = useState<Sohbet[]>([]);
+  const [secili, setSecili] = useState<string | null>(null); // null = yeni sohbet
+  const [hazir, setHazir] = useState(false); // kayıtlı seçili sohbet okundu mu
+  const [yanAcik, setYanAcik] = useState(false);
+  const [adDegis, setAdDegis] = useState<{ id: string; baslik: string } | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const sohbetleriYukle = useCallback(async () => {
+    const { data } = await supabase.from('jarvis_sohbetler').select('id, baslik, guncelleme_at')
+      .order('guncelleme_at', { ascending: false }).limit(100);
+    if (data) setSohbetler(data as Sohbet[]);
+    return (data ?? []) as Sohbet[];
+  }, []);
+
+  // İlk açılış: son seçili sohbet (varsa), yoksa yeni sohbet
+  useEffect(() => {
+    (async () => {
+      const [liste, kayitli] = await Promise.all([
+        sohbetleriYukle(),
+        AsyncStorage.getItem(SECILI_KEY).catch(() => null),
+      ]);
+      if (kayitli && liste.some(s => s.id === kayitli)) setSecili(kayitli);
+      setHazir(true);
+    })();
+  }, [sohbetleriYukle]);
+
+  useEffect(() => {
+    if (!hazir) return;
+    (secili ? AsyncStorage.setItem(SECILI_KEY, secili) : AsyncStorage.removeItem(SECILI_KEY)).catch(() => {});
+  }, [secili, hazir]);
 
   // Soru kartı seçeneğindeki / karttaki müşterinin kısa detayı (web'deki popup ile aynı veri)
   async function musteriAc(id: string) {
@@ -60,9 +110,11 @@ export default function JarvisEkran() {
   }
 
   const yukle = useCallback(async () => {
+    if (!secili) { setKomutlar([]); setYuklendi(true); return; }
     const { data } = await supabase.from('jarvis_komutlar')
       .select('id, metin, durum, cevap, hata, sure_ms, created_at, jarvis_kartlar(id, tur, musteri_id, veri, durum, duzenlendi)')
-      .order('created_at', { ascending: false }).limit(30);
+      .eq('sohbet_id', secili)
+      .order('created_at', { ascending: true }).limit(200);
     setYuklendi(true);
     if (!data) return;
     const liste = data as unknown as Komut[];
@@ -72,15 +124,26 @@ export default function JarvisEkran() {
     const iIds = [...new Set(kartlar.filter(k => k.tur === 'ilan_gonder').flatMap(k => k.veri?.ilan_ids ?? []))] as string[];
     if (mIds.length) {
       const { data: m } = await supabase.from('musteriler').select('id, ad, soyad').in('id', mIds);
-      if (m) setMusteriler(Object.fromEntries(m.map(x => [x.id, [x.ad, x.soyad].filter(Boolean).join(' ')])));
+      if (m) setMusteriler(p => ({ ...p, ...Object.fromEntries(m.map(x => [x.id, [x.ad, x.soyad].filter(Boolean).join(' ')])) }));
     }
     if (iIds.length) {
       const { data: il } = await supabase.from('ilanlar').select('id, portfoy_no, fiyat, oda_sayisi, ilce, mahalle').in('id', iIds);
-      if (il) setIlanlar(Object.fromEntries(il.map(x => [x.id, x])));
+      if (il) setIlanlar(p => ({ ...p, ...Object.fromEntries(il.map(x => [x.id, x])) }));
     }
-  }, []);
+  }, [secili]);
 
-  useFocusEffect(useCallback(() => { yukle(); }, [yukle]));
+  useFocusEffect(useCallback(() => {
+    if (!hazir) return;
+    yukle();
+    sohbetleriYukle();
+  }, [hazir, yukle, sohbetleriYukle]));
+
+  // Yeni mesaj / cevap gelince alta kay
+  const imza = komutlar.map(k => k.id + k.durum).join('|');
+  useEffect(() => {
+    const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    return () => clearTimeout(t);
+  }, [imza]);
 
   const calisiyor = komutlar.some(k => k.durum === 'bekliyor' || k.durum === 'isleniyor');
   useEffect(() => {
@@ -91,13 +154,57 @@ export default function JarvisEkran() {
 
   async function komutGonder(yazi: string) {
     const t = yazi.trim();
-    if (!t) return;
+    if (!t || gonderiyor) return;
     setGonderiyor(true);
-    const { error } = await supabase.from('jarvis_komutlar').insert({ metin: t });
-    setGonderiyor(false);
-    if (error) { Alert.alert('Gönderilemedi', error.message); return; }
+    try {
+      let sid = secili;
+      if (!sid) {
+        const { data: s, error: e1 } = await supabase.from('jarvis_sohbetler').insert({ baslik: baslikUret(t) }).select('id').single();
+        if (e1 || !s) { Alert.alert('Sohbet açılamadı', e1?.message ?? ''); return; }
+        sid = s.id as string;
+      }
+      const { error } = await supabase.from('jarvis_komutlar').insert({ metin: t, sohbet_id: sid });
+      if (error) { Alert.alert('Gönderilemedi', error.message); return; }
+      setMetin('');
+      if (sid !== secili) setSecili(sid); else await yukle();
+      sohbetleriYukle();
+    } finally {
+      setGonderiyor(false);
+    }
+  }
+
+  function yeniSohbet() {
+    setSecili(null);
+    setYanAcik(false);
     setMetin('');
-    yukle();
+  }
+
+  function sohbetIslem(s: Sohbet) {
+    Alert.alert(s.baslik, undefined, [
+      { text: 'Yeniden adlandır', onPress: () => setAdDegis({ id: s.id, baslik: s.baslik }) },
+      {
+        text: 'Sil', style: 'destructive', onPress: () => Alert.alert('Sohbet silinsin mi?', s.baslik, [
+          { text: 'Vazgeç', style: 'cancel' },
+          {
+            text: 'Sil', style: 'destructive', onPress: async () => {
+              const { error } = await supabase.from('jarvis_sohbetler').delete().eq('id', s.id);
+              if (error) { Alert.alert('Silinemedi', error.message); return; }
+              if (secili === s.id) setSecili(null);
+              sohbetleriYukle();
+            },
+          },
+        ]),
+      },
+      { text: 'Vazgeç', style: 'cancel' },
+    ]);
+  }
+
+  async function adKaydet() {
+    if (!adDegis) return;
+    const b = adDegis.baslik.trim();
+    if (b) await supabase.from('jarvis_sohbetler').update({ baslik: b.slice(0, 120) }).eq('id', adDegis.id);
+    setAdDegis(null);
+    sohbetleriYukle();
   }
 
   async function kartKarar(kart: Kart, durum: 'onaylandi' | 'reddedildi', duzenlendi = false) {
@@ -219,28 +326,48 @@ export default function JarvisEkran() {
   return (
     <SafeAreaView style={styles.ekran} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-          <Text style={styles.baslik}>🤖 Jarvis</Text>
-          <Text style={[styles.soluk, { marginBottom: 12 }]}>Yaz, Jarvis hazırlasın; sen onaylamadan hiçbir şey kaydedilmez.</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            <TextInput value={metin} onChangeText={setMetin} placeholder="Komut yaz…" placeholderTextColor={Colors.outline}
-              multiline style={[styles.input, { flex: 1, minHeight: 48 }]} />
-            <Pressable onPress={() => komutGonder(metin)} disabled={gonderiyor || !metin.trim()}
-              style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, justifyContent: 'center', opacity: gonderiyor || !metin.trim() ? 0.5 : 1 }]}>
-              {gonderiyor ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnYazi, { color: '#fff' }]}>Gönder</Text>}
-            </Pressable>
-          </View>
+        {/* Üst şerit */}
+        <View style={styles.ust}>
+          <Pressable onPress={() => { sohbetleriYukle(); setYanAcik(true); }} hitSlop={8} style={styles.ustBtn}>
+            <Text style={{ fontSize: 18, color: Colors.onSurface }}>☰</Text>
+          </Pressable>
+          <Text style={styles.ustBaslik} numberOfLines={1}>
+            🤖 {secili ? (sohbetler.find(s => s.id === secili)?.baslik ?? 'Jarvis') : 'Yeni sohbet'}
+          </Text>
+          <Pressable onPress={yeniSohbet} hitSlop={8} style={styles.ustBtn}>
+            <Text style={{ fontSize: 20, color: Colors.primary, fontWeight: '700' }}>＋</Text>
+          </Pressable>
+        </View>
 
-          {yuklendi && !komutlar.length && <Text style={styles.soluk}>Henüz komut yok.</Text>}
+        {/* Mesajlar */}
+        <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 16, gap: 14 }}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+          {!secili && (
+            <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 12 }}>
+              <Text style={{ fontSize: 34 }}>🤖</Text>
+              <Text style={[styles.soluk, { textAlign: 'center', marginTop: 6, lineHeight: 19 }]}>
+                Yaz, Jarvis hazırlasın; sen onaylamadan hiçbir şey kaydedilmez.
+              </Text>
+              <Text style={[styles.soluk, { textAlign: 'center', marginTop: 6, color: Colors.outline }]}>
+                Örn: “Ahmet'e not ekle: kredi onayı çıktı, bir de bahçe katı 5 ml'ye kadar ilanları atalım”
+              </Text>
+            </View>
+          )}
+          {!!secili && yuklendi && !komutlar.length && <Text style={styles.soluk}>Bu sohbette mesaj yok.</Text>}
 
           {komutlar.map(k => (
-            <View key={k.id} style={styles.komut}>
-              <Text style={[styles.govde, { fontWeight: '600' }]}>🗣 {k.metin}</Text>
-              <Text style={[styles.govde, { marginTop: 6, fontSize: 13 }]}>
-                {k.durum === 'bekliyor' || k.durum === 'isleniyor' ? '⏳ Jarvis hazırlıyor…'
-                  : k.durum === 'hata' ? `⚠️ Yapamadım: ${k.hata ?? ''}` : `🤖 ${k.cevap ?? ''}`}
-                {k.sure_ms != null ? `  · ${(k.sure_ms / 1000).toFixed(1)} sn` : ''}
-              </Text>
+            <View key={k.id} style={{ gap: 6 }}>
+              {/* Kullanıcı */}
+              <View style={styles.balonBen}>
+                <Text style={{ color: '#fff', fontSize: 14 }}>{k.metin}</Text>
+              </View>
+              {/* Jarvis */}
+              <View style={[styles.balonJarvis, (k.jarvis_kartlar ?? []).length ? { width: '92%' } : null]}>
+                <Text style={[styles.govde, k.durum === 'hata' && { color: '#f87171' }, (k.durum === 'bekliyor' || k.durum === 'isleniyor') && { color: Colors.outline }]}>
+                  {k.durum === 'bekliyor' || k.durum === 'isleniyor' ? '⏳ Jarvis hazırlıyor…'
+                    : k.durum === 'hata' ? `⚠️ Yapamadım: ${k.hata ?? ''}` : (k.cevap ?? '')}
+                </Text>
               {(k.jarvis_kartlar ?? []).map(kart => (
                 <View key={kart.id} style={[styles.kart,
                   kart.durum === 'onaylandi' ? { borderColor: '#166534', backgroundColor: '#052e16' }
@@ -274,10 +401,78 @@ export default function JarvisEkran() {
                   )}
                 </View>
               ))}
+              </View>
+              <Text style={styles.saat}>
+                {new Date(k.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                {k.sure_ms != null ? ` · ${(k.sure_ms / 1000).toFixed(1)} sn` : ''}
+              </Text>
             </View>
           ))}
         </ScrollView>
+
+        {/* Yazma kutusu */}
+        <View style={styles.yazAlan}>
+          <TextInput value={metin} onChangeText={setMetin} placeholder="Jarvis'e yaz…" placeholderTextColor={Colors.outline}
+            multiline style={[styles.input, { flex: 1, minHeight: 44, maxHeight: 120 }]} />
+          <Pressable onPress={() => komutGonder(metin)} disabled={gonderiyor || !metin.trim()}
+            style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, justifyContent: 'center', opacity: gonderiyor || !metin.trim() ? 0.5 : 1 }]}>
+            {gonderiyor ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnYazi, { color: '#fff' }]}>Gönder</Text>}
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
+
+      {/* Sohbet listesi (soldan açılan panel) */}
+      <Modal visible={yanAcik} transparent animationType="fade" onRequestClose={() => setYanAcik(false)}>
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          <SafeAreaView style={styles.yan} edges={['top', 'bottom']}>
+            <View style={{ flexDirection: 'row', gap: 6, padding: 12, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
+              <Pressable onPress={yeniSohbet} style={[styles.btn, { flex: 1, backgroundColor: Colors.primary, borderColor: Colors.primary, alignItems: 'center' }]}>
+                <Text style={[styles.btnYazi, { color: '#fff' }]}>＋ Yeni sohbet</Text>
+              </Pressable>
+              <Pressable onPress={() => setYanAcik(false)} style={[styles.btn, { borderColor: Colors.outline }]}>
+                <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 6 }}>
+              {!sohbetler.length && <Text style={[styles.soluk, { padding: 12 }]}>Henüz sohbet yok.</Text>}
+              {sohbetler.map(s => {
+                const aktif = s.id === secili;
+                return (
+                  <Pressable key={s.id} onPress={() => { setSecili(s.id); setYanAcik(false); }} onLongPress={() => sohbetIslem(s)}
+                    style={[styles.sohbetSatir, aktif && { backgroundColor: 'rgba(229,57,53,0.12)' }]}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: aktif ? '700' : '500', color: aktif ? Colors.primary : Colors.onSurface }}>{s.baslik}</Text>
+                      <Text style={{ fontSize: 11, color: Colors.outline }}>{kisaTarih(s.guncelleme_at)}</Text>
+                    </View>
+                    <Pressable onPress={() => sohbetIslem(s)} hitSlop={8} style={{ padding: 4 }}>
+                      <Text style={{ color: Colors.onSurfaceVariant, fontSize: 16 }}>⋯</Text>
+                    </Pressable>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </SafeAreaView>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setYanAcik(false)} />
+        </View>
+        {/* Yeniden adlandır (panelin içinde, iç içe Modal açmamak için) */}
+        {!!adDegis && (
+          <View style={[StyleSheet.absoluteFill, styles.perde]}>
+            <View style={[styles.popup, { padding: 14, gap: 10 }]}>
+              <Text style={[styles.govde, { fontWeight: '700' }]}>Sohbetin adı</Text>
+              <TextInput autoFocus value={adDegis.baslik} onChangeText={t => setAdDegis({ id: adDegis.id, baslik: t })}
+                onSubmitEditing={adKaydet} returnKeyType="done" style={styles.input} />
+              <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'flex-end' }}>
+                <Pressable onPress={() => setAdDegis(null)} style={[styles.btn, { borderColor: Colors.outline }]}>
+                  <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>Vazgeç</Text>
+                </Pressable>
+                <Pressable onPress={adKaydet} style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}>
+                  <Text style={[styles.btnYazi, { color: '#fff' }]}>Kaydet</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
+      </Modal>
 
       <Modal visible={!!popup} transparent animationType="fade" onRequestClose={() => setPopup(null)}>
         <Pressable style={styles.perde} onPress={() => setPopup(null)}>
@@ -350,7 +545,28 @@ export default function JarvisEkran() {
 
 const styles = StyleSheet.create({
   ekran: { flex: 1, backgroundColor: Colors.background },
-  baslik: { fontSize: 22, fontWeight: '800', color: Colors.onSurface, marginBottom: 4 },
+  ust: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant,
+  },
+  ustBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceContainer },
+  ustBaslik: { flex: 1, fontSize: 16, fontWeight: '800', color: Colors.onSurface },
+  balonBen: {
+    alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: Colors.primary,
+    paddingVertical: 9, paddingHorizontal: 13, borderRadius: 14, borderBottomRightRadius: 4,
+  },
+  balonJarvis: {
+    alignSelf: 'flex-start', maxWidth: '92%', backgroundColor: Colors.surfaceContainerLow,
+    borderWidth: 1, borderColor: Colors.outlineVariant,
+    paddingVertical: 9, paddingHorizontal: 13, borderRadius: 14, borderBottomLeftRadius: 4,
+  },
+  saat: { fontSize: 11, color: Colors.outline, paddingLeft: 4 },
+  yazAlan: {
+    flexDirection: 'row', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: Colors.outlineVariant,
+    backgroundColor: Colors.background,
+  },
+  yan: { width: '82%', maxWidth: 340, backgroundColor: Colors.surfaceContainerLow, borderRightWidth: 1, borderRightColor: Colors.outlineVariant },
+  sohbetSatir: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 8, marginBottom: 2 },
   soluk: { fontSize: 13, color: Colors.onSurfaceVariant },
   govde: { fontSize: 14, color: Colors.onSurface },
   input: {
