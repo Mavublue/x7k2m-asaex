@@ -32,7 +32,7 @@ function baslikUret(metin: string) {
 }
 
 type KartTur = 'not' | 'gorev' | 'ilan_gonder' | 'soru' | 'gorev_guncelle' | 'musteri_durum' | 'ilan_durum'
-  | 'ilan_fiyat' | 'link_uzat' | 'musteri_ekle' | 'musteri_istek';
+  | 'ilan_fiyat' | 'link_uzat' | 'musteri_ekle' | 'musteri_istek' | 'hafiza';
 type Kart = {
   id: string; tur: KartTur; musteri_id: string | null;
   veri: any; durum: 'bekliyor' | 'onaylandi' | 'reddedildi'; duzenlendi: boolean;
@@ -48,6 +48,7 @@ const ROZET: Record<KartTur, string> = {
   not: '📝 Not', gorev: '📋 Görev', ilan_gonder: '🏠 İlan gönder', soru: '❓ Soru',
   gorev_guncelle: '📋 Görev', musteri_durum: '👤 Müşteri durumu', ilan_durum: '🏠 İlan durumu',
   ilan_fiyat: '💰 İlan fiyatı', link_uzat: '🔗 Link süresi', musteri_ekle: '👤 Yeni müşteri', musteri_istek: '🎯 Müşteri isteği',
+  hafiza: '🧠 Hafıza',
 };
 // Onayda mevcut form dolu açılan kartlar (kurallar formda: etiket, telefon, istek)
 const FORM_KART: KartTur[] = ['ilan_gonder', 'musteri_ekle', 'musteri_istek'];
@@ -81,6 +82,9 @@ export default function JarvisEkran() {
   const [hazir, setHazir] = useState(false); // kayıtlı seçili sohbet okundu mu
   const [yanAcik, setYanAcik] = useState(false);
   const [adDegis, setAdDegis] = useState<{ id: string; baslik: string } | null>(null);
+  const [hafizaAcik, setHafizaAcik] = useState(false);
+  const [hafiza, setHafiza] = useState<{ id: string; metin: string }[]>([]);
+  const [hafizaYeni, setHafizaYeni] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
   const sohbetleriYukle = useCallback(async () => {
@@ -106,6 +110,26 @@ export default function JarvisEkran() {
     if (!hazir) return;
     (secili ? AsyncStorage.setItem(SECILI_KEY, secili) : AsyncStorage.removeItem(SECILI_KEY)).catch(() => {});
   }, [secili, hazir]);
+
+  // Jarvis'in hafızası: danışmanın kalıcı tercihleri (her komutta Jarvis'e gider)
+  async function hafizaYukle() {
+    const { data } = await supabase.from('jarvis_hafiza').select('id, metin').order('created_at');
+    setHafiza(data ?? []);
+  }
+  async function hafizaEkle() {
+    const m = hafizaYeni.trim();
+    if (!m) return;
+    const { error } = await supabase.from('jarvis_hafiza').insert({ metin: m.slice(0, 300) });
+    if (error) { Alert.alert('Eklenemedi', error.message); return; }
+    setHafizaYeni('');
+    hafizaYukle();
+  }
+  function hafizaSil(id: string) {
+    Alert.alert('Hafızadan silinsin mi?', undefined, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: async () => { await supabase.from('jarvis_hafiza').delete().eq('id', id); hafizaYukle(); } },
+    ]);
+  }
 
   // Soru kartı seçeneğindeki / karttaki müşterinin kısa detayı (web'deki popup ile aynı veri)
   async function musteriAc(id: string) {
@@ -307,6 +331,12 @@ export default function JarvisEkran() {
         .eq('emlakci_id', session.user.id).eq('musteri_token', tk.token);
       return null;
     }
+    if (kart.tur === 'hafiza') {
+      const { error } = v.islem === 'sil'
+        ? await supabase.from('jarvis_hafiza').delete().eq('id', v.hafiza_id)
+        : await supabase.from('jarvis_hafiza').insert({ metin: String(v.metin).slice(0, 300) });
+      return error?.message ?? null;
+    }
     return 'bilinmeyen kart';
   }
 
@@ -393,6 +423,13 @@ export default function JarvisEkran() {
           {!!v.istek && <Text style={styles.soluk}>🎯 {istekYaz(v.istek)}</Text>}
           {v.benzer?.length > 0 && <Text style={{ color: '#f59e0b', fontSize: 12, marginTop: 4 }}>⚠️ Benzer isim var: {v.benzer.join(', ')}</Text>}
         </View>
+      );
+    }
+    if (kart.tur === 'hafiza') {
+      return (
+        <Text style={styles.govde}>
+          {kart.veri.islem === 'sil' ? 'Unut: ' : 'Hatırla: '}<Text style={{ fontWeight: '700' }}>“{kart.veri.metin}”</Text>
+        </Text>
       );
     }
     if (kart.tur === 'musteri_istek') {
@@ -569,6 +606,10 @@ export default function JarvisEkran() {
                 );
               })}
             </ScrollView>
+            <Pressable onPress={() => { setYanAcik(false); hafizaYukle(); setTimeout(() => setHafizaAcik(true), 350); }}
+              style={[styles.btn, { borderColor: Colors.outline, margin: 10, alignItems: 'center' }]}>
+              <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>🧠 Hafıza</Text>
+            </Pressable>
           </SafeAreaView>
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setYanAcik(false)} />
         </View>
@@ -590,6 +631,39 @@ export default function JarvisEkran() {
             </View>
           </View>
         )}
+      </Modal>
+
+      <Modal visible={hafizaAcik} transparent animationType="fade" onRequestClose={() => setHafizaAcik(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.perde} onPress={() => setHafizaAcik(false)}>
+            <Pressable style={styles.popup} onPress={() => {}}>
+              <View style={styles.popupUst}>
+                <Text style={[styles.govde, { flex: 1, fontSize: 16, fontWeight: '800' }]}>🧠 Jarvis'in hafızası</Text>
+                <Pressable onPress={() => setHafizaAcik(false)} hitSlop={8}><Text style={[styles.soluk, { fontSize: 20 }]}>✕</Text></Pressable>
+              </View>
+              <Text style={[styles.soluk, { paddingHorizontal: 14, paddingTop: 10 }]}>
+                Senin tercihlerin. Her komutta Jarvis'e gider. Müşteri bilgileri burada değil, notlarda.
+              </Text>
+              <ScrollView contentContainerStyle={{ padding: 14 }}>
+                {!hafiza.length && <Text style={styles.soluk}>Henüz bir şey yok. Jarvis'e “bunu unutma: …” diyebilirsin.</Text>}
+                {hafiza.map(h => (
+                  <View key={h.id} style={[styles.satir, { marginBottom: 6 }]}>
+                    <Text style={[styles.govde, { flex: 1 }]}>{h.metin}</Text>
+                    <Pressable onPress={() => hafizaSil(h.id)} hitSlop={8}><Text>🗑</Text></Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <View style={{ flexDirection: 'row', gap: 8, padding: 14, borderTopWidth: 1, borderTopColor: Colors.outlineVariant }}>
+                <TextInput value={hafizaYeni} onChangeText={setHafizaYeni} placeholder="Yeni madde…" placeholderTextColor={Colors.outline}
+                  maxLength={300} onSubmitEditing={hafizaEkle} returnKeyType="done" style={[styles.input, { flex: 1 }]} />
+                <Pressable onPress={hafizaEkle} disabled={!hafizaYeni.trim()}
+                  style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, justifyContent: 'center', opacity: hafizaYeni.trim() ? 1 : 0.5 }]}>
+                  <Text style={[styles.btnYazi, { color: '#fff' }]}>Ekle</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={!!popup} transparent animationType="fade" onRequestClose={() => setPopup(null)}>
