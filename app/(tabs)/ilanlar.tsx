@@ -319,8 +319,37 @@ export default function IlanlarScreen() {
   useEffect(() => { fetchIlanlar(); }, []);
   useFocusEffect(useCallback(() => { fetchIlanlar(); }, []));
 
+  // Jarvis "uygun ilanlar" kartı (jarvisGoster param): sadece kartın ilanları, gruplu; ✕ ile normal liste.
+  // Sekme ekranı açık kaldığı için ilan detayından geri dönünce görünüm durur.
+  type JarvisGoster = {
+    kartId: string; musteriId: string | null; musteriAd: string;
+    ilan: Record<string, { grup: 'tam' | 'belki'; sebep: string | null }>; paylasilan: string[];
+  };
+  const [jg, setJg] = useState<JarvisGoster | null>(null);
+  const [jgSekme, setJgSekme] = useState<'tumu' | 'tam' | 'belki'>('tumu');
+  const { jarvisGoster } = useLocalSearchParams<{ jarvisGoster?: string }>();
+  useEffect(() => {
+    if (!jarvisGoster) return;
+    router.setParams({ jarvisGoster: undefined });
+    supabase.from('jarvis_kartlar').select('id, musteri_id, veri, musteriler(ad, soyad)').eq('id', jarvisGoster).single()
+      .then(({ data }) => {
+        if (!data) return;
+        const v: any = data.veri ?? {};
+        const m: any = (data as any).musteriler;
+        setJgSekme('tumu');
+        setJg({
+          kartId: data.id, musteriId: data.musteri_id,
+          musteriAd: m ? [m.ad, m.soyad].filter(Boolean).join(' ') : 'Müşteri',
+          ilan: Object.fromEntries((v.ilanlar ?? []).map((x: any) => [x.id, { grup: x.grup, sebep: x.sebep ?? null }])),
+          paylasilan: v.paylasilan ?? [],
+        });
+      });
+  }, [jarvisGoster]);
+
   // Senkron hesap: eskiden state+effect idi → liste dolu gelince bir kare 'ilan bulunamadı' görünüyordu
-  const filtered = useMemo(() => uygula(filtre), [search, filtre, ilanlar, siralama]); // eslint-disable-line react-hooks/exhaustive-deps
+  const filtered = useMemo(() => jg
+    ? ilanlar.filter(i => { const g = jg.ilan[i.id]; return !!g && i.durum === 'Aktif' && (jgSekme === 'tumu' || g.grup === jgSekme); })
+    : uygula(filtre), [search, filtre, ilanlar, siralama, jg, jgSekme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onRefresh() {
     setRefreshing(true);
@@ -600,6 +629,11 @@ export default function IlanlarScreen() {
       // Jarvis "ilan gönder" kartı: link oluşturuldu → kart onaylandı
       await supabase.from('jarvis_kartlar').update({ durum: 'onaylandi', karar_at: new Date().toISOString() }).eq('id', jarvisKartId);
       setJarvisKartId(null);
+    }
+    if (jg && paylasMusteri === jg.musteriId) {
+      // Jarvis "uygun ilanlar" kartı: paylaşılanlar karta yazılır → Jarvis sohbette bilir
+      await supabase.rpc('jarvis_kart_paylasildi', { p_kart: jg.kartId, p_ilanlar: ilanIds });
+      setJg(p => p && ({ ...p, paylasilan: [...new Set([...p.paylasilan, ...ilanIds])] }));
     }
     setPaylasYukleniyor(false);
   }
@@ -890,6 +924,32 @@ export default function IlanlarScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
 
+      {jg && (() => {
+        const aktifG = ilanlar.filter(i => jg.ilan[i.id] && i.durum === 'Aktif');
+        const sayi = { tumu: aktifG.length, tam: aktifG.filter(i => jg.ilan[i.id].grup === 'tam').length, belki: aktifG.filter(i => jg.ilan[i.id].grup === 'belki').length };
+        return (
+          <View style={styles.jgSerit}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.jgBaslik} numberOfLines={1}>🤖 {jg.musteriAd} için</Text>
+              {jg.paylasilan.length > 0 && <Text style={{ color: '#34d399', fontSize: 12, fontWeight: '700' }}>✓ {jg.paylasilan.length} paylaşıldı</Text>}
+              <TouchableOpacity onPress={() => { setJg(null); setJgSekme('tumu'); }} hitSlop={10} style={styles.jgKapat}>
+                <Text style={{ color: '#e2e8f0', fontSize: 14 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+              {(['tumu', 'tam', 'belki'] as const).filter(s => s !== 'belki' || sayi.belki > 0).map(s => (
+                <TouchableOpacity key={s} onPress={() => setJgSekme(s)} style={[styles.jgSekme, jgSekme === s && styles.jgSekmeAktif]}>
+                  <Text style={[styles.jgSekmeYazi, jgSekme === s && { color: '#03121a' }]}>
+                    {s === 'tumu' ? 'Tümü' : s === 'tam' ? 'Tam uygun' : 'Belki'} {sayi[s]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 5 }}>☑ Seç → 🔗 Paylaş ({jg.musteriAd} seçili gelir)</Text>
+          </View>
+        );
+      })()}
+
       {gorunum === 'liste' && (
         <>
           <View style={styles.header}>
@@ -903,7 +963,9 @@ export default function IlanlarScreen() {
             <TouchableOpacity style={[styles.paylasBtnSmall, secimModu && { backgroundColor: Colors.primary }]} onPress={() => secimModu ? secimKapat() : setSecimModu(true)}>
               <Text style={[styles.paylasBtnSmallText, secimModu && { color: '#fff' }]}>{secimModu ? '✕' : '☑'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => handleListePaylas(secimModu && seciliIds.size > 0 ? 'secim' : 'filtre')}>
+            <TouchableOpacity style={styles.paylasBtnSmall} onPress={() => jg
+              ? handleListePaylas('secim', { ilanlar: secimModu && seciliIds.size > 0 ? ilanlar.filter(i => seciliIds.has(i.id)) : filtered, musteriId: jg.musteriId, musteriAd: jg.musteriAd })
+              : handleListePaylas(secimModu && seciliIds.size > 0 ? 'secim' : 'filtre')}>
               <Text style={styles.paylasBtnSmallText}>🔗</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/ilan/ekle')}>
@@ -998,6 +1060,9 @@ export default function IlanlarScreen() {
                 )}
                 <View style={styles.popupInfo}>
                   <Text style={styles.popupBaslik} numberOfLines={1}>{seciliIlan.baslik}</Text>
+                  {jg?.ilan[seciliIlan.id]?.grup === 'belki' && (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b' }} numberOfLines={1}>🤔 {jg.ilan[seciliIlan.id].sebep}</Text>
+                  )}
                   <Text style={styles.popupKonum} numberOfLines={1}>📍 {seciliIlan.konum}{seciliIlan.ilce ? `, ${seciliIlan.ilce}` : ''}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     <Text style={styles.popupFiyat}>₺{seciliIlan.fiyat.toLocaleString('tr-TR')}</Text>
@@ -1029,7 +1094,8 @@ export default function IlanlarScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'} />)
+            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'}
+              jarvis={jg?.ilan[ilan.id] ? { sebep: jg.ilan[ilan.id].grup === 'belki' ? jg.ilan[ilan.id].sebep : null, paylasildi: jg.paylasilan.includes(ilan.id) } : undefined} />)
           )}
         </ScrollView>
       )}
@@ -1056,7 +1122,9 @@ export default function IlanlarScreen() {
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => { setOzellikSecili(new Set()); setOzellikModal('cikar'); }} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>− Özellik</Text>
           </TouchableOpacity>
-          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => handleListePaylas('secim')} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
+          <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={() => jg
+            ? handleListePaylas('secim', { ilanlar: ilanlar.filter(i => seciliIds.has(i.id)), musteriId: jg.musteriId, musteriAd: jg.musteriAd })
+            : handleListePaylas('secim')} style={{ paddingHorizontal: 10, paddingVertical: 8, backgroundColor: Colors.surfaceContainerLow, borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.onSurface }}>🔗 Paylaş</Text>
           </TouchableOpacity>
           <TouchableOpacity disabled={!seciliIds.size || topluIslem} onPress={topluSil} style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#E53935', borderRadius: 8, opacity: seciliIds.size ? 1 : 0.4 }}>
@@ -1820,9 +1888,20 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
-function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean }) {
+function IlanKart({ ilan, secimModu, secili, onToggle, kompakt, jarvis }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean; jarvis?: { sebep: string | null; paylasildi: boolean } }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
+  // Jarvis görünümü: "belki" sebebi + paylaşıldı etiketi
+  const jarvisEtiket = jarvis && (jarvis.sebep || jarvis.paylasildi) ? (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: kompakt ? 2 : 0 }}>
+      {!!jarvis.sebep && (
+        <View style={styles.jgEtiket}><Text style={styles.jgEtiketYazi} numberOfLines={1}>🤔 {jarvis.sebep}</Text></View>
+      )}
+      {jarvis.paylasildi && (
+        <View style={[styles.jgEtiket, { backgroundColor: 'rgba(52,211,153,0.9)' }]}><Text style={[styles.jgEtiketYazi, { color: '#03121a' }]}>✓ Paylaşıldı</Text></View>
+      )}
+    </View>
+  ) : null;
 
   if (kompakt) {
     const konum = [ilan.mahalle, ilan.ilce, ilan.konum].filter(Boolean).join(', ');
@@ -1859,6 +1938,7 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
             {iptal && <Text style={[styles.kompaktMeta, { color: '#ef4444', fontWeight: '700' }]}>İPTAL</Text>}
           </View>
           <Text style={styles.kompaktBaslik} numberOfLines={1}>{ilan.baslik}</Text>
+          {jarvisEtiket}
           <View style={styles.kompaktAltSatir}>
             {konum ? <Text style={styles.kompaktKonum} numberOfLines={1}>📍 {konum}</Text> : <View style={{ flex: 1 }} />}
             <Text style={styles.kompaktFiyat}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
@@ -1917,6 +1997,7 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
 
       {/* Bottom overlay content */}
       <View style={styles.overlay}>
+        {jarvisEtiket}
         <View style={styles.overlayTop}>
           <Text style={styles.overlayFiyat}>₺{ilan.fiyat.toLocaleString('tr-TR')}</Text>
         </View>
@@ -1936,6 +2017,15 @@ function IlanKart({ ilan, secimModu, secili, onToggle, kompakt }: { ilan: Ilan; 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.surface },
+  // Jarvis "uygun ilanlar" şeridi
+  jgSerit: { backgroundColor: '#0b1622', borderWidth: 1, borderColor: 'rgba(56,189,248,0.35)', borderRadius: 12, marginHorizontal: 12, marginTop: 6, marginBottom: 4, paddingHorizontal: 12, paddingVertical: 9 },
+  jgBaslik: { flex: 1, color: '#38bdf8', fontWeight: '800', fontSize: 14 },
+  jgKapat: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(148,163,184,0.25)', alignItems: 'center', justifyContent: 'center' },
+  jgSekme: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(148,163,184,0.4)' },
+  jgSekmeAktif: { backgroundColor: '#38bdf8', borderColor: '#38bdf8' },
+  jgSekmeYazi: { color: '#e2e8f0', fontSize: 12, fontWeight: '700' },
+  jgEtiket: { backgroundColor: 'rgba(245,158,11,0.92)', borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, maxWidth: '100%' },
+  jgEtiketYazi: { color: '#1f1300', fontSize: 11, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, paddingBottom: 32 },
 

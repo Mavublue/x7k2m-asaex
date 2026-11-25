@@ -34,7 +34,7 @@ function baslikUret(metin: string) {
 }
 
 type KartTur = 'not' | 'gorev' | 'ilan_gonder' | 'soru' | 'gorev_guncelle' | 'musteri_durum' | 'ilan_durum'
-  | 'ilan_fiyat' | 'link_uzat' | 'musteri_ekle' | 'musteri_istek' | 'hafiza';
+  | 'ilan_fiyat' | 'link_uzat' | 'musteri_ekle' | 'musteri_istek' | 'hafiza' | 'ilan_goster';
 type Kart = {
   id: string; tur: KartTur; musteri_id: string | null;
   veri: any; durum: 'bekliyor' | 'onaylandi' | 'reddedildi'; duzenlendi: boolean;
@@ -50,7 +50,7 @@ const ROZET: Record<KartTur, string> = {
   not: '📝 Not', gorev: '📋 Görev', ilan_gonder: '🏠 İlan gönder', soru: '❓ Soru',
   gorev_guncelle: '📋 Görev', musteri_durum: '👤 Müşteri durumu', ilan_durum: '🏠 İlan durumu',
   ilan_fiyat: '💰 İlan fiyatı', link_uzat: '🔗 Link süresi', musteri_ekle: '👤 Yeni müşteri', musteri_istek: '🎯 Müşteri isteği',
-  hafiza: '🧠 Hafıza',
+  hafiza: '🧠 Hafıza', ilan_goster: '🏠 Uygun ilanlar',
 };
 // Onayda mevcut form dolu açılan kartlar (kurallar formda: etiket, telefon, istek)
 const FORM_KART: KartTur[] = ['ilan_gonder', 'musteri_ekle', 'musteri_istek'];
@@ -462,6 +462,36 @@ export default function JarvisEkran() {
         </Text>
       );
     }
+    if (kart.tur === 'ilan_goster') {
+      const v = kart.veri;
+      const L: any[] = v.ilanlar ?? [];
+      const nt = L.filter(x => x.grup === 'tam').length;
+      const pay: string[] = v.paylasilan ?? [];
+      return (
+        <View style={{ gap: 3 }}>
+          <Text style={styles.govde}>
+            <Text style={{ fontWeight: '700', color: J.cyan }}>{L.length} ilan</Text> · {nt} tam uygun{L.length > nt ? ` · ${L.length - nt} belki beğenir` : ''}
+          </Text>
+          {(v.gonderilmis > 0 || !!v.kural) && (
+            <Text style={[styles.soluk, { fontSize: 12 }]}>
+              {[v.gonderilmis > 0 ? `${v.gonderilmis} gönderilmiş çıkarıldı` : '', v.kural ? `Kural: ${v.kural}` : ''].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+          {pay.length > 0 && <Text style={{ color: '#34d399', fontSize: 13 }}>✓ {pay.length} ilan paylaşıldı</Text>}
+          {(v.eksik ?? []).length > 0 && (
+            <View style={{ marginTop: 6 }}>
+              <Text style={{ color: '#fbbf24', fontWeight: '700', fontSize: 12, marginBottom: 2 }}>⚠️ Eksik / tutarsız veri ({v.eksik_sayi ?? v.eksik.length})</Text>
+              {(v.eksik as any[]).slice(0, 6).map(e => (
+                <Text key={e.id} style={[styles.govde, { fontSize: 12, paddingVertical: 2 }]}>
+                  #{e.no ?? '—'} <Text style={styles.soluk}>{(e.sorun ?? []).join(', ')}</Text>{'  '}
+                  <Text style={{ color: J.mavi, fontWeight: '700' }} onPress={() => router.push(`/ilan/${e.id}` as any)}>Düzelt →</Text>
+                </Text>
+              ))}
+            </View>
+          )}
+        </View>
+      );
+    }
     if (kart.tur === 'ilan_gonder') {
       const ids: string[] = kart.veri.ilan_ids ?? [];
       return (
@@ -583,11 +613,26 @@ export default function JarvisEkran() {
                                 {ROZET[kart.tur]}{kart.musteri_id ? ` — ${musteriler[kart.musteri_id] ?? '…'} 👁` : ''}
                               </Text>
                               <Text style={[styles.mono, styles.kartDurum, { color: renk, borderColor: renk + '77' }]}>
-                                {kart.durum === 'onaylandi' ? '✓ YAPILDI' : kart.durum === 'reddedildi' ? 'REDDEDİLDİ' : 'ONAY BEKLİYOR'}
+                                {kart.tur === 'ilan_goster'
+                                  ? (kart.durum === 'onaylandi' ? '✓ PAYLAŞILDI' : kart.durum === 'reddedildi' ? 'KAPATILDI' : 'BAKILACAK')
+                                  : kart.durum === 'onaylandi' ? '✓ YAPILDI' : kart.durum === 'reddedildi' ? 'REDDEDİLDİ' : 'ONAY BEKLİYOR'}
                               </Text>
                             </View>
                             {kartGovde(kart)}
-                            {kart.durum === 'bekliyor' && kart.tur !== 'soru' && (
+                            {kart.tur === 'ilan_goster' && (
+                              <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                                <Pressable onPress={() => router.navigate({ pathname: '/(tabs)/ilanlar', params: { jarvisGoster: kart.id } })}
+                                  style={[styles.btn, { backgroundColor: '#34d399', borderColor: '#34d399' }]}>
+                                  <Text style={[styles.btnYazi, { color: '#03121a' }]}>📋 İlanları Gör</Text>
+                                </Pressable>
+                                {kart.durum === 'bekliyor' && (
+                                  <Pressable disabled={mesgul === kart.id} onPress={() => reddet(kart)} style={[styles.btn, { borderColor: J.soluk }]}>
+                                    <Text style={[styles.btnYazi, { color: J.soluk }]}>Kapat</Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            )}
+                            {kart.durum === 'bekliyor' && kart.tur !== 'soru' && kart.tur !== 'ilan_goster' && (
                               <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
                                 <Pressable disabled={mesgul === kart.id} onPress={() => onayla(kart)} style={[styles.btn, { backgroundColor: '#34d399', borderColor: '#34d399' }]}>
                                   <Text style={[styles.btnYazi, { color: '#03121a' }]}>{kart.tur === 'ilan_gonder' ? 'Gönder…' : FORM_KART.includes(kart.tur) ? 'Formu aç…' : 'Onayla'}</Text>
