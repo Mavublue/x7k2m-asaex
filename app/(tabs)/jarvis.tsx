@@ -9,6 +9,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import R2Image from '../../components/R2Image';
 import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
@@ -44,7 +45,11 @@ type Komut = {
   cevap: string | null; hata: string | null; sure_ms: number | null; created_at: string;
   jarvis_kartlar: Kart[];
 };
-type IlanMini = { id: string; portfoy_no: string | null; fiyat: number | null; oda_sayisi: string | null; ilce: string | null; mahalle: string | null };
+type IlanMini = { id: string; portfoy_no: string | null; baslik: string | null; fiyat: number | null; oda_sayisi: string | null; ilce: string | null; mahalle: string | null; fotograflar: string[] | null };
+const ILAN_ALAN = 'id, portfoy_no, baslik, fiyat, oda_sayisi, ilce, mahalle, fotograflar';
+// Jarvis ilanları [ilan:1293] diye yazar (# müşteri etiketiyle karışmasın) → ekranda kapak + başlık
+const ILAN_RE = /\[ilan:\s*#?(\d+)\]/g;
+const cevapIlanNolari = (t: string | null) => (t ? [...t.matchAll(ILAN_RE)].map(m => m[1]) : []);
 
 const ROZET: Record<KartTur, string> = {
   not: '📝 Not', gorev: '📋 Görev', ilan_gonder: '🏠 İlan gönder', soru: '❓ Soru',
@@ -73,6 +78,8 @@ export default function JarvisEkran() {
   const [komutlar, setKomutlar] = useState<Komut[]>([]);
   const [musteriler, setMusteriler] = useState<Record<string, string>>({});
   const [ilanlar, setIlanlar] = useState<Record<string, IlanMini>>({});
+  const [ilanNo, setIlanNo] = useState<Record<string, string>>({}); // portföy no → ilan id
+  const [ilanPopup, setIlanPopup] = useState<{ id: string; veri: any | null } | null>(null);
   const [metin, setMetin] = useState('');
   const [gonderiyor, setGonderiyor] = useState(false);
   const [duzenle, setDuzenle] = useState<Record<string, any>>({});
@@ -155,6 +162,70 @@ export default function JarvisEkran() {
   }
 
   // Soru kartı seçeneğindeki / karttaki müşterinin kısa detayı (web'deki popup ile aynı veri)
+  // ── İlan: kapak + başlık; basınca özet pencere ──
+  async function ilanAc(id: string) {
+    Keyboard.dismiss();
+    setIlanPopup({ id, veri: null });
+    const { data } = await supabase.from('ilanlar')
+      .select('id, portfoy_no, baslik, fiyat, tip, kategori, oda_sayisi, metrekare, bulundugu_kat, kat_sayisi, bina_yasi, banyo_sayisi, konum, ilce, mahalle, aciklama, fotograflar, durum, musteri_gizle, ilan_ozellikler(ozellikler(ad))')
+      .eq('id', id).single();
+    setIlanPopup(p => (p && p.id === id ? { ...p, veri: data ?? { hata: true } } : p));
+  }
+  function ilanSatir(id: string, ek?: ReactNode, sag?: ReactNode) {
+    const il = ilanlar[id];
+    return (
+      <Pressable key={id} onPress={() => ilanAc(id)} style={styles.ilanSatir}>
+        {il?.fotograflar?.[0]
+          ? <R2Image source={il.fotograflar[0]} style={styles.ilanSatirFoto} resizeMode="cover" size="sm" />
+          : <View style={[styles.ilanSatirFoto, styles.ilanBos]}><Text>🏠</Text></View>}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.ilanBaslik} numberOfLines={2}>{il?.baslik ?? '…'}</Text>
+          <Text style={[styles.soluk, { fontSize: 12 }]} numberOfLines={1}>
+            {il?.fiyat ? <Text style={{ color: J.cyan, fontWeight: '700' }}>{fiyatYaz(il.fiyat)}</Text> : null}{ek ? <> · {ek}</> : null}
+          </Text>
+        </View>
+        {sag}
+      </Pressable>
+    );
+  }
+  function cevapGoster(t: string, hata: boolean) {
+    const parca: ReactNode[] = [];
+    const ids: string[] = [];
+    let son = 0;
+    for (const m of t.matchAll(ILAN_RE)) {
+      const bas = m.index ?? 0;
+      parca.push(t.slice(son, bas));
+      const id = ilanNo[m[1]];
+      if (id) {
+        if (!ids.includes(id)) ids.push(id);
+        parca.push(<Text key={bas} onPress={() => ilanAc(id)} style={{ color: J.mavi, fontWeight: '700', textDecorationLine: 'underline' }}>{ilanlar[id]?.baslik ?? `#${m[1]}`}</Text>);
+      } else parca.push(`#${m[1]}`);
+      son = bas + m[0].length;
+    }
+    parca.push(t.slice(son));
+    return (
+      <>
+        <Text style={[styles.govde, hata && { color: '#f87171' }]}>{parca}</Text>
+        {ids.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 10 }}>
+            {ids.map(id => {
+              const il = ilanlar[id];
+              return (
+                <Pressable key={id} onPress={() => ilanAc(id)} style={styles.ilanKart}>
+                  {il?.fotograflar?.[0]
+                    ? <R2Image source={il.fotograflar[0]} style={styles.ilanKartFoto} resizeMode="cover" size="sm" />
+                    : <View style={[styles.ilanKartFoto, styles.ilanBos]}><Text>🏠</Text></View>}
+                  <Text style={[styles.ilanBaslik, { paddingHorizontal: 8, paddingTop: 6 }]} numberOfLines={2}>{il?.baslik}</Text>
+                  <Text style={{ color: J.cyan, fontWeight: '700', fontSize: 12, paddingHorizontal: 8, paddingBottom: 8 }}>{il?.fiyat ? fiyatYaz(il.fiyat) : ''}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </>
+    );
+  }
+
   async function musteriAc(id: string) {
     setPopup({ id, _yukleniyor: true });
     const [{ data: m }, { data: rpc }, { data: istekler }] = await Promise.all([
@@ -183,15 +254,23 @@ export default function JarvisEkran() {
     setKomutlar(liste);
     const kartlar = liste.flatMap(k => k.jarvis_kartlar ?? []);
     const mIds = [...new Set(kartlar.map(k => k.musteri_id).filter(Boolean) as string[])];
-    const iIds = [...new Set(kartlar.filter(k => k.tur === 'ilan_gonder').flatMap(k => k.veri?.ilan_ids ?? []))] as string[];
+    const iIds = [...new Set([
+      ...kartlar.filter(k => k.tur === 'ilan_gonder').flatMap(k => k.veri?.ilan_ids ?? []),
+      ...kartlar.filter(k => k.tur === 'ilan_goster').flatMap(k => (k.veri?.eksik ?? []).map((e: any) => e.id)),
+      ...kartlar.filter(k => k.tur === 'ilan_durum' || k.tur === 'ilan_fiyat').map(k => k.veri?.ilan_id),
+    ].filter(Boolean))] as string[];
+    const nolar = [...new Set(liste.flatMap(k => cevapIlanNolari(k.cevap)))];
     if (mIds.length) {
       const { data: m } = await supabase.from('musteriler').select('id, ad, soyad').in('id', mIds);
       if (m) setMusteriler(p => ({ ...p, ...Object.fromEntries(m.map(x => [x.id, [x.ad, x.soyad].filter(Boolean).join(' ')])) }));
     }
-    if (iIds.length) {
-      const { data: il } = await supabase.from('ilanlar').select('id, portfoy_no, fiyat, oda_sayisi, ilce, mahalle').in('id', iIds);
-      if (il) setIlanlar(p => ({ ...p, ...Object.fromEntries(il.map(x => [x.id, x])) }));
-    }
+    const ilanEkle = (il: IlanMini[] | null) => {
+      if (!il?.length) return;
+      setIlanlar(p => ({ ...p, ...Object.fromEntries(il.map(x => [x.id, x])) }));
+      setIlanNo(p => ({ ...p, ...Object.fromEntries(il.filter(x => x.portfoy_no).map(x => [String(x.portfoy_no), x.id])) }));
+    };
+    if (iIds.length) ilanEkle((await supabase.from('ilanlar').select(ILAN_ALAN).in('id', iIds)).data as IlanMini[] | null);
+    if (nolar.length) ilanEkle((await supabase.from('ilanlar').select(ILAN_ALAN).in('portfoy_no', nolar)).data as IlanMini[] | null);
   }, [secili]);
 
   useFocusEffect(useCallback(() => {
@@ -421,7 +500,7 @@ export default function JarvisEkran() {
       const v = kart.veri;
       return (
         <View>
-          <Text style={styles.soluk}>#{v.portfoy_no ?? '—'} · {v.oda ?? ''} · {v.yer} · {v.baslik}</Text>
+          {ilanlar[v.ilan_id] ? ilanSatir(v.ilan_id) : <Text style={styles.soluk}>{v.baslik} · {v.oda ?? ''} · {v.yer}</Text>}
           <Text style={[styles.govde, { marginTop: 4 }]}>
             {kart.tur === 'ilan_durum' ? `${v.eski_durum ?? '—'} → ` : `${fiyatYaz(v.eski_fiyat)} → `}
             <Text style={{ fontWeight: '700' }}>{kart.tur === 'ilan_durum' ? v.durum : fiyatYaz(v.fiyat)}</Text>
@@ -483,12 +562,11 @@ export default function JarvisEkran() {
           {(v.eksik ?? []).length > 0 && (
             <View style={{ marginTop: 6 }}>
               <Text style={{ color: '#fbbf24', fontWeight: '700', fontSize: 12, marginBottom: 2 }}>⚠️ Eksik / tutarsız veri ({v.eksik_sayi ?? v.eksik.length})</Text>
-              {(v.eksik as any[]).slice(0, 6).map(e => (
-                <Text key={e.id} style={[styles.govde, { fontSize: 12, paddingVertical: 2 }]}>
-                  #{e.no ?? '—'} <Text style={styles.soluk}>{(e.sorun ?? []).join(', ')}</Text>{'  '}
-                  <Text style={{ color: J.mavi, fontWeight: '700' }} onPress={() => router.push(`/ilan/${e.id}` as any)}>Düzelt →</Text>
-                </Text>
-              ))}
+              {(v.eksik as any[]).slice(0, 6).map(e => ilanSatir(e.id,
+                <Text style={{ color: '#fbbf24' }}>{(e.sorun ?? []).join(', ')}</Text>,
+                <Pressable onPress={() => router.push(`/ilan/${e.id}` as any)} hitSlop={8}>
+                  <Text style={{ color: J.mavi, fontWeight: '700', fontSize: 12 }}>Düzelt →</Text>
+                </Pressable>))}
             </View>
           )}
         </View>
@@ -501,11 +579,7 @@ export default function JarvisEkran() {
           {!!kart.veri.aciklama && <Text style={styles.soluk}>{kart.veri.aciklama}</Text>}
           {ids.map(id => {
             const il = ilanlar[id];
-            return (
-              <Text key={id} style={[styles.govde, { fontSize: 13, paddingVertical: 3 }]}>
-                {il ? `#${il.portfoy_no ?? '—'} · ${il.oda_sayisi ?? ''} · ${[il.ilce, il.mahalle].filter(Boolean).join(' / ')} · ${fiyatYaz(il.fiyat)}` : '…'}
-              </Text>
-            );
+            return ilanSatir(id, il ? [il.oda_sayisi, il.mahalle].filter(Boolean).join(' · ') : null);
           })}
         </View>
       );
@@ -602,9 +676,8 @@ export default function JarvisEkran() {
                     </View>
                     <View style={styles.balonJarvis}>
                       {isliyor ? <Nabiz><Text style={[styles.govde, { color: '#fb923c', fontWeight: '600' }]}>Analiz ediyorum…</Text></Nabiz>
-                        : <Text style={[styles.govde, k.durum === 'hata' && { color: '#f87171' }]}>
-                          {k.durum === 'hata' ? `⚠️ Yapamadım: ${k.hata ?? ''}` : (k.cevap ?? '')}
-                        </Text>}
+                        : k.durum === 'hata' ? <Text style={[styles.govde, { color: '#f87171' }]}>⚠️ Yapamadım: {k.hata ?? ''}</Text>
+                        : cevapGoster(k.cevap ?? '', false)}
                       {(k.jarvis_kartlar ?? []).map(kart => {
                         const renk = kart.durum === 'onaylandi' ? '#34d399' : kart.durum === 'reddedildi' ? '#64748b' : '#fbbf24';
                         return (
@@ -802,6 +875,9 @@ export default function JarvisEkran() {
         </KeyboardAvoidingView>
       </Modal>
 
+      <IlanOzetModal acik={ilanPopup} kapat={() => setIlanPopup(null)}
+        detay={id => { setIlanPopup(null); router.push(`/ilan/${id}` as any); }} />
+
       <Modal visible={!!popup} transparent animationType="fade" onRequestClose={() => setPopup(null)}>
         <Pressable style={styles.perde} onPress={() => setPopup(null)}>
           <Pressable style={styles.popup} onPress={() => {}}>
@@ -985,6 +1061,75 @@ function Izgara({ w, h }: { w: number; h: number }) {
 }
 
 // Onay kartı: HUD köşe çizgileri + bekliyorken tarama ışığı
+// İlan özet penceresi: kaydırmalı fotoğraflar + bilgiler + "Tam detaya git"
+function IlanOzetModal({ acik, kapat, detay }: { acik: { id: string; veri: any | null } | null; kapat: () => void; detay: (id: string) => void }) {
+  const [genislik, setGenislik] = useState(0);
+  const [fi, setFi] = useState(0);
+  useEffect(() => { setFi(0); }, [acik?.id]);
+  const v = acik?.veri;
+  const fotolar: string[] = v?.fotograflar ?? [];
+  const bilgi = v && !v.hata ? [
+    v.tip, v.kategori, v.oda_sayisi, v.metrekare ? `${v.metrekare} m²` : null,
+    v.bulundugu_kat ? `Kat: ${v.bulundugu_kat}` : null, v.kat_sayisi ? `${v.kat_sayisi} katlı` : null,
+    v.bina_yasi ? `Bina yaşı: ${v.bina_yasi}` : null, v.banyo_sayisi ? `${v.banyo_sayisi} banyo` : null,
+  ].filter(Boolean) : [];
+  const ozellikler: string[] = (v?.ilan_ozellikler ?? []).map((x: any) => x.ozellikler?.ad).filter(Boolean);
+  return (
+    <Modal visible={!!acik} transparent animationType="fade" onRequestClose={kapat}>
+      <Pressable style={styles.perde} onPress={kapat}>
+        <Pressable style={[styles.popup, { padding: 0, overflow: 'hidden' }]} onPress={() => {}}>
+          {!v ? (
+            <View style={{ padding: 30, alignItems: 'center' }}><Orb boyut={60} durum="dusun" /></View>
+          ) : v.hata ? (
+            <Text style={[styles.govde, { padding: 20 }]}>İlan açılamadı.</Text>
+          ) : (
+            <ScrollView>
+              <View onLayout={e => setGenislik(e.nativeEvent.layout.width)} style={{ backgroundColor: '#000' }}>
+                {genislik > 0 && (fotolar.length ? (
+                  <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={e => setFi(Math.round(e.nativeEvent.contentOffset.x / genislik))}>
+                    {fotolar.map((f, i) => (
+                      <R2Image key={i} source={f} style={{ width: genislik, height: genislik * 0.72 }} resizeMode="cover" size="md" />
+                    ))}
+                  </ScrollView>
+                ) : <View style={[styles.ilanBos, { width: genislik, height: genislik * 0.5 }]}><Text style={{ fontSize: 30 }}>🏠</Text></View>)}
+                {fotolar.length > 1 && (
+                  <Text style={[styles.mono, { position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: '#fff', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' }]}>
+                    {fi + 1}/{fotolar.length}
+                  </Text>
+                )}
+                <Pressable onPress={kapat} hitSlop={10} style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 15 }}>✕</Text>
+                </Pressable>
+              </View>
+              <View style={{ padding: 14, gap: 7 }}>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Text style={[styles.mono, styles.soluk, { fontSize: 12 }]}>#{v.portfoy_no}</Text>
+                  {v.durum !== 'Aktif' && <Text style={{ fontSize: 11, color: '#f87171', fontWeight: '700' }}>{v.durum}</Text>}
+                  {v.musteri_gizle && <Text style={{ fontSize: 11, color: '#fbbf24', fontWeight: '700' }}>👁 Müşteriden gizli</Text>}
+                </View>
+                <Text style={[styles.govde, { fontSize: 17, fontWeight: '800', lineHeight: 22 }]}>{v.baslik}</Text>
+                <Text style={{ color: J.cyan, fontSize: 20, fontWeight: '800' }}>{fiyatYaz(v.fiyat)}</Text>
+                <Text style={styles.soluk}>📍 {[v.mahalle, v.ilce, v.konum].filter(Boolean).join(', ')}</Text>
+                {bilgi.length > 0 && <Text style={[styles.govde, { fontSize: 13 }]}>{bilgi.join(' · ')}</Text>}
+                {ozellikler.length > 0 && (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
+                    {ozellikler.map(o => <Text key={o} style={styles.ozellik}>{o}</Text>)}
+                  </View>
+                )}
+                {!!v.aciklama && <Text style={[styles.soluk, { lineHeight: 19 }]} numberOfLines={8}>{v.aciklama}</Text>}
+                <Pressable onPress={() => detay(v.id)} style={[styles.btn, { backgroundColor: '#34d399', borderColor: '#34d399', alignItems: 'center', marginTop: 6, paddingVertical: 11 }]}>
+                  <Text style={[styles.btnYazi, { color: '#03121a' }]}>Tam detaya git →</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function HudKart({ renk, tara, soluk, children }: { renk: string; tara: boolean; soluk: boolean; children: ReactNode }) {
   const [h, setH] = useState(0);
   const v = useRef(new Animated.Value(0)).current;
@@ -1119,6 +1264,13 @@ const styles = StyleSheet.create({
   aktifCizgi: { position: 'absolute', left: 0, top: 7, bottom: 7, width: 2, borderRadius: 2, backgroundColor: J.cyan },
   soluk: { fontSize: 13, color: J.soluk },
   govde: { fontSize: 14, color: J.yazi, lineHeight: 20 },
+  ilanSatir: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 6, marginTop: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(125,211,252,0.12)', backgroundColor: 'rgba(255,255,255,0.02)' },
+  ilanSatirFoto: { width: 64, height: 46, borderRadius: 6 },
+  ilanBos: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' },
+  ilanBaslik: { fontSize: 13, fontWeight: '700', color: J.yazi, lineHeight: 17 },
+  ilanKart: { width: 150, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(125,211,252,0.18)', backgroundColor: 'rgba(255,255,255,0.03)' },
+  ilanKartFoto: { width: 150, height: 96 },
+  ozellik: { fontSize: 11, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(56,189,248,0.1)', color: '#7dd3fc', borderWidth: 1, borderColor: 'rgba(56,189,248,0.25)' },
   input: {
     borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)', borderRadius: Radius.md, padding: 10,
     color: J.yazi, backgroundColor: 'rgba(3,10,20,0.85)', fontSize: 15,
