@@ -323,10 +323,10 @@ export default function IlanlarScreen() {
   // Sekme ekranı açık kaldığı için ilan detayından geri dönünce görünüm durur.
   type JarvisGoster = {
     kartId: string; musteriId: string | null; musteriAd: string;
-    ilan: Record<string, { grup: 'tam' | 'belki' | 'gonderildi'; sebep: string | null }>; paylasilan: string[];
+    ilan: Record<string, { grup: 'tam' | 'belki' | 'gonderildi' | 'benzer'; sebep: string | null }>; paylasilan: string[];
   };
   const [jg, setJg] = useState<JarvisGoster | null>(null);
-  const [jgSekme, setJgSekme] = useState<'tumu' | 'tam' | 'belki' | 'gonderildi'>('tumu');
+  const [jgSekme, setJgSekme] = useState<'tumu' | 'benzer' | 'tam' | 'belki' | 'gonderildi'>('tumu');
   const { jarvisGoster } = useLocalSearchParams<{ jarvisGoster?: string }>();
   useEffect(() => {
     if (!jarvisGoster) return;
@@ -930,6 +930,7 @@ export default function IlanlarScreen() {
           tumu: aktifG.length, tam: aktifG.filter(i => jg.ilan[i.id].grup === 'tam').length,
           belki: aktifG.filter(i => jg.ilan[i.id].grup === 'belki').length,
           gonderildi: aktifG.filter(i => jg.ilan[i.id].grup === 'gonderildi').length,
+          benzer: aktifG.filter(i => jg.ilan[i.id].grup === 'benzer').length,
         };
         return (
           <View style={styles.jgSerit}>
@@ -941,10 +942,10 @@ export default function IlanlarScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} style={{ marginTop: 6, flexGrow: 0 }}>
-              {(['tumu', 'tam', 'belki', 'gonderildi'] as const).filter(s => s === 'tumu' || s === 'tam' || sayi[s] > 0).map(s => (
+              {(['tumu', 'benzer', 'tam', 'belki', 'gonderildi'] as const).filter(s => s === 'tumu' || s === 'tam' || sayi[s] > 0).map(s => (
                 <TouchableOpacity key={s} onPress={() => setJgSekme(s)} style={[styles.jgSekme, jgSekme === s && styles.jgSekmeAktif]}>
                   <Text style={[styles.jgSekmeYazi, jgSekme === s && { color: '#03121a' }]}>
-                    {s === 'tumu' ? 'Tümü' : s === 'tam' ? 'Tam uygun' : s === 'belki' ? 'Belki' : 'Gönderilmiş'} {sayi[s]}
+                    {s === 'tumu' ? 'Tümü' : s === 'benzer' ? '🔁 Benzer' : s === 'tam' ? 'Tam uygun' : s === 'belki' ? 'Belki' : 'Gönderilmiş'} {sayi[s]}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -1064,9 +1065,9 @@ export default function IlanlarScreen() {
                 )}
                 <View style={styles.popupInfo}>
                   <Text style={styles.popupBaslik} numberOfLines={1}>{seciliIlan.baslik}</Text>
-                  {(jg?.ilan[seciliIlan.id]?.grup === 'belki' || jg?.ilan[seciliIlan.id]?.grup === 'gonderildi') && (
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: jg.ilan[seciliIlan.id].grup === 'belki' ? '#f59e0b' : '#818cf8' }} numberOfLines={1}>
-                      {jg.ilan[seciliIlan.id].grup === 'belki' ? '🤔' : '📤'} {jg.ilan[seciliIlan.id].sebep}
+                  {jg?.ilan[seciliIlan.id] && jg.ilan[seciliIlan.id].grup !== 'tam' && (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: { belki: '#f59e0b', gonderildi: '#818cf8', benzer: '#2dd4bf', tam: '' }[jg.ilan[seciliIlan.id].grup] }} numberOfLines={1}>
+                      {{ belki: '🤔', gonderildi: '📤', benzer: '🔁', tam: '' }[jg.ilan[seciliIlan.id].grup]} {jg.ilan[seciliIlan.id].sebep}
                     </Text>
                   )}
                   <Text style={styles.popupKonum} numberOfLines={1}>📍 {seciliIlan.konum}{seciliIlan.ilce ? `, ${seciliIlan.ilce}` : ''}</Text>
@@ -1102,8 +1103,8 @@ export default function IlanlarScreen() {
           ) : (
             filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'}
               jarvis={jg?.ilan[ilan.id] ? {
-                sebep: jg.ilan[ilan.id].grup === 'belki' ? `🤔 ${jg.ilan[ilan.id].sebep}` : jg.ilan[ilan.id].grup === 'gonderildi' ? `📤 ${jg.ilan[ilan.id].sebep}` : null,
-                gonderildi: jg.ilan[ilan.id].grup === 'gonderildi', paylasildi: jg.paylasilan.includes(ilan.id),
+                sebep: jg.ilan[ilan.id].grup === 'tam' ? null : `${{ belki: '🤔', gonderildi: '📤', benzer: '🔁', tam: '' }[jg.ilan[ilan.id].grup]} ${jg.ilan[ilan.id].sebep}`,
+                gonderildi: jg.ilan[ilan.id].grup === 'gonderildi', benzer: jg.ilan[ilan.id].grup === 'benzer', paylasildi: jg.paylasilan.includes(ilan.id),
               } : undefined} />)
           )}
         </ScrollView>
@@ -1897,14 +1898,14 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
-function IlanKart({ ilan, secimModu, secili, onToggle, kompakt, jarvis }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean; jarvis?: { sebep: string | null; gonderildi?: boolean; paylasildi: boolean } }) {
+function IlanKart({ ilan, secimModu, secili, onToggle, kompakt, jarvis }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean; jarvis?: { sebep: string | null; gonderildi?: boolean; benzer?: boolean; paylasildi: boolean } }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
   // Jarvis görünümü: "belki" sebebi + paylaşıldı etiketi
   const jarvisEtiket = jarvis && (jarvis.sebep || jarvis.paylasildi) ? (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: kompakt ? 2 : 0 }}>
       {!!jarvis.sebep && (
-        <View style={[styles.jgEtiket, jarvis.gonderildi && { backgroundColor: 'rgba(129,140,248,0.92)' }]}>
+        <View style={[styles.jgEtiket, jarvis.gonderildi && { backgroundColor: 'rgba(129,140,248,0.92)' }, jarvis.benzer && { backgroundColor: 'rgba(45,212,191,0.92)' }]}>
           <Text style={styles.jgEtiketYazi} numberOfLines={1}>{jarvis.sebep}</Text>
         </View>
       )}

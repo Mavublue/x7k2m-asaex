@@ -547,11 +547,12 @@ export default function JarvisEkran() {
       const nt = L.filter(x => x.grup === 'tam').length;
       const nb = L.filter(x => x.grup === 'belki').length;
       const ng = L.filter(x => x.grup === 'gonderildi').length;
+      const nz = L.filter(x => x.grup === 'benzer').length;
       const pay: string[] = v.paylasilan ?? [];
       return (
         <View style={{ gap: 3 }}>
           <Text style={styles.govde}>
-            <Text style={{ fontWeight: '700', color: J.cyan }}>{L.length} ilan</Text> · {nt} tam uygun{nb ? ` · ${nb} belki beğenir` : ''}{ng ? ` · ${ng} daha önce gönderilmiş` : ''}
+            <Text style={{ fontWeight: '700', color: J.cyan }}>{L.length} ilan</Text>{nz ? ` · 🔁 ${nz} baktığına benzer` : ''} · {nt} tam uygun{nb ? ` · ${nb} belki beğenir` : ''}{ng ? ` · ${ng} daha önce gönderilmiş` : ''}
           </Text>
           {((v.gonderilmis > 0 && !ng) || !!v.kural) && (
             <Text style={[styles.soluk, { fontSize: 12 }]}>
