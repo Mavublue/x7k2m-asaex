@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Linking, Animated, Easing,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Linking, Animated, Easing, Keyboard,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -91,6 +91,23 @@ export default function JarvisEkran() {
   const [alanW, setAlanW] = useState(0);
   const [altta, setAltta] = useState(true);
   const [odak, setOdak] = useState(false);
+  const insets = useSafeAreaInsets();
+  const kokRef = useRef<View>(null);
+  const [kbPad, setKbPad] = useState(0);
+  // Klavye: alttaki boşluk = ekranın altı ile klavyenin üstü arası (tab bar payı ölçümle düşer)
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const ac = Keyboard.addListener('keyboardWillChangeFrame', e => {
+      const ust = e.endCoordinates.screenY;
+      kokRef.current?.measureInWindow((_x, y, _w, h) => setKbPad(Math.max(0, y + h - ust)));
+    });
+    const kapa = Keyboard.addListener('keyboardWillHide', () => setKbPad(0));
+    const kapa2 = Keyboard.addListener('keyboardDidHide', () => setKbPad(0));
+    return () => { ac.remove(); kapa.remove(); kapa2.remove(); };
+  }, []);
+  // Panel/pencere açılınca ya da ekrana dönünce boşluğu sıfırla
+  useEffect(() => { if (yanAcik || hafizaAcik || popup) { Keyboard.dismiss(); setKbPad(0); } }, [yanAcik, hafizaAcik, popup]);
+  useFocusEffect(useCallback(() => { setKbPad(0); }, []));
 
   const sohbetleriYukle = useCallback(async () => {
     const { data } = await supabase.from('jarvis_sohbetler').select('id, baslik, guncelleme_at')
@@ -493,11 +510,12 @@ export default function JarvisEkran() {
   let sonGrup = '';
 
   return (
-    <SafeAreaView style={styles.ekran} edges={['top']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[styles.ekran, { paddingTop: insets.top }]}>
+      {/* Klavye boşluğu elle: KeyboardAvoidingView Modal açılıp kapanınca iPhone'da takılı kalıyordu */}
+      <View ref={kokRef} style={{ flex: 1, paddingBottom: kbPad }}>
         {/* Üst şerit */}
         <LinearGradient colors={['rgba(34,211,238,0.09)', 'rgba(34,211,238,0)']} style={styles.ust}>
-          <Pressable onPress={() => { sohbetleriYukle(); setYanAcik(true); }} hitSlop={8} style={styles.ustBtn}>
+          <Pressable onPress={() => { Keyboard.dismiss(); sohbetleriYukle(); setYanAcik(true); }} hitSlop={8} style={styles.ustBtn}>
             <Text style={{ fontSize: 18, color: J.cyan }}>☰</Text>
           </Pressable>
           <Orb boyut={30} durum={calisiyor ? 'dusun' : sonHata ? 'hata' : 'bos'} />
@@ -636,7 +654,7 @@ export default function JarvisEkran() {
             <GonderBtn aktif={!!metin.trim() && !gonderiyor} yukleniyor={gonderiyor} onPress={() => komutGonder(metin)} />
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {/* Sohbet listesi (soldan açılan panel) */}
       <Modal visible={yanAcik} transparent animationType="fade" onRequestClose={() => setYanAcik(false)}>
@@ -801,7 +819,7 @@ export default function JarvisEkran() {
           </Pressable>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
