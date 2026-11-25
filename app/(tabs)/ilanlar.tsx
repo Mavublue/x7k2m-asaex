@@ -323,10 +323,10 @@ export default function IlanlarScreen() {
   // Sekme ekranı açık kaldığı için ilan detayından geri dönünce görünüm durur.
   type JarvisGoster = {
     kartId: string; musteriId: string | null; musteriAd: string;
-    ilan: Record<string, { grup: 'tam' | 'belki'; sebep: string | null }>; paylasilan: string[];
+    ilan: Record<string, { grup: 'tam' | 'belki' | 'gonderildi'; sebep: string | null }>; paylasilan: string[];
   };
   const [jg, setJg] = useState<JarvisGoster | null>(null);
-  const [jgSekme, setJgSekme] = useState<'tumu' | 'tam' | 'belki'>('tumu');
+  const [jgSekme, setJgSekme] = useState<'tumu' | 'tam' | 'belki' | 'gonderildi'>('tumu');
   const { jarvisGoster } = useLocalSearchParams<{ jarvisGoster?: string }>();
   useEffect(() => {
     if (!jarvisGoster) return;
@@ -926,7 +926,11 @@ export default function IlanlarScreen() {
 
       {jg && (() => {
         const aktifG = ilanlar.filter(i => jg.ilan[i.id] && i.durum === 'Aktif');
-        const sayi = { tumu: aktifG.length, tam: aktifG.filter(i => jg.ilan[i.id].grup === 'tam').length, belki: aktifG.filter(i => jg.ilan[i.id].grup === 'belki').length };
+        const sayi = {
+          tumu: aktifG.length, tam: aktifG.filter(i => jg.ilan[i.id].grup === 'tam').length,
+          belki: aktifG.filter(i => jg.ilan[i.id].grup === 'belki').length,
+          gonderildi: aktifG.filter(i => jg.ilan[i.id].grup === 'gonderildi').length,
+        };
         return (
           <View style={styles.jgSerit}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -936,15 +940,15 @@ export default function IlanlarScreen() {
                 <Text style={{ color: '#e2e8f0', fontSize: 14 }}>✕</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
-              {(['tumu', 'tam', 'belki'] as const).filter(s => s !== 'belki' || sayi.belki > 0).map(s => (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} style={{ marginTop: 6, flexGrow: 0 }}>
+              {(['tumu', 'tam', 'belki', 'gonderildi'] as const).filter(s => s === 'tumu' || s === 'tam' || sayi[s] > 0).map(s => (
                 <TouchableOpacity key={s} onPress={() => setJgSekme(s)} style={[styles.jgSekme, jgSekme === s && styles.jgSekmeAktif]}>
                   <Text style={[styles.jgSekmeYazi, jgSekme === s && { color: '#03121a' }]}>
-                    {s === 'tumu' ? 'Tümü' : s === 'tam' ? 'Tam uygun' : 'Belki'} {sayi[s]}
+                    {s === 'tumu' ? 'Tümü' : s === 'tam' ? 'Tam uygun' : s === 'belki' ? 'Belki' : 'Gönderilmiş'} {sayi[s]}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
             <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 5 }}>☑ Seç → 🔗 Paylaş ({jg.musteriAd} seçili gelir)</Text>
           </View>
         );
@@ -1060,8 +1064,10 @@ export default function IlanlarScreen() {
                 )}
                 <View style={styles.popupInfo}>
                   <Text style={styles.popupBaslik} numberOfLines={1}>{seciliIlan.baslik}</Text>
-                  {jg?.ilan[seciliIlan.id]?.grup === 'belki' && (
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b' }} numberOfLines={1}>🤔 {jg.ilan[seciliIlan.id].sebep}</Text>
+                  {(jg?.ilan[seciliIlan.id]?.grup === 'belki' || jg?.ilan[seciliIlan.id]?.grup === 'gonderildi') && (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: jg.ilan[seciliIlan.id].grup === 'belki' ? '#f59e0b' : '#818cf8' }} numberOfLines={1}>
+                      {jg.ilan[seciliIlan.id].grup === 'belki' ? '🤔' : '📤'} {jg.ilan[seciliIlan.id].sebep}
+                    </Text>
                   )}
                   <Text style={styles.popupKonum} numberOfLines={1}>📍 {seciliIlan.konum}{seciliIlan.ilce ? `, ${seciliIlan.ilce}` : ''}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -1095,7 +1101,10 @@ export default function IlanlarScreen() {
             </View>
           ) : (
             filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'}
-              jarvis={jg?.ilan[ilan.id] ? { sebep: jg.ilan[ilan.id].grup === 'belki' ? jg.ilan[ilan.id].sebep : null, paylasildi: jg.paylasilan.includes(ilan.id) } : undefined} />)
+              jarvis={jg?.ilan[ilan.id] ? {
+                sebep: jg.ilan[ilan.id].grup === 'belki' ? `🤔 ${jg.ilan[ilan.id].sebep}` : jg.ilan[ilan.id].grup === 'gonderildi' ? `📤 ${jg.ilan[ilan.id].sebep}` : null,
+                gonderildi: jg.ilan[ilan.id].grup === 'gonderildi', paylasildi: jg.paylasilan.includes(ilan.id),
+              } : undefined} />)
           )}
         </ScrollView>
       )}
@@ -1888,14 +1897,16 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
-function IlanKart({ ilan, secimModu, secili, onToggle, kompakt, jarvis }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean; jarvis?: { sebep: string | null; paylasildi: boolean } }) {
+function IlanKart({ ilan, secimModu, secili, onToggle, kompakt, jarvis }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean; jarvis?: { sebep: string | null; gonderildi?: boolean; paylasildi: boolean } }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
   // Jarvis görünümü: "belki" sebebi + paylaşıldı etiketi
   const jarvisEtiket = jarvis && (jarvis.sebep || jarvis.paylasildi) ? (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: kompakt ? 2 : 0 }}>
       {!!jarvis.sebep && (
-        <View style={styles.jgEtiket}><Text style={styles.jgEtiketYazi} numberOfLines={1}>🤔 {jarvis.sebep}</Text></View>
+        <View style={[styles.jgEtiket, jarvis.gonderildi && { backgroundColor: 'rgba(129,140,248,0.92)' }]}>
+          <Text style={styles.jgEtiketYazi} numberOfLines={1}>{jarvis.sebep}</Text>
+        </View>
       )}
       {jarvis.paylasildi && (
         <View style={[styles.jgEtiket, { backgroundColor: 'rgba(52,211,153,0.9)' }]}><Text style={[styles.jgEtiketYazi, { color: '#03121a' }]}>✓ Paylaşıldı</Text></View>

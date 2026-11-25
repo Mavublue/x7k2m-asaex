@@ -466,15 +466,17 @@ export default function JarvisEkran() {
       const v = kart.veri;
       const L: any[] = v.ilanlar ?? [];
       const nt = L.filter(x => x.grup === 'tam').length;
+      const nb = L.filter(x => x.grup === 'belki').length;
+      const ng = L.filter(x => x.grup === 'gonderildi').length;
       const pay: string[] = v.paylasilan ?? [];
       return (
         <View style={{ gap: 3 }}>
           <Text style={styles.govde}>
-            <Text style={{ fontWeight: '700', color: J.cyan }}>{L.length} ilan</Text> · {nt} tam uygun{L.length > nt ? ` · ${L.length - nt} belki beğenir` : ''}
+            <Text style={{ fontWeight: '700', color: J.cyan }}>{L.length} ilan</Text> · {nt} tam uygun{nb ? ` · ${nb} belki beğenir` : ''}{ng ? ` · ${ng} daha önce gönderilmiş` : ''}
           </Text>
-          {(v.gonderilmis > 0 || !!v.kural) && (
+          {((v.gonderilmis > 0 && !ng) || !!v.kural) && (
             <Text style={[styles.soluk, { fontSize: 12 }]}>
-              {[v.gonderilmis > 0 ? `${v.gonderilmis} gönderilmiş çıkarıldı` : '', v.kural ? `Kural: ${v.kural}` : ''].filter(Boolean).join(' · ')}
+              {[v.gonderilmis > 0 && !ng ? `${v.gonderilmis} gönderilmiş çıkarıldı` : '', v.kural ? `Kural: ${v.kural}` : ''].filter(Boolean).join(' · ')}
             </Text>
           )}
           {pay.length > 0 && <Text style={{ color: '#34d399', fontSize: 13 }}>✓ {pay.length} ilan paylaşıldı</Text>}
