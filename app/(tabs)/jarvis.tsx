@@ -167,7 +167,7 @@ export default function JarvisEkran() {
     Keyboard.dismiss();
     setIlanPopup({ id, veri: null });
     const { data } = await supabase.from('ilanlar')
-      .select('id, portfoy_no, baslik, fiyat, tip, kategori, oda_sayisi, metrekare, bulundugu_kat, kat_sayisi, bina_yasi, banyo_sayisi, konum, ilce, mahalle, aciklama, fotograflar, durum, musteri_gizle, ilan_ozellikler(ozellikler(ad))')
+      .select('id, portfoy_no, baslik, fiyat, tip, kategori, oda_sayisi, metrekare, bulundugu_kat, kat_sayisi, bina_yasi, banyo_sayisi, konum, ilce, mahalle, aciklama, fotograflar, durum, musteri_gizle, denize_mesafe_m, ilan_ozellikler(ozellikler(ad))')
       .eq('id', id).single();
     setIlanPopup(p => (p && p.id === id ? { ...p, veri: data ?? { hata: true } } : p));
   }
@@ -1111,6 +1111,7 @@ function IlanOzetModal({ acik, kapat, detay }: { acik: { id: string; veri: any |
                 <Text style={[styles.govde, { fontSize: 17, fontWeight: '800', lineHeight: 22 }]}>{v.baslik}</Text>
                 <Text style={{ color: J.cyan, fontSize: 20, fontWeight: '800' }}>{fiyatYaz(v.fiyat)}</Text>
                 <Text style={styles.soluk}>📍 {[v.mahalle, v.ilce, v.konum].filter(Boolean).join(', ')}</Text>
+                {v.denize_mesafe_m != null && <Text style={[styles.govde, { fontSize: 13 }]}>🌊 Denize ~{v.denize_mesafe_m} m <Text style={styles.soluk}>(kuş uçuşu)</Text></Text>}
                 {bilgi.length > 0 && <Text style={[styles.govde, { fontSize: 13 }]}>{bilgi.join(' · ')}</Text>}
                 {ozellikler.length > 0 && (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
