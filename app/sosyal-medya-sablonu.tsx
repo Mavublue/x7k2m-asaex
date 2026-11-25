@@ -1,3 +1,4 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../lib/refTipleri';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PersistentTabBar from '../components/PersistentTabBar';
@@ -25,7 +26,7 @@ export default function SosyalMedyaSablonuScreen() {
   const [profil, setProfil] = useState<SosyalProfil | null>(null);
   const [tab, setTab] = useState<'duzenle' | 'onizle'>('duzenle');
   const [selection, setSelection] = useState({ start: 0, end: 0 });
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputRef>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {

@@ -1,8 +1,9 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../lib/refTipleri';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Modal, Image, Alert, StyleSheet, ActivityIndicator, TextInput, Switch,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import { supabase } from '../lib/supabase';
 import type { Ilan } from '../types';
@@ -454,7 +455,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
   const [tamamlandi, setTamamlandi] = useState(false);
   const [yuklendi, setYuklendi] = useState(false);
   const webRef = useRef<WebView>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewRef>(null);
   const scrollY = useRef(0);
   const restoreScroll = useRef(false);
 
@@ -702,7 +703,7 @@ function MaskePane({ ilan, visible, onChanged, onCount, cizimBaslatKey, onCizimB
   return (
     <View style={{ flex: 1 }}>
       {secili ? (
-        <View style={tamEkran ? [StyleSheet.absoluteFillObject, { zIndex: 50, backgroundColor: '#000' }] : { flex: 1 }}>
+        <View style={tamEkran ? [StyleSheet.absoluteFill, { zIndex: 50, backgroundColor: '#000' }] : { flex: 1 }}>
           {/* Araç çubuğu */}
           <View style={sm.toolbar}>
             <TouchableOpacity onPress={secZoom} style={[sm.tbtn, zoomMode && sm.tbtnOn]}>

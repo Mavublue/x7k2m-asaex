@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Alert, StyleSheet, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import { maskeBaslat, oncesiUrl } from '../lib/maskesil';
 import { DRAW_HTML } from './drawHtml';

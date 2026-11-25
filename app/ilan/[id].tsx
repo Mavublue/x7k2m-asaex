@@ -1,3 +1,4 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../../lib/refTipleri';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -17,7 +18,7 @@ const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../../lib/webview';
 import { supabase } from '../../lib/supabase';
 import { cacheGet, cacheSet } from '../../lib/cache';
 import { Colors, Radius, Spacing } from '../../constants/theme';
@@ -125,7 +126,7 @@ function MaskeRozet({ d, kucuk, style }: { d?: 'isleniyor' | 'hazir'; kucuk?: bo
 function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMaske, maskeDurumMap }: {
   fotos: string[]; initialIdx: number; onClose: () => void;
   listRef: React.RefObject<FlatList<string> | null>;
-  thumbRef: React.RefObject<ScrollView | null>;
+  thumbRef: React.RefObject<ScrollViewRef | null>;
   onMaske?: (fotoKey: string) => void;
   maskeDurumMap?: Record<string, 'isleniyor' | 'hazir'>;
 }) {
@@ -166,7 +167,7 @@ function FullscreenGaleri({ fotos, initialIdx, onClose, listRef, thumbRef, onMas
 
   return (
     <View style={{ flex: 1 }}>
-      <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#000', opacity: bgOpacity }} />
+      <Animated.View style={{ ...StyleSheet.absoluteFill, backgroundColor: '#000', opacity: bgOpacity }} />
       <PanGestureHandler enabled={!zoomed} maxPointers={1} onGestureEvent={onPanEvent} onHandlerStateChange={onPanStateChange} activeOffsetY={15} failOffsetX={[-20, 20]}>
         <Animated.View style={{ flex: 1, transform: [{ translateY }] }}>
           <TouchableOpacity style={{ position: 'absolute', top: 48, right: 20, zIndex: 10, padding: 8 }} onPress={onClose}>
@@ -258,11 +259,11 @@ export default function IlanDetayScreen() {
   const [linkSeciliMusteri, setLinkSeciliMusteri] = useState<string>('');
   const [linkEtiket, setLinkEtiket] = useState('');
   const flatListRef = useRef<any>(null);
-  const thumbScrollRef = useRef<ScrollView>(null);
+  const thumbScrollRef = useRef<ScrollViewRef>(null);
   const [fullscreenIdx, setFullscreenIdx] = useState<number | null>(null);
   const [maskeCizKey, setMaskeCizKey] = useState<string | null>(null);
   const fullscreenListRef = useRef<FlatList<string>>(null);
-  const fullscreenThumbRef = useRef<ScrollView>(null);
+  const fullscreenThumbRef = useRef<ScrollViewRef>(null);
   const [otomatikMusteriler, setOtomatikMusteriler] = useState<any[]>([]);
   const [sosyalModal, setSosyalModal] = useState(false);
   const [sosyalMetin, setSosyalMetin] = useState('');
@@ -1696,7 +1697,7 @@ const styles = StyleSheet.create({
   eslesBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalDimmer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalDimmer: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalPanel: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '75%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   modalKapat: { fontSize: 20, color: Colors.onSurface, width: 32 },

@@ -76,7 +76,7 @@ export async function getCachedPhoto(key: string, size: string): Promise<string>
   const localPath = CACHE_DIR + keyToFilename(sizedKey);
   await FileSystem.downloadAsync(url, localPath);
 
-  const fileInfo = await FileSystem.getInfoAsync(localPath, { size: true });
+  const fileInfo = await FileSystem.getInfoAsync(localPath);
   const fileSize = (fileInfo as any).size ?? 0;
 
   meta[sizedKey] = { localPath, lastAccessed: Date.now(), size: fileSize };

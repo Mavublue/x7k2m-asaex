@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { Colors, Radius, Spacing } from '../constants/theme';

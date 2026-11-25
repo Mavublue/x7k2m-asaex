@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import { forwardGeocode, verifyLocation } from '../lib/geocode';
 

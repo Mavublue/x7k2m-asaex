@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   temizle: { fontSize: 16, color: Colors.onSurfaceVariant, paddingHorizontal: 4 },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalDimmer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalDimmer: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalPanel: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   modalKapat: { fontSize: 20, color: Colors.onSurface, width: 32 },

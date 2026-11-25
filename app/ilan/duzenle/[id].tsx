@@ -12,7 +12,7 @@ import FotoGridSortable from '../../../components/FotoGridSortable';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../../../lib/webview';
 import { supabase } from '../../../lib/supabase';
 import { youtubeId, youtubeNormalize } from '../../../lib/youtube';
 import { getUploadUrl, optimizePhoto, deleteFile, getWatermarkText } from '../../../lib/r2';
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
   fotoSilText: { color: '#fff', fontSize: 9 },
   fotoGoz: { position: 'absolute', top: 2, left: 2, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: Radius.full, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   fotoGozText: { fontSize: 10 },
-  gizliOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  gizliOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   gizliOverlayText: { fontSize: 22 },
   kapakBadge: { position: 'absolute', bottom: 20, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center' },
   kapakText: { color: '#fff', fontSize: 9, fontWeight: '700' },
@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
   fotoEkle: { width: 80, height: 80, borderRadius: Radius.lg, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.outlineVariant, borderStyle: 'dashed' },
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
-  fotoPendingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  fotoPendingOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   fotoPendingPct: { fontSize: 14, color: Colors.onSurface, fontWeight: '700' },
   fotoSiraBadge: { position: 'absolute', top: 2, left: '50%', marginLeft: -10, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' },
   fotoSiraBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Image, Modal, TouchableOpacity, Linking, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import { Radius } from '../constants/theme';
 import { youtubeId } from '../lib/youtube';
 import R2Image from './R2Image';
@@ -20,7 +20,7 @@ export default function YoutubeVideo({ url, kapak }: { url: string | null | unde
     <>
       <TouchableOpacity style={styles.kutu} activeOpacity={0.85} onPress={() => setAcik(true)}>
         {kapak
-          ? <R2Image source={kapak} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          ? <R2Image source={kapak} style={StyleSheet.absoluteFill} resizeMode="cover" />
           : <Image source={{ uri: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` }} style={StyleSheet.absoluteFill} resizeMode="cover" />}
         <View style={styles.rozet}><Text style={styles.rozetText}>▶ Videoyu İzle</Text></View>
       </TouchableOpacity>
