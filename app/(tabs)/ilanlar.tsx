@@ -201,7 +201,7 @@ function aktifFiltreSayisi(f: FiltreState) {
 export default function IlanlarScreen() {
   const insets = useSafeAreaInsets();
   const [ilanlar, setIlanlar] = useState<Ilan[]>([]);
-  const [filtered, setFiltered] = useState<Ilan[]>([]);
+  const sonVeri = useRef('');
   const [mapHtml, setMapHtml] = useState('');
   const [mapReady, setMapReady] = useState(false);
   const [gorunum, setGorunum] = useState<'liste' | 'harita'>('liste');
@@ -318,7 +318,8 @@ export default function IlanlarScreen() {
   useEffect(() => { fetchIlanlar(); }, []);
   useFocusEffect(useCallback(() => { fetchIlanlar(); }, []));
 
-  useEffect(() => { uygula(filtre); }, [search, filtre, ilanlar, siralama]);
+  // Senkron hesap: eskiden state+effect idi → liste dolu gelince bir kare 'ilan bulunamadı' görünüyordu
+  const filtered = useMemo(() => uygula(filtre), [search, filtre, ilanlar, siralama]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onRefresh() {
     setRefreshing(true);
@@ -328,7 +329,7 @@ export default function IlanlarScreen() {
 
   async function fetchIlanlar() {
     const cached = await cacheGetFast<Ilan[]>('panel_ilanlar_');
-    if (cached) { setIlanlar(cached); setLoading(false); }
+    if (cached) { sonVeri.current = JSON.stringify(cached); setIlanlar(cached); setLoading(false); }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     cacheRememberUid(session.user.id);
@@ -340,13 +341,17 @@ export default function IlanlarScreen() {
       .order('olusturma_tarihi', { ascending: false });
     if (data) {
       const mapped = (data as any[]).map(i => ({ ...i, ozellik_ids: (i.ilan_ozellikler ?? []).map((r: any) => r.ozellik_id) }));
-      setIlanlar(mapped);
-      cacheSet(cacheKey, mapped);
+      const imza = JSON.stringify(mapped);
+      if (imza !== sonVeri.current) {
+        sonVeri.current = imza;
+        setIlanlar(mapped);
+        cacheSet(cacheKey, mapped);
+      }
     }
     setLoading(false);
   }
 
-  function uygula(f: FiltreState) {
+  function uygula(f: FiltreState): Ilan[] {
     let r = ilanlar;
     if (f.tip !== 'Tümü') r = r.filter(i => i.tip === f.tip);
     if (f.durum === 'Aktif') r = r.filter(i => !i.durum || i.durum === 'Aktif');
@@ -399,7 +404,7 @@ export default function IlanlarScreen() {
       if (siralama === 'tarih_eski') return new Date(a.olusturma_tarihi).getTime() - new Date(b.olusturma_tarihi).getTime();
       return new Date(b.olusturma_tarihi).getTime() - new Date(a.olusturma_tarihi).getTime();
     });
-    setFiltered(r);
+    return r;
   }
 
   // Harita kabuğunu bir kez kur (yeniden yüklenmesin).
