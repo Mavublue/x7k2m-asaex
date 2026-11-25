@@ -622,7 +622,7 @@ export default function JarvisEkran() {
 
   const sonKomut = komutlar[komutlar.length - 1];
   const sonHata = !calisiyor && sonKomut?.durum === 'hata';
-  const buyukGoster = !secili || calisiyor || gonderiyor || sonHata;
+  const buyukGoster = calisiyor || gonderiyor || sonHata;  // yeni sohbette büyük halka yerine rapor ekranı
   const orbDurum: OrbDurum = calisiyor || gonderiyor ? 'dusun' : sonHata ? 'hata' : 'bos';
   const orbBoyut = 150;
   const orbMerkez = alanH * 0.42;
@@ -674,8 +674,11 @@ export default function JarvisEkran() {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               setAltta(contentSize.height - contentOffset.y - layoutMeasurement.height < 80);
             }}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+            onContentSizeChange={() => { if (secili) scrollRef.current?.scrollToEnd({ animated: false }); }}>
             {!!secili && yuklendi && !komutlar.length && <Text style={styles.soluk}>Bu sohbette mesaj yok.</Text>}
+            {!secili && !gonderiyor && (
+              <JarvisRapor musteriAc={musteriAc} ilanAc={ilanAc} acikIsAc={() => setAcikIsAcik(true)} komut={komutGonder} />
+            )}
 
             {komutlar.map(k => {
               const isliyor = k.durum === 'bekliyor' || k.durum === 'isleniyor';
@@ -759,22 +762,6 @@ export default function JarvisEkran() {
             })}
           </ScrollView>
 
-          {/* Boş sohbet: halkanın altında karşılama */}
-          {!secili && alanH > 0 && (
-            <View style={[styles.bos, { top: orbMerkez + orbBoyut / 2 + 14 }]}>
-              <Text style={styles.bosBaslik}><Karistir metin="MERHABA, BEN JARVIS" /></Text>
-              <Text style={[styles.soluk, { textAlign: 'center', lineHeight: 19 }]}>
-                Yaz, ben hazırlayayım. Sen onaylamadan hiçbir şey kaydedilmez.
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 6 }}>
-                {ORNEKLER.map(o => (
-                  <Pressable key={o} onPress={() => setMetin(o)} style={styles.ornek}>
-                    <Text style={{ color: '#bfe9f7', fontSize: 13 }}>{o}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
 
           {!altta && (
             <Pressable onPress={() => scrollRef.current?.scrollToEnd({ animated: true })} style={styles.asagi}>
@@ -972,7 +959,6 @@ const J = {
   yazi: '#d7f2ff', soluk: '#7f97ad', cizgi: 'rgba(125,211,252,0.12)',
 };
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
-const ORNEKLER = ["Mehmet'te son durum ne?", 'Bugün kim hangi ilana baktı?', "Ahmet'e not ekle: kredi onayı çıktı"];
 
 type OrbDurum = 'bos' | 'dusun' | 'hata';
 // Renk: boşta mavi, düşünürken turuncu, sorun varsa kırmızı
@@ -1284,6 +1270,12 @@ const styles = StyleSheet.create({
   aktifCizgi: { position: 'absolute', left: 0, top: 7, bottom: 7, width: 2, borderRadius: 2, backgroundColor: J.cyan },
   soluk: { fontSize: 13, color: J.soluk },
   govde: { fontSize: 14, color: J.yazi, lineHeight: 20 },
+  rk: { borderRadius: 12, borderWidth: 1, borderColor: 'rgba(125,211,252,0.16)', backgroundColor: 'rgba(8,16,28,0.78)', padding: 12, gap: 6 },
+  rkBas: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rkBaslik: { flex: 1, fontSize: 11.5, fontWeight: '800', letterSpacing: 1.3, color: '#7dd3fc' },
+  rkSayi: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  rkSatir: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5, borderTopWidth: 1, borderTopColor: 'rgba(125,211,252,0.08)' },
+  rkLink: { color: J.mavi, fontWeight: '700' },
   isKart: { padding: 11, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(125,211,252,0.14)', backgroundColor: 'rgba(255,255,255,0.025)', gap: 4 },
   isKartSimdi: { borderColor: 'rgba(251,191,36,0.45)', backgroundColor: 'rgba(251,191,36,0.05)' },
   isGrup: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, color: J.soluk, marginTop: 12, marginBottom: 2 },
@@ -1459,5 +1451,164 @@ function AcikIslerModal({ acik, kapat, musteriAc, sayiDegisti }: {
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+
+// ── 🏠 Jarvis rapor ekranı (yeni sohbet açılışı) ── tek RPC jarvis_ozet(), 0 token
+// Web karşılığı: ilan-web/app/panel/jarvis/page.tsx JarvisRapor
+function JarvisRapor({ musteriAc, ilanAc, acikIsAc, komut }: {
+  musteriAc: (id: string) => void; ilanAc: (id: string) => void; acikIsAc: () => void; komut: (t: string) => void;
+}) {
+  const [o, setO] = useState<any | null>(null);
+  const [hata, setHata] = useState(false);
+  const yukle = useCallback(async () => {
+    const { data, error } = await supabase.rpc('jarvis_ozet');
+    if (error) { setHata(true); return; }
+    setHata(false);
+    setO(data);
+  }, []);
+  useFocusEffect(useCallback(() => { yukle(); }, [yukle]));
+
+  const simdi = new Date();
+  const saat = simdi.getHours();
+  const selam = saat < 12 ? 'GÜNAYDIN' : saat < 18 ? 'İYİ GÜNLER' : 'İYİ AKŞAMLAR';
+  const tarih = simdi.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
+  const dk = (sn: number) => (sn >= 60 ? `${Math.round(sn / 60)} dk` : `${sn} sn`);
+  const once = (iso: string) => `${Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 86400000))} gün önce`;
+  const saatYaz = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '');
+  const uygunIlan = (id: string, ad: string) => komut(`${ad} için uygun ilanları göster [müşteri: ${id} ${ad}]`);
+
+  if (hata) return <Text style={styles.soluk} onPress={yukle}>Rapor yüklenemedi. Tekrar denemek için dokun.</Text>;
+  if (!o) return <Text style={styles.soluk}>Rapor hazırlanıyor…</Text>;
+
+  const ai = o.acik_isler ?? {};
+  const acan: any[] = o.bugun_acanlar ?? [];
+  const sicak: any[] = o.sicak ?? [];
+  const acmayan: any[] = o.acmayanlar ?? [];
+  const ilanlar: any[] = o.ilanlar ?? [];
+  const ev = o.eksik_veri ?? {};
+  const Bas = ({ ikon, baslik, sayi }: { ikon: string; baslik: string; sayi?: number }) => (
+    <View style={styles.rkBas}>
+      <Text style={{ fontSize: 14 }}>{ikon}</Text>
+      <Text style={[styles.mono, styles.rkBaslik]}>{baslik}</Text>
+      {sayi != null && <Text style={[styles.mono, styles.rkSayi]}>{sayi}</Text>}
+    </View>
+  );
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+        <Text style={[styles.bosBaslik, { fontSize: 17 }]}><Karistir metin={selam} /></Text>
+        <Text style={[styles.soluk, { flex: 1, fontSize: 12 }]} numberOfLines={1}>{tarih}</Text>
+        <Text style={[styles.rkLink, { fontSize: 12 }]} onPress={yukle}>↻</Text>
+      </View>
+
+      <View style={styles.rk}>
+        <Bas ikon="📋" baslik="AÇIK İŞLER" sayi={ai.toplam ?? 0} />
+        <Text style={[styles.soluk, { fontSize: 12 }]}>
+          {[ai.gecikmis ? `${ai.gecikmis} gecikmiş` : '', ai.bugun ? `${ai.bugun} bugün` : '', ai.eski ? `${ai.eski} eski` : ''].filter(Boolean).join(' · ') || 'Bugün için bekleyen iş yok'}
+        </Text>
+        {(ai.ilk ?? []).map((g: any) => (
+          <View key={g.id} style={styles.rkSatir}>
+            <Text style={[styles.govde, { flex: 1, fontSize: 13.5 }]} numberOfLines={1}>
+              {g.musteri ? <Text style={{ fontWeight: '700' }}>{g.musteri}: </Text> : null}{g.baslik}
+            </Text>
+            <Text style={[styles.soluk, { fontSize: 12 }]}>{saatYaz(g.zaman)}</Text>
+          </View>
+        ))}
+        {(ai.toplam ?? 0) > 0 && <Text style={[styles.rkLink, { fontSize: 12.5 }]} onPress={acikIsAc}>Listeyi aç →</Text>}
+      </View>
+
+      <View style={styles.rk}>
+        <Bas ikon="👀" baslik="BUGÜN LİNKİ AÇANLAR" sayi={acan.length} />
+        {!acan.length && <Text style={styles.soluk}>Bugün henüz kimse açmadı.</Text>}
+        {acan.map(a => (
+          <View key={a.musteri_id} style={styles.rkSatir}>
+            <Text style={styles.rkLink} onPress={() => musteriAc(a.musteri_id)}>{a.musteri ?? '—'}</Text>
+            <Text style={[styles.soluk, { flex: 1, fontSize: 12.5 }]} numberOfLines={1}>
+              {a.ilan_adet ? `${a.ilan_adet} ilana baktı` : 'listeyi açtı'}
+              {a.en_cok ? <> · en çok <Text style={styles.rkLink} onPress={() => ilanAc(a.en_cok.id)}>#{a.en_cok.no}</Text> ({dk(a.en_cok.sn)})</> : null}
+            </Text>
+            <Text style={[styles.soluk, { fontSize: 12 }]}>{saatYaz(a.son)}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.rk}>
+        <Bas ikon="🔥" baslik="SICAK MÜŞTERİLER" sayi={sicak.length} />
+        <Text style={[styles.soluk, { fontSize: 12 }]}>Son 3 günde ilanlarına en çok bakanlar</Text>
+        {!sicak.length && <Text style={styles.soluk}>Son 3 günde yoğun bakan yok.</Text>}
+        {sicak.map(m => (
+          <View key={m.musteri_id} style={styles.rkSatir}>
+            <Text style={styles.rkLink} onPress={() => musteriAc(m.musteri_id)}>{m.musteri ?? '—'}</Text>
+            <Text style={[styles.soluk, { flex: 1, fontSize: 12.5 }]}>{dk(m.sn)} · {m.ilan_adet} ilan</Text>
+            <Pressable onPress={() => uygunIlan(m.musteri_id, m.musteri ?? '')} style={[styles.btn, { borderColor: J.mavi, paddingVertical: 4, paddingHorizontal: 8 }]}>
+              <Text style={[styles.btnYazi, { color: J.mavi, fontSize: 11.5 }]}>Uygun ilanlar</Text>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.rk}>
+        <Bas ikon="🔕" baslik="LİNKİ AÇMAYANLAR" sayi={acmayan.length} />
+        <Text style={[styles.soluk, { fontSize: 12 }]}>Liste attın, o günden beri hiç bakmadı</Text>
+        {!acmayan.length && <Text style={styles.soluk}>Herkes attığın linklere bakmış 👍</Text>}
+        {acmayan.map(m => (
+          <View key={m.musteri_id} style={styles.rkSatir}>
+            <Text style={styles.rkLink} onPress={() => musteriAc(m.musteri_id)}>{m.musteri ?? '—'}</Text>
+            <Text style={[styles.soluk, { flex: 1, fontSize: 12.5 }]}>{once(m.son)} attın{m.adet > 1 ? ` (${m.adet} liste)` : ''}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.rk}>
+        <Bas ikon="🆕" baslik="YENİ VE FİYATI DÜŞEN" sayi={ilanlar.length} />
+        <Text style={[styles.soluk, { fontSize: 12 }]}>Son 3 gün · kaç müşterinin isteğine uyuyor</Text>
+        {!ilanlar.length && <Text style={styles.soluk}>Son 3 günde yeni ya da fiyatı düşen ilan yok.</Text>}
+        {ilanlar.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 4 }}>
+            {ilanlar.map(il => (
+              <Pressable key={il.id} onPress={() => ilanAc(il.id)} style={styles.ilanKart}>
+                {il.kapak
+                  ? <R2Image source={il.kapak} style={styles.ilanKartFoto} resizeMode="cover" size="sm" />
+                  : <View style={[styles.ilanKartFoto, styles.ilanBos]}><Text>🏠</Text></View>}
+                <View style={{ padding: 8, gap: 2 }}>
+                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: il.neden === 'yeni' ? '#34d399' : '#fb923c' }}>
+                    {il.neden === 'yeni' ? 'YENİ' : 'FİYATI DÜŞTÜ'}
+                  </Text>
+                  <Text style={styles.ilanBaslik} numberOfLines={2}>{il.baslik}</Text>
+                  <Text style={{ color: J.cyan, fontWeight: '700', fontSize: 12 }}>{fiyatYaz(il.fiyat)}</Text>
+                  <Text style={[styles.soluk, { fontSize: 11.5 }]}>{il.uyan?.adet ? `${il.uyan.adet} müşteriye uyuyor` : 'Uyan müşteri yok'}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+
+      {(ev.deniz_kara > 0 || ev.oda > 0) && (
+        <View style={[styles.rk, { borderColor: 'rgba(251,191,36,0.35)' }]}>
+          <View style={styles.rkBas}>
+            <Text style={{ fontSize: 14 }}>⚠️</Text>
+            <Text style={[styles.mono, styles.rkBaslik, { color: '#fbbf24' }]}>EKSİK VERİ</Text>
+          </View>
+          {ev.deniz_kara > 0 && (
+            <View style={styles.rkSatir}>
+              <Text style={[styles.govde, { flex: 1, fontSize: 13 }]}>{ev.deniz_kara} aktif ilanda deniz/kara tarafı işaretli değil</Text>
+              <Text style={styles.rkLink} onPress={() => komut('Deniz tarafı ya da kara tarafı işaretli olmayan aktif ilanları listele')}>Listele →</Text>
+            </View>
+          )}
+          {ev.oda > 0 && (
+            <View style={styles.rkSatir}>
+              <Text style={[styles.govde, { flex: 1, fontSize: 13 }]}>{ev.oda} konut ilanında oda sayısı boş</Text>
+              <Text style={styles.rkLink} onPress={() => komut('Oda sayısı boş olan aktif konut ilanlarını listele')}>Listele →</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      <Text style={[styles.soluk, { textAlign: 'center', fontSize: 12 }]}>Aşağıya yaz, ben hazırlayayım. Sen onaylamadan hiçbir şey kaydedilmez.</Text>
+    </View>
   );
 }
