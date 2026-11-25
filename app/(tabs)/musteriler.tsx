@@ -1,3 +1,4 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../../lib/refTipleri';
 import { useEffect, useState, useCallback, memo, useRef, useDeferredValue } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -61,8 +62,8 @@ export default function MusterilerScreen() {
   const [etiketRaw, setEtiketSearch] = useState('');
   const search = useDeferredValue(searchRaw);
   const etiketSearch = useDeferredValue(etiketRaw);
-  const searchRef = useRef<TextInput>(null);
-  const etiketRef = useRef<TextInput>(null);
+  const searchRef = useRef<TextInputRef>(null);
+  const etiketRef = useRef<TextInputRef>(null);
   const [activeDurum, setActiveDurum] = useState('Tümü');
   const [activeTip, setActiveTip] = useState('Tümü');
   const [activeKategori, setActiveKategori] = useState('Tümü');
@@ -557,7 +558,7 @@ const styles = StyleSheet.create({
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' as const },
-  modalDimmer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalDimmer: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalPanel: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '75%' as const },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

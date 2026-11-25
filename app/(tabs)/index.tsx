@@ -1,3 +1,4 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../../lib/refTipleri';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -98,7 +99,7 @@ export default function DashboardScreen() {
   const [aktifFiltre, setAktifFiltre] = useState<string | null>(null);
   const [sadeceOkunmamis, setSadeceOkunmamis] = useState(false);
   const [sortAsc, setSortAsc] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewRef>(null);
   const bildirimListRef = useRef<FlatList<any>>(null);
   const takipY = useRef(0);
   const bildirimModalPending = useRef(false);
@@ -1003,7 +1004,7 @@ export default function DashboardScreen() {
       {/* Bildirim Modalı */}
       <Modal visible={bildirimModal} animationType="slide" transparent onRequestClose={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }}>
         <View style={styles.bdModalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }} />
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => { setDetayBildirim(null); setMusteriDetay(null); setIlanData(null); setBildirimModal(false); }} />
           <View style={styles.bdModalPanel}>
             <View style={styles.bdModalHeader}>
               {(detayBildirim || musteriDetay) ? (
@@ -1632,7 +1633,7 @@ export default function DashboardScreen() {
             )}
           </View>
           {menuAcikId !== null && (
-            <TouchableOpacity style={[StyleSheet.absoluteFillObject, styles.bdMenuOverlay]} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
+            <TouchableOpacity style={[StyleSheet.absoluteFill, styles.bdMenuOverlay]} activeOpacity={1} onPress={() => setMenuAcikId(null)}>
               <View style={styles.bdMenuPopup}>
                 {menuAcikId && bildirimler.find(b => b.id === menuAcikId)?.okundu && (
                   <>
@@ -1662,7 +1663,7 @@ export default function DashboardScreen() {
       {/* Görev Panel */}
       <Modal visible={gorevPanel} animationType="slide" transparent onRequestClose={() => setGorevPanel(false)}>
         <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setGorevPanel(false)} />
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setGorevPanel(false)} />
           <View style={{ backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow }}>
               <Text style={{ fontSize: 17, fontWeight: '700', color: Colors.onSurface }}>Görevler</Text>

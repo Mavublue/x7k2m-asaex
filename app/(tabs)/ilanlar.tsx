@@ -1,3 +1,4 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../../lib/refTipleri';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -11,7 +12,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const POPUP_W = 290;
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../../lib/webview';
 import { supabase } from '../../lib/supabase';
 import { deleteIlanPhotos } from '../../lib/r2';
 import { cacheGet, cacheSet, cacheGetFast, cacheRememberUid } from '../../lib/cache';
@@ -221,7 +222,7 @@ export default function IlanlarScreen() {
   const [tumOzellikler, setTumOzellikler] = useState<{id: string; ad: string}[]>([]);
   const [siralama, setSiralama] = useState<'tarih_yeni' | 'tarih_eski' | 'fiyat_artan' | 'fiyat_azalan'>('tarih_yeni');
   const [siralamaAcik, setSiralamaAcik] = useState(false);
-  const siralamaBtnRef = useRef<View>(null);
+  const siralamaBtnRef = useRef<ViewRef>(null);
   const [siralamaBtnPos, setSiralamaBtnPos] = useState({ top: 0, right: 0 });
   const [profilSlug, setProfilSlug] = useState('');
   const [paylasModal, setPaylasModal] = useState(false);
@@ -1766,7 +1767,7 @@ export default function IlanlarScreen() {
 
       {siralamaAcik && (
         <>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setSiralamaAcik(false)} activeOpacity={1} />
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setSiralamaAcik(false)} activeOpacity={1} />
           <View style={[styles.siralamaDropdown, { position: 'absolute', top: siralamaBtnPos.top, right: siralamaBtnPos.right, zIndex: 9999 }]}>
             {([
               { key: 'tarih_yeni', label: 'En Yeni' },
@@ -2117,9 +2118,9 @@ const styles = StyleSheet.create({
   },
   kartIptal: { opacity: 0.65 },
   kartAcik: { borderWidth: 4, borderColor: '#3aaa6e' },
-  image: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  image: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   imageIptal: { opacity: 0.6 },
-  imagePlaceholder: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
+  imagePlaceholder: { ...StyleSheet.absoluteFill, backgroundColor: Colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
   imagePlaceholderText: { fontSize: 56 },
 
   gradientOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 110 },
@@ -2143,7 +2144,7 @@ const styles = StyleSheet.create({
 
   // Filtre Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalDimmer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalDimmer: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalPanel: {
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,

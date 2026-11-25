@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Alert,
   StyleSheet, ActivityIndicator, Platform, KeyboardAvoidingView,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import R2Image from './R2Image';
@@ -348,14 +348,14 @@ export default function SatildiAfisModal({ ilan, visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  dimmer: { ...StyleSheet.absoluteFillObject },
+  dimmer: { ...StyleSheet.absoluteFill },
   panel: { backgroundColor: Colors.surfaceContainerLow, borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh },
   baslik: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
   kapat: { fontSize: 22, color: Colors.onSurfaceVariant },
   previewWrap: { aspectRatio: 9 / 16, backgroundColor: '#0f172a', borderRadius: 12, overflow: 'hidden', marginBottom: 16 },
   preview: { flex: 1, backgroundColor: '#0f172a' },
-  previewOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' },
+  previewOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' },
   label: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 8 },
   empty: { padding: 24, backgroundColor: Colors.surface, borderRadius: 8, alignItems: 'center' },
   emptyText: { color: Colors.onSurfaceVariant, fontSize: 13 },

@@ -1,3 +1,4 @@
+import type { ScrollViewRef, TextInputRef, ViewRef } from '../../lib/refTipleri';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -86,13 +87,13 @@ export default function JarvisEkran() {
   const [hafizaAcik, setHafizaAcik] = useState(false);
   const [hafiza, setHafiza] = useState<{ id: string; metin: string }[]>([]);
   const [hafizaYeni, setHafizaYeni] = useState('');
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewRef>(null);
   const [alanH, setAlanH] = useState(0);
   const [alanW, setAlanW] = useState(0);
   const [altta, setAltta] = useState(true);
   const [odak, setOdak] = useState(false);
   const insets = useSafeAreaInsets();
-  const kokRef = useRef<View>(null);
+  const kokRef = useRef<ViewRef>(null);
   const [kbPad, setKbPad] = useState(0);
   // Klavye: alttaki boşluk = ekranın altı ile klavyenin üstü arası (tab bar payı ölçümle düşer)
   useEffect(() => {

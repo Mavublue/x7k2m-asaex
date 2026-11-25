@@ -1097,7 +1097,7 @@ const styles = StyleSheet.create({
   },
   fotoGozText: { fontSize: 11 },
   gizliOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -1110,7 +1110,7 @@ const styles = StyleSheet.create({
   },
   fotoEkleIcon: { fontSize: 22, color: Colors.primary },
   fotoEkleText: { fontSize: 10, color: Colors.onSurfaceVariant, marginTop: 2 },
-  fotoPendingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  fotoPendingOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   fotoPendingPct: { fontSize: 14, color: Colors.onSurface, fontWeight: '700' },
   fotoSiraBadge: {
     position: 'absolute', top: 4, left: '50%', marginLeft: -10,

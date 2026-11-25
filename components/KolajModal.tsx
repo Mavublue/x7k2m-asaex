@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, Modal, Alert,
   StyleSheet, ActivityIndicator,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../lib/webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import R2Image from './R2Image';
@@ -454,7 +454,7 @@ export default function KolajModal({ ilan, visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  dimmer: { ...StyleSheet.absoluteFillObject },
+  dimmer: { ...StyleSheet.absoluteFill },
   panel: { backgroundColor: Colors.surfaceContainerLow, borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '94%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerHigh },
   baslik: { fontSize: 16, fontWeight: '700', color: Colors.onSurface },
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: Colors.onSurface, marginBottom: 6 },
   previewWrap: { aspectRatio: 1333 / 1999, backgroundColor: '#000', borderRadius: 12, overflow: 'hidden', marginBottom: 8 },
   preview: { flex: 1, backgroundColor: '#000' },
-  previewOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' },
+  previewOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, borderWidth: 1.5, borderColor: Colors.outlineVariant, backgroundColor: Colors.surfaceContainerLow },
   chipAktif: { borderColor: Colors.primary, backgroundColor: 'rgba(0,35,111,0.08)' },
   chipText: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
