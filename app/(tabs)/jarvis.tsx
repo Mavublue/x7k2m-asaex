@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Linking,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Linking, Animated, Easing,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
@@ -86,6 +87,10 @@ export default function JarvisEkran() {
   const [hafiza, setHafiza] = useState<{ id: string; metin: string }[]>([]);
   const [hafizaYeni, setHafizaYeni] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const [alanH, setAlanH] = useState(0);
+  const [alanW, setAlanW] = useState(0);
+  const [altta, setAltta] = useState(true);
+  const [odak, setOdak] = useState(false);
 
   const sohbetleriYukle = useCallback(async () => {
     const { data } = await supabase.from('jarvis_sohbetler').select('id, baslik, guncelleme_at')
@@ -462,11 +467,11 @@ export default function JarvisEkran() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {(kart.veri.secenekler ?? []).map((s: any, i: number) => (
               <View key={i} style={{ flexDirection: 'row', gap: 2 }}>
-                <Pressable disabled={mesgul === kart.id} onPress={() => secenekSec(kart, s.komut)} style={[styles.btn, { borderColor: '#2563eb' }]}>
-                  <Text style={[styles.btnYazi, { color: '#60a5fa' }]}>{s.etiket}</Text>
+                <Pressable disabled={mesgul === kart.id} onPress={() => secenekSec(kart, s.komut)} style={[styles.btn, { borderColor: J.mavi }]}>
+                  <Text style={[styles.btnYazi, { color: J.mavi }]}>{s.etiket}</Text>
                 </Pressable>
                 {!!s.musteri_id && (
-                  <Pressable onPress={() => musteriAc(s.musteri_id)} hitSlop={6} style={[styles.btn, { borderColor: '#2563eb', paddingHorizontal: 10 }]}>
+                  <Pressable onPress={() => musteriAc(s.musteri_id)} hitSlop={6} style={[styles.btn, { borderColor: J.mavi, paddingHorizontal: 10 }]}>
                     <Text style={styles.btnYazi}>👁</Text>
                   </Pressable>
                 )}
@@ -478,101 +483,158 @@ export default function JarvisEkran() {
     );
   }
 
+  const sonKomut = komutlar[komutlar.length - 1];
+  const sonHata = !calisiyor && sonKomut?.durum === 'hata';
+  const buyukGoster = !secili || calisiyor || gonderiyor || sonHata;
+  const orbDurum: OrbDurum = calisiyor || gonderiyor ? 'dusun' : sonHata ? 'hata' : 'bos';
+  const orbBoyut = 150;
+  const orbMerkez = alanH * 0.42;
+
+  let sonGrup = '';
+
   return (
     <SafeAreaView style={styles.ekran} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Üst şerit */}
-        <View style={styles.ust}>
+        <LinearGradient colors={['rgba(34,211,238,0.09)', 'rgba(34,211,238,0)']} style={styles.ust}>
           <Pressable onPress={() => { sohbetleriYukle(); setYanAcik(true); }} hitSlop={8} style={styles.ustBtn}>
-            <Text style={{ fontSize: 18, color: Colors.onSurface }}>☰</Text>
+            <Text style={{ fontSize: 18, color: J.cyan }}>☰</Text>
           </Pressable>
-          <Text style={styles.ustBaslik} numberOfLines={1}>
-            🤖 {secili ? (sohbetler.find(s => s.id === secili)?.baslik ?? 'Jarvis') : 'Yeni sohbet'}
-          </Text>
+          <Orb boyut={30} durum={calisiyor ? 'dusun' : sonHata ? 'hata' : 'bos'} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.logo}>J.A.R.V.I.S</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={[styles.nokta, { backgroundColor: calisiyor ? '#f97316' : sonHata ? '#ef4444' : '#34d399', shadowColor: calisiyor ? '#f97316' : sonHata ? '#ef4444' : '#34d399' }]} />
+              <Text style={[styles.mono, { fontSize: 10.5, color: J.soluk }]}>{calisiyor ? 'İŞLENİYOR' : sonHata ? 'SORUN VAR' : 'ÇEVRİMİÇİ'}</Text>
+              <Text numberOfLines={1} style={{ flex: 1, fontSize: 11.5, color: J.soluk }}>
+                · {secili ? (sohbetler.find(s => s.id === secili)?.baslik ?? 'Jarvis') : 'Yeni sohbet'}
+              </Text>
+            </View>
+          </View>
           <Pressable onPress={yeniSohbet} hitSlop={8} style={styles.ustBtn}>
-            <Text style={{ fontSize: 20, color: Colors.primary, fontWeight: '700' }}>＋</Text>
+            <Text style={{ fontSize: 20, color: J.cyan, fontWeight: '700' }}>＋</Text>
           </Pressable>
-        </View>
+        </LinearGradient>
 
-        {/* Mesajlar */}
-        <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 16, gap: 14 }}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
-          {!secili && (
-            <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 12 }}>
-              <Text style={{ fontSize: 34 }}>🤖</Text>
-              <Text style={[styles.soluk, { textAlign: 'center', marginTop: 6, lineHeight: 19 }]}>
-                Yaz, Jarvis hazırlasın; sen onaylamadan hiçbir şey kaydedilmez.
+        {/* Mesajlar: HUD ızgara zemin + büyük halka arkada */}
+        <View style={{ flex: 1, backgroundColor: J.zemin, overflow: 'hidden' }}
+          onLayout={e => { setAlanH(e.nativeEvent.layout.height); setAlanW(e.nativeEvent.layout.width); }}>
+          <Izgara w={alanW} h={alanH} />
+          <LinearGradient pointerEvents="none" colors={['rgba(34,211,238,0.10)', 'rgba(34,211,238,0)']} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 220 }} />
+          {alanH > 0 && (
+            <BuyukOrb gor={buyukGoster} boyut={orbBoyut} durum={orbDurum}
+              style={{ top: orbMerkez - orbBoyut / 2, left: alanW / 2 - orbBoyut / 2 }} />
+          )}
+
+          <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 16, gap: 16 }}
+            keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
+            onScroll={e => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+              setAltta(contentSize.height - contentOffset.y - layoutMeasurement.height < 80);
+            }}
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+            {!!secili && yuklendi && !komutlar.length && <Text style={styles.soluk}>Bu sohbette mesaj yok.</Text>}
+
+            {komutlar.map(k => {
+              const isliyor = k.durum === 'bekliyor' || k.durum === 'isleniyor';
+              return (
+                <View key={k.id} style={{ gap: 6 }}>
+                  {/* Kullanıcı */}
+                  <View style={styles.balonBen}>
+                    <Text style={{ color: '#eafcff', fontSize: 14 }}>{k.metin}</Text>
+                  </View>
+                  {/* Jarvis */}
+                  <View style={[{ alignSelf: 'flex-start', maxWidth: '92%' }, (k.jarvis_kartlar ?? []).length ? { width: '92%' } : null]}>
+                    <View style={styles.jEtiket}>
+                      <Orb boyut={14} durum={isliyor ? 'dusun' : k.durum === 'hata' ? 'hata' : 'bos'} />
+                      <Text style={[styles.mono, { fontSize: 10, fontWeight: '700', letterSpacing: 2, color: J.cyan }]}>JARVIS</Text>
+                    </View>
+                    <View style={styles.balonJarvis}>
+                      {isliyor ? <Nabiz><Text style={[styles.govde, { color: '#fb923c', fontWeight: '600' }]}>Analiz ediyorum…</Text></Nabiz>
+                        : <Text style={[styles.govde, k.durum === 'hata' && { color: '#f87171' }]}>
+                          {k.durum === 'hata' ? `⚠️ Yapamadım: ${k.hata ?? ''}` : (k.cevap ?? '')}
+                        </Text>}
+                      {(k.jarvis_kartlar ?? []).map(kart => {
+                        const renk = kart.durum === 'onaylandi' ? '#34d399' : kart.durum === 'reddedildi' ? '#64748b' : '#fbbf24';
+                        return (
+                          <HudKart key={kart.id} renk={renk} tara={kart.durum === 'bekliyor'} soluk={kart.durum === 'reddedildi'}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+                              <Text style={[styles.govde, { flex: 1, fontSize: 12, fontWeight: '700', color: '#cfe3ee' }]}
+                                onPress={kart.musteri_id ? () => musteriAc(kart.musteri_id!) : undefined}>
+                                {ROZET[kart.tur]}{kart.musteri_id ? ` — ${musteriler[kart.musteri_id] ?? '…'} 👁` : ''}
+                              </Text>
+                              <Text style={[styles.mono, styles.kartDurum, { color: renk, borderColor: renk + '77' }]}>
+                                {kart.durum === 'onaylandi' ? '✓ YAPILDI' : kart.durum === 'reddedildi' ? 'REDDEDİLDİ' : 'ONAY BEKLİYOR'}
+                              </Text>
+                            </View>
+                            {kartGovde(kart)}
+                            {kart.durum === 'bekliyor' && kart.tur !== 'soru' && (
+                              <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                                <Pressable disabled={mesgul === kart.id} onPress={() => onayla(kart)} style={[styles.btn, { backgroundColor: '#34d399', borderColor: '#34d399' }]}>
+                                  <Text style={[styles.btnYazi, { color: '#03121a' }]}>{kart.tur === 'ilan_gonder' ? 'Gönder…' : FORM_KART.includes(kart.tur) ? 'Formu aç…' : 'Onayla'}</Text>
+                                </Pressable>
+                                {(kart.tur === 'not' || kart.tur === 'gorev') && !duzenle[kart.id] && (
+                                  <Pressable disabled={mesgul === kart.id} style={[styles.btn, { borderColor: J.mavi }]}
+                                    onPress={() => setDuzenle(p => ({ ...p, [kart.id]: kart.tur === 'not' ? { metin: kart.veri.metin } : { baslik: kart.veri.baslik, hedef_tarih: kart.veri.hedef_tarih } }))}>
+                                    <Text style={[styles.btnYazi, { color: J.mavi }]}>Düzenle</Text>
+                                  </Pressable>
+                                )}
+                                <Pressable disabled={mesgul === kart.id} onPress={() => reddet(kart)} style={[styles.btn, { borderColor: J.soluk }]}>
+                                  <Text style={[styles.btnYazi, { color: J.soluk }]}>Reddet</Text>
+                                </Pressable>
+                              </View>
+                            )}
+                            {kart.durum === 'bekliyor' && kart.tur === 'soru' && (
+                              <Pressable disabled={mesgul === kart.id} onPress={() => reddet(kart)} style={[styles.btn, { borderColor: J.soluk, marginTop: 8, alignSelf: 'flex-start' }]}>
+                                <Text style={[styles.btnYazi, { color: J.soluk }]}>Vazgeç</Text>
+                              </Pressable>
+                            )}
+                          </HudKart>
+                        );
+                      })}
+                    </View>
+                    <Text style={[styles.mono, styles.saat]}>
+                      {new Date(k.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      {k.sure_ms != null ? ` · ⚡ ${(k.sure_ms / 1000).toFixed(1)} sn` : ''}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          {/* Boş sohbet: halkanın altında karşılama */}
+          {!secili && alanH > 0 && (
+            <View style={[styles.bos, { top: orbMerkez + orbBoyut / 2 + 14 }]}>
+              <Text style={styles.bosBaslik}><Karistir metin="MERHABA, BEN JARVIS" /></Text>
+              <Text style={[styles.soluk, { textAlign: 'center', lineHeight: 19 }]}>
+                Yaz, ben hazırlayayım. Sen onaylamadan hiçbir şey kaydedilmez.
               </Text>
-              <Text style={[styles.soluk, { textAlign: 'center', marginTop: 6, color: Colors.outline }]}>
-                Örn: “Ahmet'e not ekle: kredi onayı çıktı, bir de bahçe katı 5 ml'ye kadar ilanları atalım”
-              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 6 }}>
+                {ORNEKLER.map(o => (
+                  <Pressable key={o} onPress={() => setMetin(o)} style={styles.ornek}>
+                    <Text style={{ color: '#bfe9f7', fontSize: 13 }}>{o}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           )}
-          {!!secili && yuklendi && !komutlar.length && <Text style={styles.soluk}>Bu sohbette mesaj yok.</Text>}
 
-          {komutlar.map(k => (
-            <View key={k.id} style={{ gap: 6 }}>
-              {/* Kullanıcı */}
-              <View style={styles.balonBen}>
-                <Text style={{ color: '#fff', fontSize: 14 }}>{k.metin}</Text>
-              </View>
-              {/* Jarvis */}
-              <View style={[styles.balonJarvis, (k.jarvis_kartlar ?? []).length ? { width: '92%' } : null]}>
-                <Text style={[styles.govde, k.durum === 'hata' && { color: '#f87171' }, (k.durum === 'bekliyor' || k.durum === 'isleniyor') && { color: Colors.outline }]}>
-                  {k.durum === 'bekliyor' || k.durum === 'isleniyor' ? '⏳ Jarvis hazırlıyor…'
-                    : k.durum === 'hata' ? `⚠️ Yapamadım: ${k.hata ?? ''}` : (k.cevap ?? '')}
-                </Text>
-              {(k.jarvis_kartlar ?? []).map(kart => (
-                <View key={kart.id} style={[styles.kart,
-                  kart.durum === 'onaylandi' ? { borderColor: '#166534', backgroundColor: '#052e16' }
-                    : kart.durum === 'reddedildi' ? { opacity: 0.5 } : { borderColor: '#854d0e', backgroundColor: '#1c1404' }]}>
-                  <Text style={[styles.soluk, { fontWeight: '700', marginBottom: 6 }]}
-                    onPress={kart.musteri_id ? () => musteriAc(kart.musteri_id!) : undefined}>
-                    {ROZET[kart.tur]}{kart.musteri_id ? ` — ${musteriler[kart.musteri_id] ?? '…'} 👁` : ''}
-                    {kart.durum === 'onaylandi' ? ' · ✓ yapıldı' : kart.durum === 'reddedildi' ? ' · reddedildi' : ''}
-                  </Text>
-                  {kartGovde(kart)}
-                  {kart.durum === 'bekliyor' && kart.tur !== 'soru' && (
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                      <Pressable disabled={mesgul === kart.id} onPress={() => onayla(kart)} style={[styles.btn, { backgroundColor: '#16a34a', borderColor: '#16a34a' }]}>
-                        <Text style={[styles.btnYazi, { color: '#fff' }]}>{kart.tur === 'ilan_gonder' ? 'Gönder…' : FORM_KART.includes(kart.tur) ? 'Formu aç…' : 'Onayla'}</Text>
-                      </Pressable>
-                      {(kart.tur === 'not' || kart.tur === 'gorev') && !duzenle[kart.id] && (
-                        <Pressable disabled={mesgul === kart.id} style={[styles.btn, { borderColor: '#2563eb' }]}
-                          onPress={() => setDuzenle(p => ({ ...p, [kart.id]: kart.tur === 'not' ? { metin: kart.veri.metin } : { baslik: kart.veri.baslik, hedef_tarih: kart.veri.hedef_tarih } }))}>
-                          <Text style={[styles.btnYazi, { color: '#60a5fa' }]}>Düzenle</Text>
-                        </Pressable>
-                      )}
-                      <Pressable disabled={mesgul === kart.id} onPress={() => reddet(kart)} style={[styles.btn, { borderColor: Colors.outline }]}>
-                        <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>Reddet</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                  {kart.durum === 'bekliyor' && kart.tur === 'soru' && (
-                    <Pressable disabled={mesgul === kart.id} onPress={() => reddet(kart)} style={[styles.btn, { borderColor: Colors.outline, marginTop: 8, alignSelf: 'flex-start' }]}>
-                      <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>Vazgeç</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
-              </View>
-              <Text style={styles.saat}>
-                {new Date(k.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                {k.sure_ms != null ? ` · ${(k.sure_ms / 1000).toFixed(1)} sn` : ''}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
+          {!altta && (
+            <Pressable onPress={() => scrollRef.current?.scrollToEnd({ animated: true })} style={styles.asagi}>
+              <Text style={{ color: J.cyan, fontSize: 16 }}>↓</Text>
+            </Pressable>
+          )}
+        </View>
 
         {/* Yazma kutusu */}
         <View style={styles.yazAlan}>
-          <TextInput value={metin} onChangeText={setMetin} placeholder="Jarvis'e yaz…" placeholderTextColor={Colors.outline}
-            multiline style={[styles.input, { flex: 1, minHeight: 44, maxHeight: 120 }]} />
-          <Pressable onPress={() => komutGonder(metin)} disabled={gonderiyor || !metin.trim()}
-            style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, justifyContent: 'center', opacity: gonderiyor || !metin.trim() ? 0.5 : 1 }]}>
-            {gonderiyor ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnYazi, { color: '#fff' }]}>Gönder</Text>}
-          </Pressable>
+          <View style={[styles.yaz, odak && { borderColor: 'rgba(34,211,238,0.6)', shadowOpacity: 0.35 }]}>
+            <TextInput value={metin} onChangeText={setMetin} placeholder="Jarvis'e yaz…" placeholderTextColor="#4d6a80"
+              onFocus={() => setOdak(true)} onBlur={() => setOdak(false)}
+              multiline style={{ flex: 1, minHeight: 40, maxHeight: 120, color: J.yazi, fontSize: 15, paddingVertical: 8 }} />
+            <GonderBtn aktif={!!metin.trim() && !gonderiyor} yukleniyor={gonderiyor} onPress={() => komutGonder(metin)} />
+          </View>
         </View>
       </KeyboardAvoidingView>
 
@@ -580,38 +642,45 @@ export default function JarvisEkran() {
       <Modal visible={yanAcik} transparent animationType="fade" onRequestClose={() => setYanAcik(false)}>
         <View style={{ flex: 1, flexDirection: 'row' }}>
           <SafeAreaView style={styles.yan} edges={['top', 'bottom']}>
-            <View style={{ flexDirection: 'row', gap: 6, padding: 12, borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant }}>
-              <Pressable onPress={yeniSohbet} style={[styles.btn, { flex: 1, backgroundColor: Colors.primary, borderColor: Colors.primary, alignItems: 'center' }]}>
-                <Text style={[styles.btnYazi, { color: '#fff' }]}>＋ Yeni sohbet</Text>
+            <View style={{ flexDirection: 'row', gap: 6, padding: 12 }}>
+              <Pressable onPress={yeniSohbet} style={[styles.yeniBtn, { flex: 1 }]}>
+                <Text style={[styles.btnYazi, { color: J.cyan }]}>＋ Yeni sohbet</Text>
               </Pressable>
-              <Pressable onPress={() => setYanAcik(false)} style={[styles.btn, { borderColor: Colors.outline }]}>
-                <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>✕</Text>
+              <Pressable onPress={() => setYanAcik(false)} style={[styles.btn, { borderColor: J.soluk }]}>
+                <Text style={[styles.btnYazi, { color: J.soluk }]}>✕</Text>
               </Pressable>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 6 }}>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 8 }}>
               {!sohbetler.length && <Text style={[styles.soluk, { padding: 12 }]}>Henüz sohbet yok.</Text>}
               {sohbetler.map(s => {
                 const aktif = s.id === secili;
+                const grup = grupAdi(s.guncelleme_at);
+                const baslikGoster = grup !== sonGrup;
+                sonGrup = grup;
                 return (
-                  <Pressable key={s.id} onPress={() => { setSecili(s.id); setYanAcik(false); }} onLongPress={() => sohbetIslem(s)}
-                    style={[styles.sohbetSatir, aktif && { backgroundColor: 'rgba(229,57,53,0.12)' }]}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: aktif ? '700' : '500', color: aktif ? Colors.primary : Colors.onSurface }}>{s.baslik}</Text>
-                      <Text style={{ fontSize: 11, color: Colors.outline }}>{kisaTarih(s.guncelleme_at)}</Text>
-                    </View>
-                    <Pressable onPress={() => sohbetIslem(s)} hitSlop={8} style={{ padding: 4 }}>
-                      <Text style={{ color: Colors.onSurfaceVariant, fontSize: 16 }}>⋯</Text>
+                  <View key={s.id}>
+                    {baslikGoster && <Text style={[styles.mono, styles.grup]}>{grup.toLocaleUpperCase('tr-TR')}</Text>}
+                    <Pressable onPress={() => { setSecili(s.id); setYanAcik(false); }} onLongPress={() => sohbetIslem(s)}
+                      style={[styles.sohbetSatir, aktif && { backgroundColor: 'rgba(34,211,238,0.13)' }]}>
+                      {aktif && <View style={styles.aktifCizgi} />}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: aktif ? '700' : '500', color: aktif ? '#fff' : '#b9d3e3' }}>{s.baslik}</Text>
+                        <Text style={[styles.mono, { fontSize: 10.5, color: J.soluk }]}>{kisaTarih(s.guncelleme_at)}</Text>
+                      </View>
+                      <Pressable onPress={() => sohbetIslem(s)} hitSlop={8} style={{ padding: 4 }}>
+                        <Text style={{ color: J.soluk, fontSize: 16 }}>⋯</Text>
+                      </Pressable>
                     </Pressable>
-                  </Pressable>
+                  </View>
                 );
               })}
             </ScrollView>
             <Pressable onPress={() => { setYanAcik(false); hafizaYukle(); setTimeout(() => setHafizaAcik(true), 350); }}
-              style={[styles.btn, { borderColor: Colors.outline, margin: 10, alignItems: 'center' }]}>
-              <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>🧠 Hafıza</Text>
+              style={[styles.btn, { borderColor: J.mavi, margin: 10, alignItems: 'center' }]}>
+              <Text style={[styles.btnYazi, { color: J.mavi }]}>🧠 Hafıza</Text>
             </Pressable>
           </SafeAreaView>
-          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setYanAcik(false)} />
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,4,10,0.7)' }} onPress={() => setYanAcik(false)} />
         </View>
         {/* Yeniden adlandır (panelin içinde, iç içe Modal açmamak için) */}
         {!!adDegis && (
@@ -621,11 +690,11 @@ export default function JarvisEkran() {
               <TextInput autoFocus value={adDegis.baslik} onChangeText={t => setAdDegis({ id: adDegis.id, baslik: t })}
                 onSubmitEditing={adKaydet} returnKeyType="done" style={styles.input} />
               <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'flex-end' }}>
-                <Pressable onPress={() => setAdDegis(null)} style={[styles.btn, { borderColor: Colors.outline }]}>
-                  <Text style={[styles.btnYazi, { color: Colors.onSurfaceVariant }]}>Vazgeç</Text>
+                <Pressable onPress={() => setAdDegis(null)} style={[styles.btn, { borderColor: J.soluk }]}>
+                  <Text style={[styles.btnYazi, { color: J.soluk }]}>Vazgeç</Text>
                 </Pressable>
-                <Pressable onPress={adKaydet} style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}>
-                  <Text style={[styles.btnYazi, { color: '#fff' }]}>Kaydet</Text>
+                <Pressable onPress={adKaydet} style={[styles.btn, { backgroundColor: J.cyan, borderColor: J.cyan }]}>
+                  <Text style={[styles.btnYazi, { color: '#03121a' }]}>Kaydet</Text>
                 </Pressable>
               </View>
             </View>
@@ -648,17 +717,18 @@ export default function JarvisEkran() {
                 {!hafiza.length && <Text style={styles.soluk}>Henüz bir şey yok. Jarvis'e “bunu unutma: …” diyebilirsin.</Text>}
                 {hafiza.map(h => (
                   <View key={h.id} style={[styles.satir, { marginBottom: 6 }]}>
+                    <Text style={{ color: J.cyan }}>▸</Text>
                     <Text style={[styles.govde, { flex: 1 }]}>{h.metin}</Text>
                     <Pressable onPress={() => hafizaSil(h.id)} hitSlop={8}><Text>🗑</Text></Pressable>
                   </View>
                 ))}
               </ScrollView>
-              <View style={{ flexDirection: 'row', gap: 8, padding: 14, borderTopWidth: 1, borderTopColor: Colors.outlineVariant }}>
-                <TextInput value={hafizaYeni} onChangeText={setHafizaYeni} placeholder="Yeni madde…" placeholderTextColor={Colors.outline}
+              <View style={{ flexDirection: 'row', gap: 8, padding: 14, borderTopWidth: 1, borderTopColor: J.cizgi }}>
+                <TextInput value={hafizaYeni} onChangeText={setHafizaYeni} placeholder="Yeni madde…" placeholderTextColor="#4d6a80"
                   maxLength={300} onSubmitEditing={hafizaEkle} returnKeyType="done" style={[styles.input, { flex: 1 }]} />
                 <Pressable onPress={hafizaEkle} disabled={!hafizaYeni.trim()}
-                  style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, justifyContent: 'center', opacity: hafizaYeni.trim() ? 1 : 0.5 }]}>
-                  <Text style={[styles.btnYazi, { color: '#fff' }]}>Ekle</Text>
+                  style={[styles.btn, { backgroundColor: J.cyan, borderColor: J.cyan, justifyContent: 'center', opacity: hafizaYeni.trim() ? 1 : 0.5 }]}>
+                  <Text style={[styles.btnYazi, { color: '#03121a' }]}>Ekle</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -670,43 +740,43 @@ export default function JarvisEkran() {
         <Pressable style={styles.perde} onPress={() => setPopup(null)}>
           <Pressable style={styles.popup} onPress={() => {}}>
             {popup?._yukleniyor ? (
-              <ActivityIndicator style={{ padding: 30 }} color={Colors.primary} />
+              <View style={{ padding: 30, alignItems: 'center' }}><Orb boyut={60} durum="dusun" /></View>
             ) : popup && (
               <>
                 <View style={styles.popupUst}>
                   <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                     <Text style={[styles.govde, { fontSize: 16, fontWeight: '800' }]}>{popup.ad} {popup.soyad ?? ''}</Text>
-                    {!!popup.etiketler && <Text style={styles.soluk}>#{popup.etiketler}</Text>}
-                    {!!popup.durum && <Text style={[styles.etiket, popup.durum === 'Aktif' && { color: '#3aaa6e' }]}>{popup.durum}</Text>}
+                    {!!popup.etiketler && <Text style={[styles.mono, styles.soluk]}>#{popup.etiketler}</Text>}
+                    {!!popup.durum && <Text style={[styles.etiket, popup.durum === 'Aktif' && { color: '#34d399', backgroundColor: 'rgba(52,211,153,0.15)' }]}>{popup.durum}</Text>}
                   </View>
                   {!!popup.telefon && (
                     <Pressable onPress={() => Linking.openURL(`tel:${popup.telefon}`)} style={styles.ikonBtn}><Text>📞</Text></Pressable>
                   )}
                   <Pressable onPress={() => { const id = popup.id; setPopup(null); router.push(`/musteri/${id}` as any); }}
-                    style={[styles.btn, { backgroundColor: Colors.primary, borderColor: Colors.primary, paddingVertical: 6 }]}>
-                    <Text style={[styles.btnYazi, { color: '#fff' }]}>Detay →</Text>
+                    style={[styles.btn, { backgroundColor: J.cyan, borderColor: J.cyan, paddingVertical: 6 }]}>
+                    <Text style={[styles.btnYazi, { color: '#03121a' }]}>Detay →</Text>
                   </Pressable>
                   <Pressable onPress={() => setPopup(null)} hitSlop={8}><Text style={[styles.soluk, { fontSize: 20 }]}>✕</Text></Pressable>
                 </View>
                 <ScrollView contentContainerStyle={{ padding: 14, gap: 16 }}>
                   {popup.iletisim.length > 0 && (
                     <View>
-                      <Text style={styles.bolum}>EK KİŞİLER</Text>
+                      <Text style={[styles.mono, styles.bolum]}>EK KİŞİLER</Text>
                       {popup.iletisim.map((k: any) => (
                         <Pressable key={k.id} onPress={() => k.telefon && Linking.openURL(`tel:${k.telefon}`)} style={styles.satir}>
                           <Text style={[styles.govde, { flex: 1, fontWeight: '600' }]}>{k.ad}{k.tip ? `  · ${k.tip}` : ''}</Text>
-                          {!!k.telefon && <Text style={styles.soluk}>📞 {k.telefon}</Text>}
+                          {!!k.telefon && <Text style={{ fontSize: 13, color: J.cyan }}>📞 {k.telefon}</Text>}
                         </Pressable>
                       ))}
                     </View>
                   )}
                   {popup.istekler.length > 0 && (
                     <View>
-                      <Text style={styles.bolum}>İSTEKLER</Text>
+                      <Text style={[styles.mono, styles.bolum]}>İSTEKLER</Text>
                       {popup.istekler.map((i: any, idx: number) => (
                         <View key={i.id} style={styles.istek}>
                           <Text style={[styles.govde, { fontSize: 13 }]}>
-                            {`#${idx + 1}  `}
+                            <Text style={{ color: J.cyan, fontWeight: '700' }}>{`#${idx + 1}  `}</Text>
                             {[i.satilik_kiralik,
                               (i.butce_min || i.butce_max) ? `${i.butce_min ? fiyatYaz(i.butce_min) : '—'} – ${i.butce_max ? fiyatYaz(i.butce_max) : '—'}` : null,
                               i.tip, i.tercih_konum ? String(i.tercih_konum).split('|').join(', ') : null,
@@ -717,11 +787,11 @@ export default function JarvisEkran() {
                     </View>
                   )}
                   <View>
-                    <Text style={styles.bolum}>SON NOTLAR</Text>
+                    <Text style={[styles.mono, styles.bolum]}>SON NOTLAR</Text>
                     {popup.notlar.length === 0 ? <Text style={styles.soluk}>Not yok.</Text> : popup.notlar.map((n: any) => (
                       <View key={n.id} style={styles.not}>
-                        {!!n.tarih && <Text style={{ fontSize: 11, fontWeight: '600', color: '#fbbf24', marginBottom: 3 }}>{tarihYaz(n.tarih, true)}</Text>}
-                        <Text style={[styles.govde, { fontSize: 13, lineHeight: 19 }]}>{n.icerik}</Text>
+                        {!!n.tarih && <Text style={[styles.mono, { fontSize: 11, fontWeight: '600', color: '#fbbf24', marginBottom: 3 }]}>{tarihYaz(n.tarih, true)}</Text>}
+                        <Text style={{ fontSize: 13, lineHeight: 19, color: '#fde68a' }}>{n.icerik}</Text>
                       </View>
                     ))}
                   </View>
@@ -735,56 +805,273 @@ export default function JarvisEkran() {
   );
 }
 
+// ───────── Jarvis HUD parçaları (web: ilan-web/app/panel/jarvis/page.tsx JV_CSS) ─────────
+const J = {
+  zemin: '#060a12', panel: 'rgba(10,18,32,0.88)', cyan: '#22d3ee', mavi: '#38bdf8',
+  yazi: '#d7f2ff', soluk: '#7f97ad', cizgi: 'rgba(125,211,252,0.12)',
+};
+const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
+const ORNEKLER = ["Mehmet'te son durum ne?", 'Bugün kim hangi ilana baktı?', "Ahmet'e not ekle: kredi onayı çıktı"];
+
+type OrbDurum = 'bos' | 'dusun' | 'hata';
+// Renk: boşta mavi, düşünürken turuncu, sorun varsa kırmızı
+const ORB_RENK: Record<OrbDurum, { o: string; o2: string; o3: string; oc: string }> = {
+  bos: { o: '#22d3ee', o2: '#38bdf8', o3: '#67e8f9', oc: '#cffafe' },
+  dusun: { o: '#f97316', o2: '#fb923c', o3: '#fdba74', oc: '#ffedd5' },
+  hata: { o: '#ef4444', o2: '#f87171', o3: '#fca5a5', oc: '#fee2e2' },
+};
+
+function donen(val: Animated.Value, sure: number) {
+  val.setValue(0);
+  return Animated.loop(Animated.timing(val, { toValue: 1, duration: sure, easing: Easing.linear, useNativeDriver: true }));
+}
+
+// Ark reaktör halkası: boşta yavaş döner, düşünürken hızlanır + sonar dalgası
+function Orb({ boyut, durum }: { boyut: number; durum: OrbDurum }) {
+  const r1 = useRef(new Animated.Value(0)).current;
+  const r2 = useRef(new Animated.Value(0)).current;
+  const r3 = useRef(new Animated.Value(0)).current;
+  const nefes = useRef(new Animated.Value(0)).current;
+  const p1 = useRef(new Animated.Value(0)).current;
+  const p2 = useRef(new Animated.Value(0)).current;
+  const dusun = durum === 'dusun';
+  const yavas = durum === 'hata' ? 3 : 1;
+
+  useEffect(() => {
+    const anim = [
+      donen(r1, (dusun ? 1300 : 7000) * yavas),
+      donen(r2, (dusun ? 2200 : 12000) * yavas),
+      donen(r3, (dusun ? 800 : 3500) * yavas),
+      Animated.loop(Animated.sequence([
+        Animated.timing(nefes, { toValue: 1, duration: dusun ? 450 : 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(nefes, { toValue: 0, duration: dusun ? 450 : 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])),
+    ];
+    if (dusun) {
+      anim.push(donen(p1, 1600));
+      anim.push(Animated.sequence([Animated.delay(800), donen(p2, 1600)]));
+    } else { p1.setValue(0); p2.setValue(0); }
+    anim.forEach(a => a.start());
+    return () => anim.forEach(a => a.stop());
+  }, [dusun, yavas, r1, r2, r3, nefes, p1, p2]);
+
+  const c = ORB_RENK[durum];
+  const s = boyut;
+  const don = (v: Animated.Value, ters = false) => ({ transform: [{ rotate: v.interpolate({ inputRange: [0, 1], outputRange: ters ? ['360deg', '0deg'] : ['0deg', '360deg'] }) }] });
+  const ping = (v: Animated.Value) => ({
+    opacity: v.interpolate({ inputRange: [0, 1], outputRange: [dusun ? 0.8 : 0, 0] }),
+    transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.9] }) }],
+  });
+  const halka = (oran: number) => ({ position: 'absolute' as const, left: s * oran, top: s * oran, width: s * (1 - 2 * oran), height: s * (1 - 2 * oran), borderRadius: s });
+  const ince = Math.max(1, s / 90);
+
+  return (
+    <View style={{ width: s, height: s }} pointerEvents="none">
+      <Animated.View style={[halka(0), { borderWidth: ince, borderColor: c.o }, ping(p1)]} />
+      <Animated.View style={[halka(0), { borderWidth: ince, borderColor: c.o }, ping(p2)]} />
+      <Animated.View style={[halka(0), { borderWidth: Math.max(1, s / 70), borderColor: c.o + '44', borderTopColor: c.o, borderBottomColor: c.o }, don(r1)]} />
+      <Animated.View style={[halka(0.15), { borderWidth: Math.max(1, s / 60), borderColor: c.o2 + '99', borderStyle: s >= 40 ? 'dashed' : 'solid' }, don(r2, true)]} />
+      <Animated.View style={[halka(0.28), { borderWidth: Math.max(1, s / 55), borderColor: 'transparent', borderLeftColor: c.o3, borderRightColor: c.o3 }, don(r3)]} />
+      <Animated.View style={[halka(0.36), {
+        backgroundColor: c.o, alignItems: 'center', justifyContent: 'center',
+        shadowColor: c.o, shadowOpacity: 0.95, shadowRadius: s * 0.22, shadowOffset: { width: 0, height: 0 }, elevation: 8,
+        transform: [{ scale: nefes.interpolate({ inputRange: [0, 1], outputRange: dusun ? [0.88, 1.15] : [0.94, 1.04] }) }],
+        opacity: nefes.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }),
+      }]}>
+        <View style={{ width: '62%', height: '62%', borderRadius: s, backgroundColor: c.oc, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: '50%', height: '50%', borderRadius: s, backgroundColor: '#fff' }} />
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+// Büyük halka: görünürken belirir, cevap gelince olduğu yerde söner
+function BuyukOrb({ gor, boyut, durum, style }: { gor: boolean; boyut: number; durum: OrbDurum; style: any }) {
+  const v = useRef(new Animated.Value(gor ? 1 : 0)).current;
+  const [cizili, setCizili] = useState(gor);
+  useEffect(() => {
+    if (gor) setCizili(true);
+    Animated.timing(v, { toValue: gor ? 1 : 0, duration: 1000, easing: Easing.out(Easing.ease), useNativeDriver: true })
+      .start(({ finished }) => { if (finished && !gor) setCizili(false); });
+  }, [gor, v]);
+  if (!cizili) return null;
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute' }, style, {
+      opacity: v, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+    }]}>
+      <Orb boyut={boyut} durum={durum} />
+    </Animated.View>
+  );
+}
+
+// HUD ızgara çizgileri
+function Izgara({ w, h }: { w: number; h: number }) {
+  const ad = 34;
+  if (!w || !h) return null;
+  const yatay = Math.ceil(h / ad), dikey = Math.ceil(w / ad);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {Array.from({ length: yatay }, (_, i) => <View key={'y' + i} style={{ position: 'absolute', left: 0, right: 0, top: i * ad, height: 1, backgroundColor: 'rgba(34,211,238,0.05)' }} />)}
+      {Array.from({ length: dikey }, (_, i) => <View key={'d' + i} style={{ position: 'absolute', top: 0, bottom: 0, left: i * ad, width: 1, backgroundColor: 'rgba(34,211,238,0.05)' }} />)}
+    </View>
+  );
+}
+
+// Onay kartı: HUD köşe çizgileri + bekliyorken tarama ışığı
+function HudKart({ renk, tara, soluk, children }: { renk: string; tara: boolean; soluk: boolean; children: ReactNode }) {
+  const [h, setH] = useState(0);
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!tara || !h) return;
+    const a = donen(v, 3200);
+    a.start();
+    return () => a.stop();
+  }, [tara, h, v]);
+  const k = 12, t = 2;
+  const kose = (pos: any) => <View style={[{ position: 'absolute', backgroundColor: renk }, pos]} />;
+  return (
+    <View onLayout={e => setH(e.nativeEvent.layout.height)}
+      style={{ marginTop: 10, padding: 12, borderRadius: 6, borderWidth: 1, borderColor: renk + '4d', backgroundColor: renk + '14', overflow: 'hidden', opacity: soluk ? 0.55 : 1 }}>
+      {tara && h > 0 && (
+        <Animated.View pointerEvents="none" style={{
+          position: 'absolute', left: 0, right: 0, top: 0, height: h * 0.4,
+          transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [-h * 0.4, h] }) }],
+        }}>
+          <LinearGradient colors={['transparent', renk + '22', 'transparent']} style={{ flex: 1 }} />
+        </Animated.View>
+      )}
+      {kose({ left: 0, top: 0, width: k, height: t })}{kose({ left: 0, top: 0, width: t, height: k })}
+      {kose({ right: 0, top: 0, width: k, height: t })}{kose({ right: 0, top: 0, width: t, height: k })}
+      {kose({ left: 0, bottom: 0, width: k, height: t })}{kose({ left: 0, bottom: 0, width: t, height: k })}
+      {kose({ right: 0, bottom: 0, width: k, height: t })}{kose({ right: 0, bottom: 0, width: t, height: k })}
+      {children}
+    </View>
+  );
+}
+
+// "Analiz ediyorum…" nabız
+function Nabiz({ children }: { children: ReactNode }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const a = Animated.loop(Animated.sequence([
+      Animated.timing(v, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.timing(v, { toValue: 0, duration: 700, useNativeDriver: true }),
+    ]));
+    a.start();
+    return () => a.stop();
+  }, [v]);
+  return <Animated.View style={{ opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] }) }}>{children}</Animated.View>;
+}
+
+// Gönder: yazı varken nefes alan cyan buton
+function GonderBtn({ aktif, yukleniyor, onPress }: { aktif: boolean; yukleniyor: boolean; onPress: () => void }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!aktif) { v.setValue(0); return; }
+    const a = Animated.loop(Animated.sequence([
+      Animated.timing(v, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      Animated.timing(v, { toValue: 0, duration: 1000, useNativeDriver: true }),
+    ]));
+    a.start();
+    return () => a.stop();
+  }, [aktif, v]);
+  return (
+    <Pressable onPress={onPress} disabled={!aktif}>
+      <Animated.View style={{ opacity: aktif || yukleniyor ? 1 : 0.4, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) }] }}>
+        <LinearGradient colors={['#67e8f9', '#22d3ee', '#0ea5e9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={{ width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+          {yukleniyor ? <ActivityIndicator color="#03121a" /> : <Text style={{ color: '#03121a', fontSize: 16, fontWeight: '800' }}>➤</Text>}
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// Harfleri karıştırıp yerine oturtan başlık
+function Karistir({ metin }: { metin: string }) {
+  const [g, setG] = useState(metin);
+  useEffect(() => {
+    const harf = 'ABCDEFGHIJKLMNOPRSTUVYZ0123456789#%&';
+    let i = 0;
+    const t = setInterval(() => {
+      i += Math.max(1, metin.length / 14);
+      setG(metin.split('').map((c, j) => (j < i || c === ' ' || c === ',') ? c : harf[Math.floor(Math.random() * harf.length)]).join(''));
+      if (i >= metin.length) clearInterval(t);
+    }, 40);
+    return () => clearInterval(t);
+  }, [metin]);
+  return <>{g}</>;
+}
+
+function grupAdi(iso: string) {
+  const d = new Date(iso);
+  const b = new Date(); b.setHours(0, 0, 0, 0);
+  const fark = Math.round((b.getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 864e5);
+  return fark <= 0 ? 'Bugün' : fark === 1 ? 'Dün' : fark < 7 ? 'Son 7 gün' : 'Daha eski';
+}
+
 const styles = StyleSheet.create({
-  ekran: { flex: 1, backgroundColor: Colors.background },
+  ekran: { flex: 1, backgroundColor: '#05080f' },
   ust: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant,
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 9,
+    borderBottomWidth: 1, borderBottomColor: J.cizgi,
   },
-  ustBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceContainer },
-  ustBaslik: { flex: 1, fontSize: 16, fontWeight: '800', color: Colors.onSurface },
+  ustBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(34,211,238,0.08)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.25)' },
+  logo: { fontFamily: MONO, fontSize: 13, fontWeight: '800', letterSpacing: 4, color: '#fff', textShadowColor: 'rgba(34,211,238,0.8)', textShadowRadius: 10 },
+  nokta: { width: 7, height: 7, borderRadius: 4, shadowOpacity: 0.9, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
+  mono: { fontFamily: MONO },
   balonBen: {
-    alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: Colors.primary,
+    alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: 'rgba(34,211,238,0.16)',
+    borderWidth: 1, borderColor: 'rgba(34,211,238,0.45)',
     paddingVertical: 9, paddingHorizontal: 13, borderRadius: 14, borderBottomRightRadius: 4,
   },
+  jEtiket: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, marginLeft: 2 },
   balonJarvis: {
-    alignSelf: 'flex-start', maxWidth: '92%', backgroundColor: Colors.surfaceContainerLow,
-    borderWidth: 1, borderColor: Colors.outlineVariant,
-    paddingVertical: 9, paddingHorizontal: 13, borderRadius: 14, borderBottomLeftRadius: 4,
+    backgroundColor: J.panel, borderWidth: 1, borderColor: J.cizgi, borderLeftWidth: 2, borderLeftColor: J.cyan,
+    paddingVertical: 10, paddingHorizontal: 13, borderRadius: 14, borderTopLeftRadius: 4,
   },
-  saat: { fontSize: 11, color: Colors.outline, paddingLeft: 4 },
-  yazAlan: {
-    flexDirection: 'row', gap: 8, padding: 10, borderTopWidth: 1, borderTopColor: Colors.outlineVariant,
-    backgroundColor: Colors.background,
+  saat: { fontSize: 10.5, color: '#4d6a80', paddingLeft: 4, marginTop: 4 },
+  kartDurum: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderRadius: 4 },
+  bos: { position: 'absolute', left: 0, right: 0, paddingHorizontal: 16, alignItems: 'center', gap: 10 },
+  bosBaslik: { fontFamily: MONO, fontSize: 17, fontWeight: '800', letterSpacing: 3, color: '#fff', textShadowColor: 'rgba(34,211,238,0.7)', textShadowRadius: 12 },
+  ornek: { paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, backgroundColor: 'rgba(10,22,38,0.8)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.25)' },
+  asagi: {
+    position: 'absolute', right: 16, bottom: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(7,13,24,0.92)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.45)',
   },
-  yan: { width: '82%', maxWidth: 340, backgroundColor: Colors.surfaceContainerLow, borderRightWidth: 1, borderRightColor: Colors.outlineVariant },
-  sohbetSatir: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 8, marginBottom: 2 },
-  soluk: { fontSize: 13, color: Colors.onSurfaceVariant },
-  govde: { fontSize: 14, color: Colors.onSurface },
+  yazAlan: { padding: 10, borderTopWidth: 1, borderTopColor: J.cizgi, backgroundColor: 'rgba(5,9,16,0.98)' },
+  yaz: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingVertical: 5, paddingRight: 5, paddingLeft: 14, borderRadius: 16,
+    backgroundColor: 'rgba(10,20,34,0.9)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.22)',
+    shadowColor: J.cyan, shadowOpacity: 0, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+  },
+  yan: { width: '82%', maxWidth: 340, backgroundColor: 'rgba(7,13,24,0.98)', borderRightWidth: 1, borderRightColor: J.cizgi },
+  yeniBtn: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(34,211,238,0.45)', backgroundColor: 'rgba(34,211,238,0.12)', alignItems: 'center' },
+  grup: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: '#4d6a80', paddingTop: 12, paddingBottom: 4, paddingHorizontal: 8 },
+  sohbetSatir: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8, marginBottom: 2 },
+  aktifCizgi: { position: 'absolute', left: 0, top: 7, bottom: 7, width: 2, borderRadius: 2, backgroundColor: J.cyan },
+  soluk: { fontSize: 13, color: J.soluk },
+  govde: { fontSize: 14, color: J.yazi, lineHeight: 20 },
   input: {
-    borderWidth: 1, borderColor: Colors.outlineVariant, borderRadius: Radius.md, padding: 10,
-    color: Colors.onSurface, backgroundColor: Colors.surfaceContainer, fontSize: 15,
+    borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)', borderRadius: Radius.md, padding: 10,
+    color: J.yazi, backgroundColor: 'rgba(3,10,20,0.85)', fontSize: 15,
   },
-  komut: {
-    backgroundColor: Colors.surfaceContainerLow, borderWidth: 1, borderColor: Colors.outlineVariant,
-    borderRadius: Radius.md, padding: 12, marginBottom: 12,
-  },
-  kart: { marginTop: 10, padding: 10, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.outlineVariant },
-  btn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: Radius.sm, borderWidth: 1 },
+  btn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1 },
   btnYazi: { fontSize: 13, fontWeight: '700' },
-  perde: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 },
+  perde: { flex: 1, backgroundColor: 'rgba(0,4,10,0.75)', justifyContent: 'center', padding: 16 },
   popup: {
-    backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.md, maxHeight: '85%',
-    borderWidth: 1, borderColor: Colors.outlineVariant, overflow: 'hidden',
+    backgroundColor: '#08101c', borderRadius: 14, maxHeight: '85%',
+    borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)', overflow: 'hidden',
   },
   popupUst: {
     flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.outlineVariant,
+    borderBottomWidth: 1, borderBottomColor: J.cizgi,
   },
-  ikonBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: Colors.surfaceContainer, alignItems: 'center', justifyContent: 'center' },
-  etiket: { fontSize: 11, fontWeight: '600', color: Colors.onSurfaceVariant, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: Colors.surfaceContainer, overflow: 'hidden' },
-  bolum: { fontSize: 11, fontWeight: '800', color: Colors.onSurfaceVariant, letterSpacing: 0.5, marginBottom: 6 },
-  satir: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: Colors.surfaceContainer, borderRadius: 8, marginBottom: 6 },
-  istek: { padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: Colors.primary, backgroundColor: Colors.surfaceContainer, marginBottom: 6 },
-  not: { padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#854d0e', backgroundColor: '#1c1404', marginBottom: 6 },
+  ikonBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(34,211,238,0.1)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)', alignItems: 'center', justifyContent: 'center' },
+  etiket: { fontSize: 11, fontWeight: '600', color: '#cfe8f5', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' },
+  bolum: { fontSize: 11, fontWeight: '800', color: J.cyan, letterSpacing: 1.5, marginBottom: 6 },
+  satir: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: J.cizgi, borderRadius: 8, marginBottom: 6 },
+  istek: { padding: 10, borderRadius: 8, borderWidth: 1, borderColor: J.cizgi, borderLeftWidth: 3, borderLeftColor: J.cyan, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 6 },
+  not: { padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(234,179,8,0.3)', backgroundColor: 'rgba(234,179,8,0.08)', marginBottom: 6 },
 });
