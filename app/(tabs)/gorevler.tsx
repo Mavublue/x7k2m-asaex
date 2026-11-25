@@ -61,7 +61,7 @@ export default function GorevlerScreen() {
 
     let q = supabase
       .from('musteri_gorevler')
-      .select('id, baslik, hedef_tarih, musteri_id, musteriler(ad, soyad, etiketler)')
+      .select('id, baslik, hedef_tarih, kapanis, musteri_id, musteriler(ad, soyad, etiketler)')
       .eq('tamamlandi', filtre === 'yapilan')
       .not('hedef_tarih', 'is', null)
       .order('hedef_tarih', { ascending: filtre !== 'yapilan' });
@@ -175,6 +175,7 @@ export default function GorevlerScreen() {
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: gecmis ? 'rgba(239,68,68,0.10)' : yapilan ? Colors.surface : Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: gecmis ? 'rgba(239,68,68,0.4)' : Colors.outlineVariant, borderLeftWidth: 3, borderLeftColor: gecmis ? '#ef4444' : yapilan ? Colors.onSurfaceVariant : '#16a34a' }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 14, fontWeight: '600', color: yapilan ? Colors.onSurfaceVariant : Colors.onSurface, textDecorationLine: yapilan ? 'line-through' : 'none' }}>{g.baslik}</Text>
+          {g.kapanis === 'vazgecildi' && <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.onSurfaceVariant, marginTop: 2 }}>✕ Vazgeçildi</Text>}
           <Text style={{ fontSize: 12, color: gecmis ? '#ef4444' : Colors.onSurfaceVariant, marginTop: 3 }}>
             {musteriLabel || '—'}{tarihStr ? ` · 📅 ${tarihStr}` : ''}
           </Text>

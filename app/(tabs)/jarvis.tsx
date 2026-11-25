@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import R2Image from '../../components/R2Image';
 import { yerelBildirimleriYenile } from '../../lib/yerelBildirim';
@@ -92,6 +92,18 @@ export default function JarvisEkran() {
   const [yanAcik, setYanAcik] = useState(false);
   const [adDegis, setAdDegis] = useState<{ id: string; baslik: string } | null>(null);
   const [hafizaAcik, setHafizaAcik] = useState(false);
+  const [acikIsAcik, setAcikIsAcik] = useState(false);
+  const [acikIsSayi, setAcikIsSayi] = useState<number | null>(null);
+  const { acikIsler } = useLocalSearchParams<{ acikIsler?: string }>();
+  useEffect(() => {  // bildirimden gelindiyse Açık İşler'i aç
+    if (!acikIsler) return;
+    router.setParams({ acikIsler: undefined });
+    setAcikIsAcik(true);
+  }, [acikIsler]);
+  useFocusEffect(useCallback(() => {
+    supabase.from('musteri_gorevler').select('id', { count: 'exact', head: true }).eq('tamamlandi', false)
+      .then(({ count }) => setAcikIsSayi(count ?? 0));
+  }, []));
   const [hafiza, setHafiza] = useState<{ id: string; metin: string }[]>([]);
   const [hafizaYeni, setHafizaYeni] = useState('');
   const scrollRef = useRef<ScrollViewRef>(null);
@@ -637,6 +649,10 @@ export default function JarvisEkran() {
               </Text>
             </View>
           </View>
+          <Pressable onPress={() => { Keyboard.dismiss(); setAcikIsAcik(true); }} hitSlop={8} style={[styles.ustBtn, { flexDirection: 'row', gap: 3, paddingHorizontal: 8, width: undefined }]}>
+            <Text style={{ fontSize: 16 }}>📋</Text>
+            {!!acikIsSayi && <Text style={[styles.mono, { fontSize: 11, color: '#fbbf24', fontWeight: '700' }]}>{acikIsSayi}</Text>}
+          </Pressable>
           <Pressable onPress={yeniSohbet} hitSlop={8} style={styles.ustBtn}>
             <Text style={{ fontSize: 20, color: J.cyan, fontWeight: '700' }}>＋</Text>
           </Pressable>
@@ -875,6 +891,8 @@ export default function JarvisEkran() {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      <AcikIslerModal acik={acikIsAcik} kapat={() => setAcikIsAcik(false)} musteriAc={musteriAc} sayiDegisti={setAcikIsSayi} />
 
       <IlanOzetModal acik={ilanPopup} kapat={() => setIlanPopup(null)}
         detay={id => { setIlanPopup(null); router.push(`/ilan/${id}` as any); }} />
@@ -1266,6 +1284,10 @@ const styles = StyleSheet.create({
   aktifCizgi: { position: 'absolute', left: 0, top: 7, bottom: 7, width: 2, borderRadius: 2, backgroundColor: J.cyan },
   soluk: { fontSize: 13, color: J.soluk },
   govde: { fontSize: 14, color: J.yazi, lineHeight: 20 },
+  isKart: { padding: 11, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(125,211,252,0.14)', backgroundColor: 'rgba(255,255,255,0.025)', gap: 4 },
+  isKartSimdi: { borderColor: 'rgba(251,191,36,0.45)', backgroundColor: 'rgba(251,191,36,0.05)' },
+  isGrup: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, color: J.soluk, marginTop: 12, marginBottom: 2 },
+  isRozet: { fontSize: 11, fontWeight: '700', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(251,191,36,0.15)', color: '#fbbf24' },
   ilanSatir: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 6, marginTop: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(125,211,252,0.12)', backgroundColor: 'rgba(255,255,255,0.02)' },
   ilanSatirFoto: { width: 64, height: 46, borderRadius: 6 },
   ilanBos: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' },
@@ -1295,3 +1317,147 @@ const styles = StyleSheet.create({
   istek: { padding: 10, borderRadius: 8, borderWidth: 1, borderColor: J.cizgi, borderLeftWidth: 3, borderLeftColor: J.cyan, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 6 },
   not: { padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(234,179,8,0.3)', backgroundColor: 'rgba(234,179,8,0.08)', marginBottom: 6 },
 });
+
+
+// ── 📋 Açık İşler Defteri ── (web: ilan-web/app/panel/jarvis/page.tsx AcikIslerPanel)
+// Hatırlatmayı DB yapar (pg_cron acik_is_tara; 22-08 sessiz; kapatılmazsa her 1 saat; 19:00 akşam özeti).
+type AcikIs = {
+  id: string; baslik: string; hedef_tarih: string | null; sonraki_hatirlatma: string | null;
+  ertelenme_sayisi: number; son_mesaj: string | null; eski_toplu: boolean; musteri_id: string | null;
+  musteriler: { ad: string; soyad: string | null } | null;
+};
+
+function acikIsZaman(g: AcikIs): { t: Date | null; saatsiz: boolean } {
+  if (g.sonraki_hatirlatma) return { t: new Date(g.sonraki_hatirlatma), saatsiz: false };
+  if (!g.hedef_tarih) return { t: null, saatsiz: true };
+  const t = new Date(g.hedef_tarih);
+  const saatsiz = (t.getHours() === 0 && t.getMinutes() === 0) || (t.getUTCHours() === 0 && t.getUTCMinutes() === 0);
+  return { t, saatsiz };
+}
+
+function acikIsZamanYaz(g: AcikIs) {
+  const { t, saatsiz } = acikIsZaman(g);
+  if (!t) return 'Tarihsiz';
+  const bugun = new Date();
+  const yarin = new Date(Date.now() + 86400000);
+  const saat = saatsiz ? '' : ' ' + t.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  if (t.toDateString() === bugun.toDateString()) return 'Bugün' + saat + (!saatsiz && t < bugun ? ' (geçti)' : '');
+  if (t.toDateString() === yarin.toDateString()) return 'Yarın' + saat;
+  if (t < bugun) {
+    const n = Math.max(1, Math.round((bugun.getTime() - t.getTime()) / 86400000));
+    return `${n} gün önce (${t.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })})`;
+  }
+  return t.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' }) + saat;
+}
+
+function AcikIslerModal({ acik, kapat, musteriAc, sayiDegisti }: {
+  acik: boolean; kapat: () => void; musteriAc: (id: string) => void; sayiDegisti: (n: number) => void;
+}) {
+  const [liste, setListe] = useState<AcikIs[] | null>(null);
+  const [eskiAcik, setEskiAcik] = useState(false);
+  const [mesgul, setMesgul] = useState<string | null>(null);
+
+  const yukle = useCallback(async () => {
+    const { data } = await supabase.from('musteri_gorevler')
+      .select('id, baslik, hedef_tarih, sonraki_hatirlatma, ertelenme_sayisi, son_mesaj, eski_toplu, musteri_id, musteriler(ad, soyad)')
+      .eq('tamamlandi', false).order('hedef_tarih', { ascending: true, nullsFirst: false }).limit(300);
+    const l = (data ?? []) as unknown as AcikIs[];
+    setListe(l);
+    sayiDegisti(l.length);
+  }, [sayiDegisti]);
+  useEffect(() => { if (acik) yukle(); }, [acik, yukle]);
+
+  async function islem(id: string, p: string) {
+    setMesgul(id);
+    const { error } = await supabase.rpc('acik_is_islem', { p_gorev: id, p_islem: p });
+    if (error) Alert.alert('Yapılamadı', error.message);
+    await yukle();
+    setMesgul(null);
+  }
+  async function toplu(p: 'yarina_al' | 'eski_kapat') {
+    setMesgul(p);
+    const { error } = await supabase.rpc('acik_is_toplu', { p_islem: p });
+    if (error) Alert.alert('Yapılamadı', error.message);
+    await yukle();
+    setMesgul(null);
+  }
+
+  const gunSonu = new Date(); gunSonu.setHours(23, 59, 59, 999);
+  const simdi = new Date();
+  const l = liste ?? [];
+  const eski = l.filter(g => g.eski_toplu);
+  const aktif = l.filter(g => !g.eski_toplu);
+  const bugun = aktif.filter(g => { const { t } = acikIsZaman(g); return !!t && t <= gunSonu; });
+  const ileride = aktif.filter(g => { const { t } = acikIsZaman(g); return !!t && t > gunSonu; });
+  const tarihsiz = aktif.filter(g => !acikIsZaman(g).t);
+
+  const btn = (renk: string, dolu = false) => [styles.btn, { borderColor: renk, paddingVertical: 6, paddingHorizontal: 10 }, dolu && { backgroundColor: renk }];
+  const satir = (g: AcikIs) => {
+    const ad = g.musteriler ? [g.musteriler.ad, g.musteriler.soyad].filter(Boolean).join(' ') : null;
+    const ek = (g.son_mesaj ?? '').split('\n').slice(1).map(x => x.replace(/\[ilan:\s*#?(\d+)\]/g, '#$1')).filter(Boolean);
+    const { t } = acikIsZaman(g);
+    const gecti = !!t && t <= simdi && !g.eski_toplu;
+    return (
+      <View key={g.id} style={[styles.isKart, gecti && styles.isKartSimdi]}>
+        <Text style={[styles.govde, { fontSize: 14 }]}>
+          {g.musteri_id && ad ? <Text style={{ color: J.mavi, fontWeight: '700' }} onPress={() => musteriAc(g.musteri_id!)}>{ad} 👁  </Text> : null}
+          <Text style={{ fontWeight: '700' }}>{g.baslik}</Text>
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[styles.soluk, { fontSize: 12 }]}>🗓 {acikIsZamanYaz(g)}</Text>
+          {g.ertelenme_sayisi > 0 && <Text style={styles.isRozet}>↻ {g.ertelenme_sayisi}</Text>}
+        </View>
+        {ek.map((x, i) => <Text key={i} style={{ fontSize: 12.5, color: x.includes('vazgeç') ? '#fbbf24' : '#a5f3fc' }}>{x}</Text>)}
+        {!ek.length && g.ertelenme_sayisi >= 3 && <Text style={{ fontSize: 12.5, color: '#fbbf24' }}>{g.ertelenme_sayisi} kez erteledin, vazgeçelim mi?</Text>}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+          <Pressable disabled={mesgul === g.id} onPress={() => islem(g.id, 'yapildi')} style={btn('#34d399', true)}><Text style={[styles.btnYazi, { color: '#03121a' }]}>✓ Yaptım</Text></Pressable>
+          <Pressable disabled={mesgul === g.id} onPress={() => islem(g.id, 'saat')} style={btn(J.mavi)}><Text style={[styles.btnYazi, { color: J.mavi }]}>⏰ 1 saat</Text></Pressable>
+          <Pressable disabled={mesgul === g.id} onPress={() => islem(g.id, 'aksam')} style={btn(J.mavi)}><Text style={[styles.btnYazi, { color: J.mavi }]}>🌙 Akşam</Text></Pressable>
+          <Pressable disabled={mesgul === g.id} onPress={() => islem(g.id, 'vazgec')} style={btn(J.soluk)}><Text style={[styles.btnYazi, { color: J.soluk }]}>✕ Vazgeç</Text></Pressable>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <Modal visible={acik} transparent animationType="fade" onRequestClose={kapat}>
+      <Pressable style={styles.perde} onPress={kapat}>
+        <Pressable style={[styles.popup, { maxHeight: '88%' }]} onPress={() => {}}>
+          <View style={styles.popupUst}>
+            <Text style={[styles.govde, { flex: 1, fontSize: 16, fontWeight: '800' }]}>📋 Açık İşler {liste ? `(${l.length})` : ''}</Text>
+            {bugun.length > 0 && (
+              <Pressable disabled={mesgul === 'yarina_al'} onPress={() => toplu('yarina_al')} style={btn(J.mavi)}>
+                <Text style={[styles.btnYazi, { color: J.mavi, fontSize: 12 }]}>Bugünküleri yarına al</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={kapat} hitSlop={8}><Text style={[styles.soluk, { fontSize: 20 }]}>✕</Text></Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 14, paddingTop: 2, gap: 8 }}>
+            {!liste ? <Text style={styles.soluk}>Yükleniyor…</Text> : !l.length ? <Text style={styles.soluk}>Açık iş yok 🎉</Text> : null}
+            {bugun.length > 0 && <Text style={styles.isGrup}>BUGÜN VE GEÇENLER ({bugun.length})</Text>}
+            {bugun.map(satir)}
+            {ileride.length > 0 && <Text style={styles.isGrup}>İLERİDE ({ileride.length})</Text>}
+            {ileride.map(satir)}
+            {tarihsiz.length > 0 && <Text style={styles.isGrup}>TARİHSİZ ({tarihsiz.length})</Text>}
+            {tarihsiz.map(satir)}
+            {eski.length > 0 && (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                  <Text style={[styles.isGrup, { marginTop: 0, flex: 1 }]} onPress={() => setEskiAcik(v => !v)}>
+                    {eskiAcik ? '▾' : '▸'} ESKİ AÇIK İŞLER ({eski.length})
+                  </Text>
+                  <Pressable disabled={mesgul === 'eski_kapat'} style={btn(J.soluk)}
+                    onPress={() => Alert.alert('Eski işler', 'Eski açık işlerin hepsi "vazgeçildi" olarak kapatılsın mı?', [
+                      { text: 'İptal', style: 'cancel' }, { text: 'Kapat', style: 'destructive', onPress: () => toplu('eski_kapat') }])}>
+                    <Text style={[styles.btnYazi, { color: J.soluk, fontSize: 11 }]}>Hepsini kapat</Text>
+                  </Pressable>
+                </View>
+                {eskiAcik && eski.map(satir)}
+              </>
+            )}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}

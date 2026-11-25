@@ -296,8 +296,9 @@ export default function DashboardScreen() {
         hedefId = b.musteri_id ?? '';
         break;
       case 'asistan': {
-        const mesaj = String(veri.mesaj ?? '').replace(/[#*_`]/g, '').trim();
-        if (b.musteri_id) { baslik = musteriLabel || '?'; alt = mesaj; }
+        const mesaj = String(veri.mesaj ?? '').replace(/[#*_`]/g, '').replace(/\[ilan:\s*(\d+)\]/g, 'ilan $1').trim();
+        if (veri.tip === 'acik-is' || veri.tip === 'acik-is-ozet') { baslik = veri.tip === 'acik-is' ? '📋 Açık İş' : '🌙 Açık İşler Özeti'; alt = mesaj; }
+        else if (b.musteri_id) { baslik = musteriLabel || '?'; alt = mesaj; }
         else { baslik = veri.tip === 'gorev-saat' ? '⏰ Görev Zamanı' : veri.tip === 'sabah' ? '🌅 Sabah Özeti' : veri.tip === 'oglen' ? '☀️ Öğlen Hatırlatması' : '🌙 Akşam Özeti'; alt = mesaj; }
         hedefId = b.musteri_id ?? '';
         break;
@@ -359,6 +360,11 @@ export default function DashboardScreen() {
   }
 
   async function bildirimDetayAc(b: {id:string;tip:string;baslik:string;alt:string;hedefId:string;tarih:string;foto?:string|null;okundu:boolean;veri:any}) {
+    if (b.tip === 'asistan' && String(b.veri?.tip ?? '').startsWith('acik-is')) {
+      // Açık iş hatırlatması → Jarvis Açık İşler listesi (butonlar orada)
+      router.navigate({ pathname: '/(tabs)/jarvis', params: { acikIsler: String(Date.now()) } } as any);
+      return;
+    }
     setDetayBildirim(b);
     setDetayListe([]);
     setMusteriDetay(null);
