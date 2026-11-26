@@ -9,6 +9,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from '../../lib/webview';
 import * as Clipboard from 'expo-clipboard';
+import * as SecureStore from 'expo-secure-store';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import R2Image from '../../components/R2Image';
@@ -84,7 +85,8 @@ export default function JarvisEkran() {
   const [ilanPopup, setIlanPopup] = useState<{ id: string; veri: any | null } | null>(null);
   const [metin, setMetin] = useState('');
   const [gonderiyor, setGonderiyor] = useState(false);
-  const [orb3dHata, setOrb3dHata] = useState(false);   // WebView/WebGL açılamazsa eski SVG halka
+  const [orb3dHata, setOrb3dHata] = useState(false);
+  const [kodAcik, setKodAcik] = useState(false);   // 🛠 Kod modu (sadece kayıtlı telefon)   // WebView/WebGL açılamazsa eski SVG halka
   const orb3dRef = useRef<Orb3DRef>(null);
   const [duzenle, setDuzenle] = useState<Record<string, any>>({});
   const [mesgul, setMesgul] = useState<string | null>(null);
@@ -657,6 +659,9 @@ export default function JarvisEkran() {
             <Text style={{ fontSize: 16 }}>📋</Text>
             {!!acikIsSayi && <Text style={[styles.mono, { fontSize: 11, color: '#fbbf24', fontWeight: '700' }]}>{acikIsSayi}</Text>}
           </Pressable>
+          <Pressable onPress={() => { Keyboard.dismiss(); setKodAcik(true); }} hitSlop={8} style={styles.ustBtn}>
+            <Text style={{ fontSize: 16 }}>🛠</Text>
+          </Pressable>
           <Pressable onPress={yeniSohbet} hitSlop={8} style={styles.ustBtn}>
             <Text style={{ fontSize: 20, color: J.cyan, fontWeight: '700' }}>＋</Text>
           </Pressable>
@@ -893,6 +898,7 @@ export default function JarvisEkran() {
       </Modal>
 
       <AcikIslerModal acik={acikIsAcik} kapat={() => setAcikIsAcik(false)} musteriAc={musteriAc} sayiDegisti={setAcikIsSayi} />
+      <KodModu acik={kodAcik} kapat={() => setKodAcik(false)} />
 
       <IlanOzetModal acik={ilanPopup} kapat={() => setIlanPopup(null)}
         detay={id => { setIlanPopup(null); router.push(`/ilan/${id}` as any); }} />
@@ -1043,6 +1049,185 @@ function Orb({ boyut, durum }: { boyut: number; durum: OrbDurum }) {
         </View>
       </Animated.View>
     </View>
+  );
+}
+
+// ── 🛠 KOD MODU ── Jarvis'e (VPS, Sonnet, tam yetki) kod değişikliği yaptırma. Sadece bu telefondan:
+// anahtar Keychain'de (bu cihaza özel), sunucuda sha256'sı; kayıt bir kez PC'den onaylanır.
+const KOD_ANAHTAR = 'jarvis_kod_anahtar';
+async function kodAnahtari(): Promise<string> {
+  let a = await SecureStore.getItemAsync(KOD_ANAHTAR);
+  if (!a) {
+    const b = crypto.getRandomValues(new Uint8Array(32));
+    a = Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+    await SecureStore.setItemAsync(KOD_ANAHTAR, a, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
+  }
+  return a;
+}
+
+function KodModu({ acik, kapat }: { acik: boolean; kapat: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [durum, setDurum] = useState<'yukleniyor' | 'yok' | 'bekliyor' | 'aktif' | 'hata'>('yukleniyor');
+  const [kod, setKod] = useState('');
+  const [veri, setVeri] = useState<{ istekler: any[]; notlar: any[] }>({ istekler: [], notlar: [] });
+  const [sekme, setSekme] = useState<'istek' | 'not'>('istek');
+  const [metin, setMetin] = useState('');
+  const [yeniKonu, setYeniKonu] = useState(false);
+  const [gonderiyor, setGonderiyor] = useState(false);
+  const [acikAdim, setAcikAdim] = useState<Record<string, boolean>>({});
+  const anahtar = useRef('');
+  const scrollRef = useRef<ScrollViewRef>(null);
+
+  const liste = useCallback(async () => {
+    const { data, error } = await supabase.rpc('kod_liste', { p_anahtar: anahtar.current });
+    if (!error && data) setVeri({ istekler: data.istekler ?? [], notlar: data.notlar ?? [] });
+  }, []);
+  const kontrol = useCallback(async () => {
+    try {
+      anahtar.current = await kodAnahtari();
+      const { data, error } = await supabase.rpc('kod_cihaz_durum', { p_anahtar: anahtar.current });
+      if (error) { setDurum('hata'); return; }
+      setDurum(data?.durum ?? 'yok'); setKod(data?.kod ?? '');
+      if (data?.durum === 'aktif') liste();
+    } catch { setDurum('hata'); }
+  }, [liste]);
+  useEffect(() => { if (acik) kontrol(); }, [acik, kontrol]);
+  const calisan = veri.istekler.some(i => i.durum === 'bekliyor' || i.durum === 'calisiyor');
+  useEffect(() => {
+    if (!acik || durum !== 'aktif') return;
+    const t = setInterval(liste, calisan ? 2000 : 15000);
+    return () => clearInterval(t);
+  }, [acik, durum, calisan, liste]);
+
+  const kaydet = async () => {
+    const { data, error } = await supabase.rpc('kod_cihaz_kaydet', { p_anahtar: anahtar.current, p_ad: `${Platform.OS} telefon` });
+    if (error) { Alert.alert('Kaydedilemedi', error.message); return; }
+    setDurum(data?.durum ?? 'bekliyor'); setKod(data?.kod ?? '');
+  };
+  const gonder = async () => {
+    const t = metin.trim();
+    if (!t || gonderiyor) return;
+    setGonderiyor(true);
+    const { error } = await supabase.rpc('kod_istek_ekle', { p_anahtar: anahtar.current, p_metin: t, p_yeni_konu: yeniKonu });
+    setGonderiyor(false);
+    if (error) { Alert.alert('Gönderilemedi', error.message); return; }
+    setMetin(''); setYeniKonu(false); Keyboard.dismiss();
+    await liste();
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
+  };
+  const notKapat = async (id: string) => {
+    setVeri(v => ({ ...v, notlar: v.notlar.map(n => (n.id === id ? { ...n, durum: 'yapildi' } : n)) }));
+    await supabase.rpc('kod_not_durum', { p_anahtar: anahtar.current, p_id: id, p_durum: 'yapildi' });
+  };
+  const acikNot = veri.notlar.filter(n => n.durum === 'acik').length;
+  const durumYazi: Record<string, [string, string]> = {
+    bekliyor: ['SIRADA', '#fbbf24'], calisiyor: ['ÇALIŞIYOR', '#f97316'], bitti: ['BİTTİ', '#34d399'], hata: ['HATA', '#ef4444'],
+  };
+
+  return (
+    <Modal visible={acik} animationType="slide" onRequestClose={kapat} presentationStyle="fullScreen">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: J.zemin, paddingTop: insets.top }}>
+        <View style={[styles.ust, { gap: 10 }]}>
+          <Text style={{ fontSize: 18 }}>🛠</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.logo}>KOD MODU</Text>
+            <Text style={[styles.mono, { fontSize: 10.5, color: J.soluk }]}>Sonnet · tam yetki · sadece bu telefon</Text>
+          </View>
+          <Pressable onPress={kapat} hitSlop={10} style={styles.ustBtn}><Text style={{ fontSize: 18, color: J.cyan }}>✕</Text></Pressable>
+        </View>
+
+        {durum === 'yukleniyor' && <ActivityIndicator color={J.cyan} style={{ marginTop: 40 }} />}
+        {durum === 'hata' && <Text style={[styles.soluk, { padding: 20 }]} onPress={kontrol}>Bağlanamadı. Tekrar denemek için dokun.</Text>}
+        {durum === 'yok' && (
+          <View style={{ padding: 20, gap: 14 }}>
+            <Text style={styles.govde}>Kod modu sadece kayıtlı telefondan çalışır. Bu telefonu kaydet; bilgisayardan bir kez onaylanınca açılır.</Text>
+            <Pressable onPress={kaydet} style={[styles.yeniBtn, { paddingVertical: 12 }]}><Text style={{ color: J.cyan, fontWeight: '800' }}>Bu telefonu kaydet</Text></Pressable>
+          </View>
+        )}
+        {durum === 'bekliyor' && (
+          <View style={{ padding: 20, gap: 14 }}>
+            <Text style={styles.govde}>Telefon kaydedildi, onay bekliyor.</Text>
+            <Text style={[styles.mono, { fontSize: 28, fontWeight: '800', color: '#fbbf24', letterSpacing: 6 }]}>{kod}</Text>
+            <Text style={styles.soluk}>Bilgisayarda Claude'a: "Jarvis kod telefonunu onayla {kod}" de.</Text>
+            <Pressable onPress={kontrol} style={styles.yeniBtn}><Text style={{ color: J.cyan, fontWeight: '700' }}>↻ Yenile</Text></Pressable>
+          </View>
+        )}
+        {durum === 'aktif' && (
+          <>
+            <View style={{ flexDirection: 'row', gap: 8, padding: 10 }}>
+              {(['istek', 'not'] as const).map(k => (
+                <Pressable key={k} onPress={() => setSekme(k)} style={[styles.satisBtn, sekme === k && { borderColor: J.cyan, backgroundColor: 'rgba(34,211,238,0.15)' }]}>
+                  <Text style={styles.satisBtnYazi}>{k === 'istek' ? 'İstekler' : `📱 App notları${acikNot ? ` (${acikNot})` : ''}`}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {sekme === 'istek' ? (
+              <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 14, gap: 14 }}
+                onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+                {!veri.istekler.length && <Text style={styles.soluk}>Henüz istek yok. Ör: "İlan detay sayfasında fiyatın altına m² fiyatını da yaz."</Text>}
+                {veri.istekler.map(i => {
+                  const [dy, dr] = durumYazi[i.durum] ?? ['', J.soluk];
+                  const olay: any[] = i.olaylar ?? [];
+                  const hepsi = acikAdim[i.id] || i.durum === 'calisiyor';
+                  const gos = hepsi ? olay : olay.filter(o => o.tur === 'arac').slice(-3);
+                  return (
+                    <View key={i.id} style={{ gap: 6 }}>
+                      {i.yeni_konu && <Text style={[styles.mono, { fontSize: 10, color: J.soluk, textAlign: 'center' }]}>— yeni konu —</Text>}
+                      <View style={styles.balonBen}><Text style={{ color: '#eafcff', fontSize: 14 }}>{i.metin}</Text></View>
+                      <View style={styles.balonJarvis}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          {i.durum === 'calisiyor' && <ActivityIndicator size="small" color="#f97316" />}
+                          <Text style={[styles.mono, { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: dr }]}>{dy}</Text>
+                          {!!olay.length && i.durum !== 'calisiyor' && (
+                            <Text style={[styles.rkLink, { fontSize: 11, marginLeft: 'auto' }]} onPress={() => setAcikAdim(a => ({ ...a, [i.id]: !a[i.id] }))}>
+                              {acikAdim[i.id] ? 'adımları gizle' : `${olay.length} adım`}
+                            </Text>
+                          )}
+                        </View>
+                        {gos.map((o, n) => (
+                          <Text key={n} style={[styles.mono, { fontSize: 11, color: o.tur === 'hata' ? '#f87171' : o.tur === 'arac' ? '#7dd3fc' : J.soluk }]} numberOfLines={hepsi ? 6 : 1}>
+                            {o.metin}
+                          </Text>
+                        ))}
+                        {!!i.sonuc && i.durum !== 'calisiyor' && <Text style={[styles.govde, { marginTop: 6 }]} selectable>{i.sonuc}</Text>}
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, gap: 10 }}>
+                {!veri.notlar.length && <Text style={styles.soluk}>App'e uygulanacak not yok. Web'de yapılan değişiklik app'te de gerekirse Jarvis buraya yazar; bilgisayarda Claude'a "app notlarına bak" dersin.</Text>}
+                {veri.notlar.map(n => (
+                  <View key={n.id} style={[styles.rk, n.durum === 'yapildi' && { opacity: 0.5 }]}>
+                    <Text style={styles.govde} selectable>{n.metin}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.soluk, { fontSize: 11, flex: 1 }]}>{new Date(n.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                      {n.durum === 'acik' ? (
+                        <Pressable onPress={() => notKapat(n.id)} style={styles.satisBtn}><Text style={styles.satisBtnYazi}>✓ Yapıldı</Text></Pressable>
+                      ) : <Text style={[styles.mono, { fontSize: 11, color: '#34d399' }]}>YAPILDI</Text>}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            {sekme === 'istek' && (
+              <View style={[styles.yazAlan, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+                <Pressable onPress={() => setYeniKonu(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <Text style={{ color: yeniKonu ? J.cyan : J.soluk, fontSize: 13 }}>{yeniKonu ? '☑' : '☐'} Yeni konu (öncekini unut)</Text>
+                </Pressable>
+                <View style={styles.yaz}>
+                  <TextInput value={metin} onChangeText={setMetin} multiline placeholder="Ne değişsin? (web, sunucu, veritabanı…)" placeholderTextColor={J.soluk}
+                    style={{ flex: 1, color: J.yazi, fontSize: 15, maxHeight: 140, paddingVertical: 8 }} />
+                  <GonderBtn aktif={!!metin.trim() && !gonderiyor} yukleniyor={gonderiyor} onPress={gonder} />
+                </View>
+                {calisan && <Text style={[styles.soluk, { fontSize: 11, marginTop: 4 }]}>Önceki iş bitmeden gönderilen istek sıraya girer.</Text>}
+              </View>
+            )}
+          </>
+        )}
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
