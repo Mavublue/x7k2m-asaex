@@ -1,5 +1,5 @@
 import type { ScrollViewRef, TextInputRef, ViewRef } from '../../lib/refTipleri';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { WebView } from '../../lib/webview';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import R2Image from '../../components/R2Image';
@@ -82,6 +83,8 @@ export default function JarvisEkran() {
   const [ilanPopup, setIlanPopup] = useState<{ id: string; veri: any | null } | null>(null);
   const [metin, setMetin] = useState('');
   const [gonderiyor, setGonderiyor] = useState(false);
+  const [orb3dHata, setOrb3dHata] = useState(false);   // WebView/WebGL açılamazsa eski SVG halka
+  const orb3dRef = useRef<Orb3DRef>(null);
   const [duzenle, setDuzenle] = useState<Record<string, any>>({});
   const [mesgul, setMesgul] = useState<string | null>(null);
   const [yuklendi, setYuklendi] = useState(false);
@@ -661,23 +664,32 @@ export default function JarvisEkran() {
         {/* Mesajlar: HUD ızgara zemin + büyük halka arkada */}
         <View style={{ flex: 1, backgroundColor: J.zemin, overflow: 'hidden' }}
           onLayout={e => { setAlanH(e.nativeEvent.layout.height); setAlanW(e.nativeEvent.layout.width); }}>
-          <Izgara w={alanW} h={alanH} />
-          <LinearGradient pointerEvents="none" colors={['rgba(34,211,238,0.10)', 'rgba(34,211,238,0)']} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 220 }} />
-          {alanH > 0 && (
-            <BuyukOrb gor={buyukGoster} boyut={orbBoyut} durum={orbDurum}
-              style={{ top: orbMerkez - orbBoyut / 2, left: alanW / 2 - orbBoyut / 2 }} />
+          {orb3dHata ? (
+            <>
+              <Izgara w={alanW} h={alanH} />
+              <LinearGradient pointerEvents="none" colors={['rgba(34,211,238,0.10)', 'rgba(34,211,238,0)']} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 220 }} />
+              {alanH > 0 && (
+                <BuyukOrb gor={buyukGoster} boyut={orbBoyut} durum={orbDurum}
+                  style={{ top: orbMerkez - orbBoyut / 2, left: alanW / 2 - orbBoyut / 2 }} />
+              )}
+            </>
+          ) : (
+            <Orb3D ref={orb3dRef} durum={{ dusun: calisiyor || gonderiyor, hata: !!sonHata, dinle: !!metin.trim(), sonuk: !!secili && !calisiyor && !gonderiyor }}
+              raporGorunur={!secili && !gonderiyor} hataOldu={() => setOrb3dHata(true)} />
           )}
 
           <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 16, gap: 16 }}
-            keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
+            keyboardShouldPersistTaps="handled" scrollEventThrottle={32}
             onScroll={e => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-              setAltta(contentSize.height - contentOffset.y - layoutMeasurement.height < 80);
+              orb3dRef.current?.kaydir(contentOffset.y);
+              const a = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
+              if (a !== altta) setAltta(a);
             }}
             onContentSizeChange={() => { if (secili) scrollRef.current?.scrollToEnd({ animated: false }); }}>
             {!!secili && yuklendi && !komutlar.length && <Text style={styles.soluk}>Bu sohbette mesaj yok.</Text>}
             {!secili && !gonderiyor && (
-              <JarvisRapor musteriAc={musteriAc} ilanAc={ilanAc} acikIsAc={() => setAcikIsAcik(true)} komut={komutGonder} />
+              <JarvisRapor musteriAc={musteriAc} ilanAc={ilanAc} acikIsAc={() => setAcikIsAcik(true)} komut={komutGonder} orbBosluk={orb3dHata ? 0 : ORB_BOSLUK} />
             )}
 
             {komutlar.map(k => {
@@ -1033,6 +1045,40 @@ function Orb({ boyut, durum }: { boyut: number; durum: OrbDurum }) {
   );
 }
 
+// 3D parçacık orb: web'deki bileşenin aynısı, WebView içinde (ilan-web /jarvis-orb). Durum injectJavaScript ile gider.
+const ORB_URL = 'https://ilan.yasinogmen.com.tr/jarvis-orb';
+const ORB_BOSLUK = 180;   // rapor ekranının üstünde orb'un oturduğu boşluk
+type Orb3DDurum = { dusun: boolean; hata: boolean; dinle: boolean; sonuk: boolean };
+type Orb3DRef = { kaydir: (y: number) => void };
+const Orb3D = forwardRef<Orb3DRef, { durum: Orb3DDurum; raporGorunur: boolean; hataOldu: () => void }>(function Orb3D({ durum, raporGorunur, hataOldu }, ref) {
+  const wv = useRef<WebView>(null);
+  const hazir = useRef(false);
+  const kayY = useRef(0);
+  const raporRef = useRef(raporGorunur);
+  raporRef.current = raporGorunur;
+  const opak = useRef(new Animated.Value(0)).current;
+  const gonder = useCallback((x: object) => {
+    if (!hazir.current) return;
+    wv.current?.injectJavaScript(`window.jvDurum&&window.jvDurum(${JSON.stringify(x)});true;`);
+  }, []);
+  const odak = useCallback(() => (raporRef.current
+    ? { odakY: Spacing.lg - kayY.current, odakH: ORB_BOSLUK }
+    : { odakY: null, odakH: 0 }), []);
+  useImperativeHandle(ref, () => ({
+    kaydir: (y: number) => { kayY.current = y; if (raporRef.current) gonder(odak()); },
+  }), [gonder, odak]);
+  useEffect(() => { gonder({ ...durum, ...odak() }); }, [durum.dusun, durum.hata, durum.dinle, durum.sonuk, raporGorunur, gonder, odak]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: opak, backgroundColor: J.zemin }]}>
+      <WebView ref={wv} source={{ uri: ORB_URL }} style={{ flex: 1, backgroundColor: J.zemin }} originWhitelist={['https://*']}
+        scrollEnabled={false} bounces={false} overScrollMode="never" javaScriptEnabled domStorageEnabled
+        injectedJavaScriptBeforeContentLoaded={`window.__jvIlk=${JSON.stringify({ ...durum, ...(raporGorunur ? { odakY: Spacing.lg, odakH: ORB_BOSLUK } : {}) })};true;`}
+        onLoadEnd={() => { hazir.current = true; gonder({ ...durum, ...odak() }); Animated.timing(opak, { toValue: 1, duration: 600, useNativeDriver: true }).start(); }}
+        onError={hataOldu} onHttpError={hataOldu} onContentProcessDidTerminate={() => wv.current?.reload()} />
+    </Animated.View>
+  );
+});
+
 // Büyük halka: görünürken belirir, cevap gelince olduğu yerde söner
 function BuyukOrb({ gor, boyut, durum, style }: { gor: boolean; boyut: number; durum: OrbDurum; style: any }) {
   const v = useRef(new Animated.Value(gor ? 1 : 0)).current;
@@ -1239,19 +1285,21 @@ const styles = StyleSheet.create({
   nokta: { width: 7, height: 7, borderRadius: 4, shadowOpacity: 0.9, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
   mono: { fontFamily: MONO },
   balonBen: {
-    alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: 'rgba(34,211,238,0.16)',
+    alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: 'rgba(8,34,48,0.92)',
     borderWidth: 1, borderColor: 'rgba(34,211,238,0.45)',
+    shadowColor: '#000', shadowOpacity: 0.75, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 6,
     paddingVertical: 9, paddingHorizontal: 13, borderRadius: 14, borderBottomRightRadius: 4,
   },
   jEtiket: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, marginLeft: 2 },
   balonJarvis: {
-    backgroundColor: J.panel, borderWidth: 1, borderColor: J.cizgi, borderLeftWidth: 2, borderLeftColor: J.cyan,
+    backgroundColor: 'rgba(4,9,17,0.9)', borderWidth: 1, borderColor: J.cizgi, borderLeftWidth: 2, borderLeftColor: J.cyan,
+    shadowColor: '#000', shadowOpacity: 0.8, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 6,
     paddingVertical: 10, paddingHorizontal: 13, borderRadius: 14, borderTopLeftRadius: 4,
   },
   saat: { fontSize: 10.5, color: '#4d6a80', paddingLeft: 4, marginTop: 4 },
   kartDurum: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderRadius: 4 },
   bos: { position: 'absolute', left: 0, right: 0, paddingHorizontal: 16, alignItems: 'center', gap: 10 },
-  bosBaslik: { fontFamily: MONO, fontSize: 17, fontWeight: '800', letterSpacing: 3, color: '#fff', textShadowColor: 'rgba(34,211,238,0.7)', textShadowRadius: 12 },
+  bosBaslik: { fontFamily: MONO, fontSize: 17, fontWeight: '800', letterSpacing: 3, color: '#fff', textShadowColor: 'rgba(0,0,0,0.95)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } },
   ornek: { paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, backgroundColor: 'rgba(10,22,38,0.8)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.25)' },
   asagi: {
     position: 'absolute', right: 16, bottom: 12, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
@@ -1270,7 +1318,8 @@ const styles = StyleSheet.create({
   aktifCizgi: { position: 'absolute', left: 0, top: 7, bottom: 7, width: 2, borderRadius: 2, backgroundColor: J.cyan },
   soluk: { fontSize: 13, color: J.soluk },
   govde: { fontSize: 14, color: J.yazi, lineHeight: 20 },
-  rk: { borderRadius: 12, borderWidth: 1, borderColor: 'rgba(125,211,252,0.16)', backgroundColor: 'rgba(8,16,28,0.78)', padding: 12, gap: 6 },
+  rk: { borderRadius: 12, borderWidth: 1, borderColor: 'rgba(125,211,252,0.16)', backgroundColor: 'rgba(5,11,20,0.9)', padding: 12, gap: 6,
+    shadowColor: '#000', shadowOpacity: 0.7, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 5 },
   rkBas: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rkBaslik: { flex: 1, fontSize: 11.5, fontWeight: '800', letterSpacing: 1.3, color: '#7dd3fc' },
   rkSayi: { fontSize: 20, fontWeight: '800', color: '#fff' },
@@ -1457,8 +1506,8 @@ function AcikIslerModal({ acik, kapat, musteriAc, sayiDegisti }: {
 
 // ── 🏠 Jarvis rapor ekranı (yeni sohbet açılışı) ── tek RPC jarvis_ozet(), 0 token
 // Web karşılığı: ilan-web/app/panel/jarvis/page.tsx JarvisRapor
-function JarvisRapor({ musteriAc, ilanAc, acikIsAc, komut }: {
-  musteriAc: (id: string) => void; ilanAc: (id: string) => void; acikIsAc: () => void; komut: (t: string) => void;
+function JarvisRapor({ musteriAc, ilanAc, acikIsAc, komut, orbBosluk = 0 }: {
+  musteriAc: (id: string) => void; ilanAc: (id: string) => void; acikIsAc: () => void; komut: (t: string) => void; orbBosluk?: number;
 }) {
   const [o, setO] = useState<any | null>(null);
   const [hata, setHata] = useState(false);
@@ -1498,6 +1547,7 @@ function JarvisRapor({ musteriAc, ilanAc, acikIsAc, komut }: {
 
   return (
     <View style={{ gap: 12 }}>
+      {orbBosluk > 0 && <View style={{ height: orbBosluk }} />}
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
         <Text style={[styles.bosBaslik, { fontSize: 17 }]}><Karistir metin={selam} /></Text>
         <Text style={[styles.soluk, { flex: 1, fontSize: 12 }]} numberOfLines={1}>{tarih}</Text>
