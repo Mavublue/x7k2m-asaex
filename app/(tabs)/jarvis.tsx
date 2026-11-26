@@ -8,6 +8,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from '../../lib/webview';
+import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import R2Image from '../../components/R2Image';
@@ -1325,6 +1326,8 @@ const styles = StyleSheet.create({
   rkSayi: { fontSize: 20, fontWeight: '800', color: '#fff' },
   rkSatir: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5, borderTopWidth: 1, borderTopColor: 'rgba(125,211,252,0.08)' },
   rkLink: { color: J.mavi, fontWeight: '700' },
+  satisBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)', backgroundColor: 'rgba(10,22,38,0.8)' },
+  satisBtnYazi: { color: '#bfefff', fontWeight: '600', fontSize: 13 },
   isKart: { padding: 11, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(125,211,252,0.14)', backgroundColor: 'rgba(255,255,255,0.025)', gap: 4 },
   isKartSimdi: { borderColor: 'rgba(251,191,36,0.45)', backgroundColor: 'rgba(251,191,36,0.05)' },
   isGrup: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, color: J.soluk, marginTop: 12, marginBottom: 2 },
@@ -1505,6 +1508,75 @@ function AcikIslerModal({ acik, kapat, musteriAc, sayiDegisti }: {
 
 
 // ── 🏠 Jarvis rapor ekranı (yeni sohbet açılışı) ── tek RPC jarvis_ozet(), 0 token
+// 💡 Satış fırsatları (satis_tara() saatlik; K1/K2 fiyat düştü + emsal, K8 yayından kalktı)
+// Web karşılığı: ilan-web/app/panel/jarvis/page.tsx SatisFirsatlari. Taslak düzenlenebilir; WhatsApp'ta aç = gönderildi.
+function SatisFirsatlari({ musteriAc, ilanAc }: { musteriAc: (id: string) => void; ilanAc: (id: string) => void }) {
+  const [liste, setListe] = useState<any[]>([]);
+  const [metin, setMetin] = useState<Record<string, string>>({});
+  const yukle = useCallback(async () => {
+    const { data } = await supabase.from('satis_onerileri')
+      .select('id, kural, baslik, gerekce, taslak, created_at, musteri_id, ilan_id, musteriler(ad, soyad, telefon), ilanlar(portfoy_no, fotograflar)')
+      .eq('durum', 'bekliyor').gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString())
+      .order('created_at', { ascending: false }).limit(10);
+    setListe(data ?? []);
+  }, []);
+  useFocusEffect(useCallback(() => { yukle(); }, [yukle]));
+  const karar = async (id: string, durum: 'gonderildi' | 'atlandi') => {
+    setListe(l => l.filter(x => x.id !== id));
+    await supabase.rpc('satis_oneri_karar', { p_id: id, p_durum: durum });
+  };
+  if (!liste.length) return null;
+  return (
+    <View style={[styles.rk, { borderColor: 'rgba(251,191,36,0.45)' }]}>
+      <View style={styles.rkBas}>
+        <Text style={{ fontSize: 14 }}>💡</Text>
+        <Text style={[styles.mono, styles.rkBaslik, { color: '#fbbf24' }]}>SATIŞ FIRSATLARI</Text>
+        <Text style={[styles.mono, styles.rkSayi]}>{liste.length}</Text>
+      </View>
+      {liste.map(o => {
+        const t = metin[o.id] ?? o.taslak;
+        const tel = String(o.musteriler?.telefon ?? '').replace(/\D/g, '').replace(/^0/, '');
+        const kapak = o.ilanlar?.fotograflar?.[0];
+        return (
+          <View key={o.id} style={{ paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: 'rgba(125,211,252,0.1)', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {kapak ? (
+                <Pressable onPress={() => o.ilan_id && ilanAc(o.ilan_id)}>
+                  <R2Image source={kapak} style={{ width: 60, height: 46, borderRadius: 6 }} resizeMode="cover" size="sm" />
+                </Pressable>
+              ) : null}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.rkLink, { fontSize: 14 }]} onPress={() => musteriAc(o.musteri_id)}>{o.baslik}</Text>
+                {!!o.gerekce && <Text style={[styles.soluk, { fontSize: 12, marginTop: 2 }]}>{o.gerekce}</Text>}
+              </View>
+            </View>
+            <TextInput value={t} onChangeText={v => setMetin(m => ({ ...m, [o.id]: v }))} multiline
+              style={{ color: J.yazi, fontSize: 14, lineHeight: 20, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)', backgroundColor: 'rgba(3,10,20,0.8)', minHeight: 80, textAlignVertical: 'top' }} />
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {tel ? (
+                <Pressable onPress={() => { Linking.openURL(`whatsapp://send?phone=${tel}&text=${encodeURIComponent(t)}`).catch(() => Linking.openURL(`https://wa.me/${tel}?text=${encodeURIComponent(t)}`)); karar(o.id, 'gonderildi'); }}
+                  style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#25D366' }}>
+                  <Text style={{ color: '#04140a', fontWeight: '700', fontSize: 13 }}>WhatsApp'ta aç</Text>
+                </Pressable>
+              ) : (
+                <Pressable onPress={() => karar(o.id, 'gonderildi')} style={styles.satisBtn}>
+                  <Text style={styles.satisBtnYazi}>Gönderdim</Text>
+                </Pressable>
+              )}
+              <Pressable onPress={() => { Clipboard.setStringAsync(t); }} style={styles.satisBtn}>
+                <Text style={styles.satisBtnYazi}>Kopyala</Text>
+              </Pressable>
+              <Pressable onPress={() => karar(o.id, 'atlandi')} style={[styles.satisBtn, { marginLeft: 'auto' }]}>
+                <Text style={styles.satisBtnYazi}>Atla</Text>
+              </Pressable>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // Web karşılığı: ilan-web/app/panel/jarvis/page.tsx JarvisRapor
 function JarvisRapor({ musteriAc, ilanAc, acikIsAc, komut, orbBosluk = 0 }: {
   musteriAc: (id: string) => void; ilanAc: (id: string) => void; acikIsAc: () => void; komut: (t: string) => void; orbBosluk?: number;
@@ -1553,6 +1625,8 @@ function JarvisRapor({ musteriAc, ilanAc, acikIsAc, komut, orbBosluk = 0 }: {
         <Text style={[styles.soluk, { flex: 1, fontSize: 12 }]} numberOfLines={1}>{tarih}</Text>
         <Text style={[styles.rkLink, { fontSize: 12 }]} onPress={yukle}>↻</Text>
       </View>
+
+      <SatisFirsatlari musteriAc={musteriAc} ilanAc={ilanAc} />
 
       <View style={styles.rk}>
         <Bas ikon="📋" baslik="AÇIK İŞLER" sayi={ai.toplam ?? 0} />
