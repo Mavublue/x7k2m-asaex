@@ -634,6 +634,11 @@ export default function JarvisEkran() {
       <View ref={kokRef} style={{ flex: 1, paddingBottom: kbPad }}>
         {/* Üst şerit */}
         <LinearGradient colors={['rgba(34,211,238,0.09)', 'rgba(34,211,238,0)']} style={styles.ust}>
+          {!!secili && (
+            <Pressable onPress={() => { Keyboard.dismiss(); yeniSohbet(); }} hitSlop={8} style={styles.ustBtn}>
+              <Text style={{ fontSize: 17 }}>🏠</Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => { Keyboard.dismiss(); sohbetleriYukle(); setYanAcik(true); }} hitSlop={8} style={styles.ustBtn}>
             <Text style={{ fontSize: 18, color: J.cyan }}>☰</Text>
           </Pressable>
