@@ -17,7 +17,7 @@ import { renderSosyalMetin, type SosyalProfil } from '../../lib/sosyalMedya';
 const R2_BASE = process.env.EXPO_PUBLIC_R2_PUBLIC_URL!;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect, useNavigation } from 'expo-router';
 import { WebView } from '../../lib/webview';
 import { supabase } from '../../lib/supabase';
 import { cacheGet, cacheSet } from '../../lib/cache';
@@ -238,6 +238,15 @@ export default function IlanDetayScreen() {
   const { id, paylas: paylasMusteriId } = useLocalSearchParams<{ id: string; paylas?: string }>();
   const [ilan, setIlan] = useState<Ilan | null>(null);
   const [loading, setLoading] = useState(true);
+  // Haritalar (2 WebView) açılış animasyonu bitince yüklenir → ilan açılışı takılmaz
+  const [haritaHazir, setHaritaHazir] = useState(false);
+  const navigation = useNavigation();
+  useEffect(() => {
+    const ac = () => setTimeout(() => setHaritaHazir(true), 150);
+    const kapat = (navigation as any).addListener?.('transitionEnd', ac);
+    const yedek = setTimeout(() => setHaritaHazir(true), 900);  // olay gelmezse
+    return () => { kapat?.(); clearTimeout(yedek); };
+  }, [navigation]);
   const [aktifFoto, setAktifFoto] = useState(0);
   const [aciklamaTab, setAciklamaTab] = useState<'not' | 'musteri'>('not');
   const [musteriGorunum, setMusteriGorunum] = useState(false);
@@ -958,15 +967,17 @@ export default function IlanDetayScreen() {
               </View>
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: Spacing.md }}>Emlakçı konumu — müşteriye gösterilmez</Text>
               <View style={styles.mapBox}>
-                <WebView
-                  source={{ html: buildDetayMapHtml(ilan.lat, ilan.lng, '🏠') }}
-                  style={styles.mapView}
-                  javaScriptEnabled
-                  domStorageEnabled
-                  originWhitelist={['*']}
-                  mixedContentMode="always"
-                  scrollEnabled
-                />
+                {haritaHazir ? (
+                  <WebView
+                    source={{ html: buildDetayMapHtml(ilan.lat, ilan.lng, '🏠') }}
+                    style={styles.mapView}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    originWhitelist={['*']}
+                    mixedContentMode="always"
+                    scrollEnabled
+                  />
+                ) : <View style={[styles.mapView, { backgroundColor: Colors.surfaceContainerLow }]} />}
               </View>
             </View>
           ) : null}
@@ -993,15 +1004,17 @@ export default function IlanDetayScreen() {
               </View>
               <Text style={{ fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: Spacing.md }}>Müşteriye gösterilen tahmini konum</Text>
               <View style={styles.mapBox}>
-                <WebView
-                  source={{ html: buildDetayMapHtml(ilan.musteri_lat, ilan.musteri_lng, '📍') }}
-                  style={styles.mapView}
-                  javaScriptEnabled
-                  domStorageEnabled
-                  originWhitelist={['*']}
-                  mixedContentMode="always"
-                  scrollEnabled
-                />
+                {haritaHazir ? (
+                  <WebView
+                    source={{ html: buildDetayMapHtml(ilan.musteri_lat, ilan.musteri_lng, '📍') }}
+                    style={styles.mapView}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    originWhitelist={['*']}
+                    mixedContentMode="always"
+                    scrollEnabled
+                  />
+                ) : <View style={[styles.mapView, { backgroundColor: Colors.surfaceContainerLow }]} />}
               </View>
             </View>
           ) : null}

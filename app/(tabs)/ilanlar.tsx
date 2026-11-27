@@ -316,8 +316,11 @@ export default function IlanlarScreen() {
     });
   }, []);
 
-  useEffect(() => { fetchIlanlar(); }, []);
-  useFocusEffect(useCallback(() => { fetchIlanlar(); }, []));
+  // Odakta yenile (ilk açılış dahil). Geçiş animasyonu bitince çalışır → geri tuşu takılmaz.
+  useFocusEffect(useCallback(() => {
+    const z = setTimeout(() => { fetchIlanlar(); }, sonVeri.current ? 450 : 0);
+    return () => clearTimeout(z);
+  }, []));
 
   // Jarvis "uygun ilanlar" kartı (jarvisGoster param): sadece kartın ilanları, gruplu; ✕ ile normal liste.
   // Sekme ekranı açık kaldığı için ilan detayından geri dönünce görünüm durur.
@@ -359,7 +362,8 @@ export default function IlanlarScreen() {
 
   async function fetchIlanlar() {
     const cached = await cacheGetFast<Ilan[]>('panel_ilanlar_');
-    if (cached) { sonVeri.current = JSON.stringify(cached); setIlanlar(cached); setLoading(false); }
+    // Önbellek sadece ilk yüklemede: geri dönüşte listeyi boşuna baştan çizmesin
+    if (cached && !sonVeri.current) { sonVeri.current = JSON.stringify(cached); setIlanlar(cached); setLoading(false); }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     cacheRememberUid(session.user.id);
@@ -1089,10 +1093,18 @@ export default function IlanlarScreen() {
           })()}
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}
+        <FlatList style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.liste}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
-        >
-          {filtered.length === 0 ? (
+          data={filtered} keyExtractor={i => i.id}
+          extraData={[secimModu, seciliIds, kartModu, jg]}
+          initialNumToRender={6} maxToRenderPerBatch={6} windowSize={7}
+          ItemSeparatorComponent={ListeAra}
+          renderItem={({ item: ilan }) => <IlanKart ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'}
+              jarvis={jg?.ilan[ilan.id] ? {
+                sebep: jg.ilan[ilan.id].grup === 'tam' ? null : `${{ belki: '🤔', gonderildi: '📤', benzer: '🔁', tam: '' }[jg.ilan[ilan.id].grup]} ${jg.ilan[ilan.id].sebep}`,
+                gonderildi: jg.ilan[ilan.id].grup === 'gonderildi', benzer: jg.ilan[ilan.id].grup === 'benzer', paylasildi: jg.paylasilan.includes(ilan.id),
+              } : undefined} />}
+          ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Text style={styles.emptyEmoji}>🔍</Text>
               <Text style={styles.emptyText}>Filtrelerinize uygun ilan bulunamadı</Text>
@@ -1100,14 +1112,8 @@ export default function IlanlarScreen() {
                 <Text style={styles.sifirlaText}>Filtreleri Sıfırla</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            filtered.map(ilan => <IlanKart key={ilan.id} ilan={ilan} secimModu={secimModu} secili={seciliIds.has(ilan.id)} onToggle={() => secimToggle(ilan.id)} kompakt={kartModu === 'kucuk'}
-              jarvis={jg?.ilan[ilan.id] ? {
-                sebep: jg.ilan[ilan.id].grup === 'tam' ? null : `${{ belki: '🤔', gonderildi: '📤', benzer: '🔁', tam: '' }[jg.ilan[ilan.id].grup]} ${jg.ilan[ilan.id].sebep}`,
-                gonderildi: jg.ilan[ilan.id].grup === 'gonderildi', benzer: jg.ilan[ilan.id].grup === 'benzer', paylasildi: jg.paylasilan.includes(ilan.id),
-              } : undefined} />)
-          )}
-        </ScrollView>
+          }
+        />
       )}
 
       {/* Liste / Harita Toggle veya Toplu Aksiyon Bar */}
@@ -1898,6 +1904,8 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
   );
 }
 
+const ListeAra = () => <View style={{ height: Spacing.md }} />;
+
 function IlanKart({ ilan, secimModu, secili, onToggle, kompakt, jarvis }: { ilan: Ilan; secimModu?: boolean; secili?: boolean; onToggle?: () => void; kompakt?: boolean; jarvis?: { sebep: string | null; gonderildi?: boolean; benzer?: boolean; paylasildi: boolean } }) {
   const ilkFoto = ilan.fotograflar?.[0];
   const iptal = ilan.durum === 'İptal';
@@ -2039,7 +2047,7 @@ const styles = StyleSheet.create({
   jgEtiket: { backgroundColor: 'rgba(245,158,11,0.92)', borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, maxWidth: '100%' },
   jgEtiketYazi: { color: '#1f1300', fontSize: 11, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: Spacing.xl, paddingTop: Spacing.sm, gap: Spacing.md, paddingBottom: 32 },
+  liste: { padding: Spacing.xl, paddingTop: Spacing.sm, paddingBottom: 32 },
 
   kompaktKart: {
     flexDirection: 'row',
